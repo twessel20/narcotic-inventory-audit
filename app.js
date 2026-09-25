@@ -1037,13 +1037,15 @@ function reportCoverPageHtml(r){
    '<div class="report-cover-meta">'+
    '<div><span>Audit date</span><strong>'+esc(auditDate||'—')+'</strong></div>'+
    '<div><span>Finalized date</span><strong>'+esc(finalized||'—')+'</strong></div>'+
-   '<div class="cover-auditor-box"><span>Certifying auditor</span><strong>'+esc(auditor||'—')+'</strong>'+
-     '<div class="cover-auditor-signature">'+
-       (r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'<div class="report-signature-placeholder"></div>')+
-       '<small>Final certifying auditor signature</small>'+
+   '<div class="cover-auditor-pair">'+
+     '<div class="cover-auditor-name"><span>Certifying auditor</span><strong>'+esc(auditor||'—')+'</strong>'+
+       '<div class="cover-auditor-signature">'+
+         (r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'<div class="report-signature-placeholder"></div>')+
+         '<small>Final certifying auditor signature</small>'+
+       '</div>'+
      '</div>'+
+     '<div class="cover-auditor-number"><span>Employee number</span><strong>'+esc(r.attestationEmployeeNumber||r.auditorEmployeeNumber||'—')+'</strong></div>'+
    '</div>'+
-   '<div><span>Employee number</span><strong>'+esc(r.attestationEmployeeNumber||r.auditorEmployeeNumber||'—')+'</strong></div>'+
    '</div>'+
    '<div class="report-cover-footer">Gladstone Fire Department · Monthly Narcotic Inventory / Audit</div>'+
    '</section>';
