@@ -1029,6 +1029,7 @@ function reportCoverPageHtml(r){
 
 function executiveSummaryHtml(r){
  const activeLocs=['Medic 1','Medic 2','Medic 3','Safe'];
+ const isActiveLoc=l=>activeLocs.includes(String(l||''));
  const medRows=MEDS.map(m=>{
    const current=activeLocs.reduce((n,l)=>n+Number(r.counts?.[l]?.[m]||0),0);
    const priorValues=activeLocs.map(l=>r.priorCounts?.[l]?.[m]);
@@ -1040,23 +1041,85 @@ function executiveSummaryHtml(r){
  const comparisonsKnown=medRows.every(x=>x.diff!==null);
 
  const adminRows=Array.isArray(r.administrationRows)?r.administrationRows:[];
- let vialTotal=null;
- try{vialTotal=adminRows.length?providerVialData(adminRows).total:null}catch(e){vialTotal=null}
+ const txs=Array.isArray(r.transactions)?r.transactions:[];
+ let vialData=null;
+ try{vialData=adminRows.length?providerVialData(adminRows):null}catch(e){vialData=null}
+ const vialTotal=vialData?.total??null;
 
- const amendmentCount=Array.isArray(r.amendments)?r.amendments.length:0;
- const certComplete=LOCS.every(loc=>{
-   const x=r.signatures?.[loc]||{};
-   return !!(x.signer&&x.employeeNumber&&x.witness&&x.witnessEmployeeNumber&&x.signature&&x.witnessSignature);
- });
+ function medBaseName(label=''){
+   const s=String(label);
+   if(/^Fentanyl/i.test(s))return 'Fentanyl';
+   if(/^Versed/i.test(s))return 'Versed';
+   if(/^Ketamine/i.test(s))return 'Ketamine';
+   if(/^Morphine/i.test(s))return 'Morphine';
+   return s;
+ }
+ function administeredVialsFor(med){
+   if(!vialData)return 0;
+   const base=medBaseName(med);
+   let total=0;
+   for(const [,items] of vialData.providers||[]){
+     for(const item of items||[]){
+       if(medBaseName(item.medication)===base)total+=Number(item.vials||0);
+     }
+   }
+   return total;
+ }
+ function reasonsForChange(med,diff){
+   const base=medBaseName(med);
+   const reasons=[];
+   let received=0,expired=0,destroyed=0,waste=0,transferIn=0,transferOut=0,adjustUp=0,adjustDown=0;
+
+   for(const t of txs){
+     if(medBaseName(t.medication)!==base)continue;
+     const q=Math.abs(Number(t.quantity||0));
+     if(!q)continue;
+     const type=String(t.type||t.action||'').toLowerCase();
+     const from=String(t.fromLocation||'');
+     const to=String(t.toLocation||'');
+
+     if(type==='received'||type.includes('restock'))received+=q;
+     else if(type==='expired'||type.includes('expire'))expired+=q;
+     else if(type==='destroyed'||type.includes('destroy'))destroyed+=q;
+     else if(type==='waste'||type.includes('waste'))waste+=q;
+     else if(type==='transfer'||type.includes('transfer')){
+       if(!isActiveLoc(from)&&isActiveLoc(to))transferIn+=q;
+       else if(isActiveLoc(from)&&!isActiveLoc(to))transferOut+=q;
+     }else if(type==='adjustment'||type.includes('adjust')){
+       const signed=Number(t.quantity||0);
+       if(signed>0)adjustUp+=Math.abs(signed);
+       else if(signed<0)adjustDown+=Math.abs(signed);
+     }
+   }
+
+   if(diff<0){
+     const administered=administeredVialsFor(med);
+     if(administered)reasons.push(administered+' vial'+(administered===1?'':'s')+' administered');
+     if(expired)reasons.push(expired+' vial'+(expired===1?'':'s')+' moved to expired');
+     if(destroyed)reasons.push(destroyed+' vial'+(destroyed===1?'':'s')+' destroyed/transferred out');
+     if(waste)reasons.push(waste+' vial'+(waste===1?'':'s')+' documented as waste');
+     if(transferOut)reasons.push(transferOut+' vial'+(transferOut===1?'':'s')+' transferred out of active stock');
+     if(adjustDown)reasons.push(adjustDown+' vial'+(adjustDown===1?'':'s')+' removed by adjustment');
+   }else if(diff>0){
+     if(received)reasons.push(received+' vial'+(received===1?'':'s')+' received/restocked');
+     if(transferIn)reasons.push(transferIn+' vial'+(transferIn===1?'':'s')+' transferred into active stock');
+     if(adjustUp)reasons.push(adjustUp+' vial'+(adjustUp===1?'':'s')+' added by adjustment');
+   }
+   return reasons;
+ }
 
  let inventorySentence='';
  if(changed.length){
-   const vialChanges=changed.map(x=>{
+   const parts=changed.map(x=>{
      const amount=Math.abs(x.diff);
      const direction=x.diff>0?'increased':'decreased';
-     return esc(x.m)+' '+direction+' by '+amount+' vial'+(amount===1?'':'s');
+     const reasons=reasonsForChange(x.m,x.diff);
+     const reasonText=reasons.length
+       ?' The recorded reason was '+reasons.join(' and ')+'.'
+       :' No specific reason for this change was documented in the audit data.';
+     return x.m+' '+direction+' by '+amount+' vial'+(amount===1?'':'s')+'.'+reasonText;
    });
-   inventorySentence='The physical inventory changed from the prior audit. '+vialChanges.join('; ')+'.';
+   inventorySentence='The physical inventory changed from the prior audit. '+parts.join(' ');
  }else if(comparisonsKnown){
    inventorySentence='The active physical inventory did not show a net change from the prior audit.';
  }else{
@@ -1071,10 +1134,14 @@ function executiveSummaryHtml(r){
    usageSentence=' No administration records were available in this report for vial-use calculation.';
  }
 
+ const amendmentCount=Array.isArray(r.amendments)?r.amendments.length:0;
+ const certComplete=LOCS.every(loc=>{
+   const x=r.signatures?.[loc]||{};
+   return !!(x.signer&&x.employeeNumber&&x.witness&&x.witnessEmployeeNumber&&x.signature&&x.witnessSignature);
+ });
  const certSentence=certComplete
    ?' All audit locations were fully certified by the auditor and witness.'
    :' One or more audit locations were missing complete certification information.';
-
  const amendmentSentence=amendmentCount
    ?' '+amendmentCount+' amendment'+(amendmentCount===1?' was':'s were')+' recorded after the original audit entry.'
    :' No amendments were recorded.';
