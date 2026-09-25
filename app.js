@@ -858,6 +858,13 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
  clone.querySelectorAll('.report-imported-admin, section').forEach(el=>{el.style.overflow='visible';});
  clone.querySelectorAll('section').forEach((el,index)=>{
    if(el.classList.contains('report-cert'))return;
+   if(el.classList.contains('report-executive-summary')){
+     el.style.breakBefore='auto';
+     el.style.pageBreakBefore='auto';
+     el.style.breakInside='avoid';
+     el.style.pageBreakInside='avoid';
+     return;
+   }
    el.classList.add('pdf-section-page');
    el.style.breakBefore='page';
    el.style.pageBreakBefore='always';
