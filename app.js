@@ -857,6 +857,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
  const clone=sheet.cloneNode(true);
  clone.querySelector('.report-toolbar')?.remove();
+ clone.querySelector('.test-report-banner')?.remove();
  clone.style.width='7.6in';
  clone.style.maxWidth='7.6in';
  clone.style.margin='0';
