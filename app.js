@@ -1040,14 +1040,17 @@ function reportCoverPageHtml(r){
    '<div class="report-cover-month">'+esc(r.month||'Monthly Audit')+'</div>'+
    (r.isTest?'<div class="report-cover-test">TEST REPORT · SYNTHETIC DATA</div>':'')+
    '</div>'+
-   '<div class="report-cover-meta balanced-cover-meta" style="display:grid;grid-template-columns:1fr 1fr;gap:18px 34px;border:0;border-radius:0;overflow:visible;background:transparent;padding:0;">'+
+   '<div class="report-cover-meta balanced-cover-meta" style="display:grid;grid-template-columns:1fr 1.4fr 1fr;gap:18px 24px;border:0;border-radius:0;overflow:visible;background:transparent;padding:0;">'+
    '<div class="cover-meta-cell" style="border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:8px 10px;"><span style="text-align:center;width:100%;">Audit date</span><strong style="text-align:center;width:100%;">'+esc(auditDate||'—')+'</strong></div>'+
+   '<div class="cover-meta-cell" style="border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:8px 10px;"><span style="text-align:center;width:100%;">Audit date range</span><strong style="text-align:center;width:100%;">'+esc(formatDisplayDate(r.dateRangeStart)||'—')+' through '+esc(formatDisplayDate(r.dateRangeEnd)||'—')+'</strong></div>'+
    '<div class="cover-meta-cell" style="border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:8px 10px;"><span style="text-align:center;width:100%;">Finalized date</span><strong style="text-align:center;width:100%;">'+esc(finalized||'—')+'</strong></div>'+
-   '<div class="cover-meta-cell" style="grid-column:1/-1;border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:4px 10px 8px;"><span style="text-align:center;width:100%;">Audit date range</span><strong style="text-align:center;width:100%;">'+esc(formatDisplayDate(r.dateRangeStart)||'—')+' through '+esc(formatDisplayDate(r.dateRangeEnd)||'—')+'</strong></div>'+
-   '<div class="cover-meta-cell" style="grid-column:1/-1;border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:6px 10px 0;"><span style="text-align:center;width:100%;">Certifying auditor</span><strong style="text-align:center;width:100%;">'+esc(auditor||'—')+(r.attestationEmployeeNumber||r.auditorEmployeeNumber?' · Employee #'+esc(r.attestationEmployeeNumber||r.auditorEmployeeNumber):'')+'</strong></div>'+
-   '<div class="cover-auditor-signature centered-cover-signature" style="grid-column:1/-1;border:0;background:transparent;text-align:center;margin:0 auto;padding:2px 0 0;width:100%;">'+
-     (r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature" style="display:block;max-width:170px;max-height:48px;margin:0 auto 3px;object-fit:contain;">':'<div class="report-signature-placeholder" style="width:170px;height:36px;margin:0 auto 3px;border:0;border-bottom:1px solid #aab9c4;"></div>')+
-     '<small style="display:block;text-align:center;">Final certifying auditor signature</small>'+
+   '<div class="cover-auditor-row" style="grid-column:1/-1;display:grid;grid-template-columns:1fr 180px 1fr;align-items:center;gap:22px;margin-top:10px;">'+
+     '<div style="text-align:center;"><span style="display:block;text-align:center;">Certifying auditor</span><strong style="display:block;text-align:center;">'+esc(auditor||'—')+'</strong></div>'+
+     '<div class="cover-auditor-signature" style="text-align:center;border:0;background:transparent;margin:0;padding:0;">'+
+       (r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature" style="display:block;max-width:170px;max-height:48px;margin:0 auto 2px;object-fit:contain;">':'<div class="report-signature-placeholder" style="width:170px;height:36px;margin:0 auto 2px;border:0;border-bottom:1px solid #aab9c4;"></div>')+
+       '<small style="display:block;text-align:center;">Signature</small>'+
+     '</div>'+
+     '<div style="text-align:center;"><span style="display:block;text-align:center;">Employee number</span><strong style="display:block;text-align:center;">'+esc(r.attestationEmployeeNumber||r.auditorEmployeeNumber||'—')+'</strong></div>'+
    '</div>'+
    '</div>'+
    '<div class="report-cover-footer">Gladstone Fire Department · Monthly Narcotic Inventory / Audit</div>'+
