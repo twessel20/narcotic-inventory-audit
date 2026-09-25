@@ -214,18 +214,60 @@ async function extractPdfTranscript(file){
  }
  return {text:pages.map((t,i)=>'--- Page '+(i+1)+' ---\n'+t).join('\n\n'),arrayBuffer:buf,pageCount:pdf.numPages};
 }
+function parseAdministrationRows(transcript){
+ const lines=String(transcript||'').split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(Boolean);
+ const meds=['Fentanyl','Versed','Midazolam','Ketamine','Morphine'];
+ const rows=[];
+ for(const line of lines){
+   const dateMatch=line.match(/^(\d{1,2}\/\d{1,2}\/\d{2,4})\s+(GFD\d+)\s+(.+?)\s+(Fentanyl|Versed|Midazolam|Ketamine|Morphine)\s+([0-9.]+)\s+(M[123])$/i);
+   if(!dateMatch)continue;
+   const [,date,report,provider,medRaw,doseRaw,unitRaw]=dateMatch;
+   const med=medRaw.toLowerCase()==='midazolam'?'Versed':medRaw.charAt(0).toUpperCase()+medRaw.slice(1).toLowerCase();
+   rows.push({date,report,provider:provider.replace(/\s+/g,' ').trim(),medication:med,dose:Number(doseRaw),unit:unitRaw.toUpperCase(),raw:line});
+ }
+ return rows;
+}
+function administrationVialCount(medication,totalDose){
+ if(medication==='Fentanyl')return {count:Math.max(1,Math.ceil(totalDose/100)),strength:'100 mcg'};
+ if(medication==='Versed'){
+   if(totalDose>0&&totalDose%5===0)return {count:Math.max(1,totalDose/5),strength:'5 mg'};
+   if(totalDose>0&&totalDose%2===0)return {count:Math.max(1,totalDose/2),strength:'2 mg'};
+   return {count:Math.max(1,Math.ceil(totalDose/2)),strength:'2 mg'};
+ }
+ if(medication==='Ketamine')return {count:Math.max(1,Math.ceil(totalDose/500)),strength:'500 mg'};
+ if(medication==='Morphine')return {count:Math.max(1,Math.ceil(totalDose/10)),strength:'10 mg'};
+ return {count:1,strength:''};
+}
+function formatAdminDate(v){
+ const m=String(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+ if(!m)return v;
+ const y=m[3].length===2?'20'+m[3]:m[3];
+ return y+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0');
+}
 function buildAdministrationSummary(transcript,fileName){
- const lines=String(transcript||'').split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(x=>x&&!/^--- Page \d+ ---$/.test(x));
- const relevant=/fentanyl|versed|midazolam|ketamine|morphine|report\b|incident\b|medic\s*[123]|administer|dose|waste|patient|provider|personnel|treatment date|date\/time/i;
- const dateish=/\b20\d{2}[-\/]\d{1,2}[-\/]\d{1,2}\b|\b\d{1,2}[-\/]\d{1,2}[-\/]20\d{2}\b|\bGFD\d{5,}\b/i;
- const selected=[];
- lines.forEach((line,i)=>{
-   if(relevant.test(line)||dateish.test(line)){
-     for(let j=Math.max(0,i-1);j<=Math.min(lines.length-1,i+1);j++)if(!selected.includes(lines[j]))selected.push(lines[j]);
-   }
+ const rows=parseAdministrationRows(transcript);
+ if(!rows.length){
+   return 'Narcotic administration summary — '+fileName+'\nNo administration rows could be reliably identified from this PDF. Review the extracted transcription below before finalizing the audit.\n\nReference only; manual inventory counts unchanged.';
+ }
+ const groups=new Map();
+ for(const r of rows){
+   const key=[r.date,r.report,r.provider,r.medication,r.unit].join('|');
+   const g=groups.get(key)||{...r,totalDose:0,doseCount:0};
+   g.totalDose+=Number(r.dose||0);g.doseCount++;groups.set(key,g);
+ }
+ const entries=[...groups.values()].sort((a,b)=>{
+   const da=new Date(formatAdminDate(a.date)),db=new Date(formatAdminDate(b.date));
+   return da-db||String(a.report).localeCompare(String(b.report));
  });
- const body=(selected.length>=2?selected:lines).join('\n');
- return 'Narcotic administration summary — '+fileName+'\n'+body+'\n\nReference only; manual inventory counts unchanged.';
+ let totalVials=0;
+ const lines=entries.map(g=>{
+   const vial=administrationVialCount(g.medication,g.totalDose);totalVials+=vial.count;
+   const location=g.unit.replace(/^M([123])$/,'Medic $1');
+   return formatAdminDate(g.date)+' | Report '+g.report+' | '+g.medication+' '+vial.strength+': '+vial.count+' vial'+(vial.count===1?'':'s')+' | '+location+' | By '+g.provider;
+ });
+ const monthMatch=String(transcript).match(/Months in Treatment Date Timestamp\s+(\d{2}\/\d{4})/i);
+ const heading='Narcotic administration summary'+(monthMatch?' ('+monthMatch[1]+')':'')+' — '+fileName;
+ return heading+'\n'+lines.join('\n')+'\nTotal: '+totalVials+' vial'+(totalVials===1?'':'s')+'. Combined doses per report, medication, provider, and source location; vial use is calculated from the department vial strengths.\nReference only; manual inventory counts unchanged.';
 }
 async function handleAdministrationPdf(auditId,file){
  if(!file)return;
@@ -245,7 +287,7 @@ async function handleAdministrationPdf(auditId,file){
    if(uploadError)throw uploadError;
    const summary=buildAdministrationSummary(cleanText,file.name);
    audit.supportingDocuments=Array.isArray(audit.supportingDocuments)?audit.supportingDocuments:[];
-   audit.supportingDocuments.push({name:file.name,storageBucket:'audit-supporting-docs',storagePath:path,mimeType:'application/pdf',size:file.size,pageCount:extracted.pageCount,sha256:digest,uploadedAt:nowISO(),uploadedBy:cloudSession?.user?.email||'',transcript:cleanText});
+   audit.supportingDocuments.push({name:file.name,storageBucket:'audit-supporting-docs',storagePath:path,mimeType:'application/pdf',size:file.size,pageCount:extracted.pageCount,sha256:digest,uploadedAt:nowISO(),uploadedBy:cloudSession?.user?.email||'',transcript:cleanText,administrationRows:parseAdministrationRows(cleanText)});
    audit.usageSummary=summary;
    audit.updatedAt=nowISO();
    await put('audits',audit);
