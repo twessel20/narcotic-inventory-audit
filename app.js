@@ -264,7 +264,7 @@ function buildAdministrationSummary(transcript,fileName){
    const vial=administrationVialCount(g.medication,g.totalDose);totalVials+=vial.count;
    const location=g.unit.replace(/^M([123])$/,'Medic $1');
    const providerText=(g.providers?.length?g.providers:[g.provider]).filter(Boolean).join(' / ');
-   return formatAdminDate(g.date)+' | Report '+g.report+' | '+g.medication+' '+vial.strength+': '+vial.count+' vial'+(vial.count===1?'':'s')+' | '+location+(providerText?' | By '+providerText:'');
+   return '• '+formatAdminDate(g.date)+' | Report '+g.report+' | '+g.medication+' '+vial.strength+': '+vial.count+' vial'+(vial.count===1?'':'s')+' | '+location+(providerText?' | By '+providerText:'');
  });
  const monthMatch=String(transcript).match(/Months in Treatment Date Timestamp\s+(\d{2}\/\d{4})/i);
  const heading='Narcotic administration summary'+(monthMatch?' ('+monthMatch[1]+')':'')+' — '+fileName;
