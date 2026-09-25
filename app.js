@@ -215,18 +215,21 @@ function providerVialData(rows=[]){
    if(r.provider&&!g.providers.includes(r.provider))g.providers.push(r.provider);
    groups.set(key,g);
  }
- const providerMap=new Map();
+ const byProvider=new Map();
  for(const g of groups.values()){
    const vial=administrationVialCount(g.medication,g.totalDose);
    const provider=(g.providers?.length?g.providers:[g.provider]).filter(Boolean).join(' / ')||'Unknown provider';
-   const key=provider+'|'+g.medication+'|'+vial.strength;
-   const x=providerMap.get(key)||{provider,medication:g.medication,strength:vial.strength,vials:0};
-   x.vials+=vial.count;providerMap.set(key,x);
- }
- const byProvider=new Map();
- for(const x of providerMap.values()){
-   if(!byProvider.has(x.provider))byProvider.set(x.provider,[]);
-   byProvider.get(x.provider).push(x);
+   if(!byProvider.has(provider))byProvider.set(provider,[]);
+   byProvider.get(provider).push({
+     date:formatAdminDate(g.date),
+     report:g.report,
+     medication:g.medication,
+     dose:g.totalDose,
+     doseUnit:adminDoseUnit(g.medication),
+     unit:String(g.unit||'').replace(/^M([123])$/,'Medic $1'),
+     strength:vial.strength,
+     vials:vial.count
+   });
  }
  const providers=[...byProvider.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
  const total=providers.reduce((n,[,items])=>n+items.reduce((s,x)=>s+x.vials,0),0);
@@ -237,7 +240,26 @@ function providerVialSummary(rows=[]){
  if(!data.providers.length)return '';
  const content=data.providers.map(([provider,items])=>{
    const total=items.reduce((n,x)=>n+x.vials,0);
-   return '<div class="provider-vial-row"><div><strong>'+esc(provider)+'</strong><div class="provider-vial-detail">'+items.map(x=>esc(x.medication)+' '+esc(x.strength)+': '+x.vials).join(' · ')+'</div></div><div class="provider-vial-total">'+total+' vial'+(total===1?'':'s')+'</div></div>';
+   const medTotals=new Map();
+   for(const x of items){
+     const key=x.medication+'|'+x.strength;
+     medTotals.set(key,(medTotals.get(key)||0)+x.vials);
+   }
+   const medSummary=[...medTotals.entries()].map(([key,count])=>{
+     const [med,strength]=key.split('|');
+     return med+' '+strength+': '+count;
+   }).join(' · ');
+   const detailRows=items.sort((a,b)=>a.date.localeCompare(b.date)||String(a.report).localeCompare(String(b.report))).map(x=>
+     '<div class="provider-vial-detail-row">'+
+       '<div><strong>'+esc(x.date)+'</strong><span>'+esc(x.report)+' · '+esc(x.unit)+'</span></div>'+
+       '<div><strong>'+esc(x.medication)+' '+esc(x.strength)+'</strong><span>'+esc(x.dose)+' '+esc(x.doseUnit)+' administered</span></div>'+
+       '<div class="provider-vial-calc">'+x.vials+' vial'+(x.vials===1?'':'s')+'</div>'+
+     '</div>'
+   ).join('');
+   return '<details class="provider-vial-provider">'+
+     '<summary><div><strong>'+esc(provider)+'</strong><span>'+esc(medSummary)+'</span></div><div class="provider-vial-total">'+total+' vial'+(total===1?'':'s')+'</div></summary>'+
+     '<div class="provider-vial-detail-list">'+detailRows+'</div>'+
+   '</details>';
  }).join('');
  return '<details class="admin-detail-block"><summary>View vials by provider</summary><div class="provider-vial-list">'+content+'</div></details>';
 }
