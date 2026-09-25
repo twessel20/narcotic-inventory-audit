@@ -1040,6 +1040,11 @@ function reportCoverPageHtml(r){
    '<div><span>Certifying auditor</span><strong>'+esc(auditor||'—')+'</strong></div>'+
    '<div><span>Employee number</span><strong>'+esc(r.attestationEmployeeNumber||r.auditorEmployeeNumber||'—')+'</strong></div>'+
    '</div>'+
+   '<div class="report-cover-signature">'+
+     '<div class="report-signature-label">FINAL CERTIFYING AUDITOR SIGNATURE</div>'+
+     (r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'<div class="report-signature-placeholder"></div>')+
+     '<div class="report-signature-name">'+esc(auditor||'')+(r.attestationEmployeeNumber||r.auditorEmployeeNumber?' · Employee #'+esc(r.attestationEmployeeNumber||r.auditorEmployeeNumber):'')+'</div>'+
+   '</div>'+
    '<div class="report-cover-footer">Gladstone Fire Department · Monthly Narcotic Inventory / Audit</div>'+
    '</section>';
 }
