@@ -2209,3 +2209,47 @@ body.report-open{overflow:hidden}
   break-before:page !important;
   page-break-before:always !important;
 }
+
+
+/* PDF section system: consistent with the report and without wasteful forced pages */
+.pdf-render-stage .pdf-section-page{
+  break-before:auto !important;
+  page-break-before:auto !important;
+}
+.pdf-render-stage .pdf-report-section{
+  margin:14px 0 !important;
+  padding:13px 15px !important;
+  border:1px solid #d9e3ea;
+  border-radius:11px;
+  background:#fff;
+  box-sizing:border-box;
+}
+.pdf-render-stage .pdf-report-section > h2{
+  margin:-13px -15px 11px !important;
+  padding:9px 13px 8px !important;
+  border-bottom:1px solid #d9e3ea;
+  background:#f6f9fb;
+  color:#123a5a !important;
+  font-size:1.05rem !important;
+  line-height:1.2;
+  font-weight:850;
+}
+.pdf-render-stage .pdf-report-section p{
+  margin:5px 0;
+}
+.pdf-render-stage .pdf-report-section .report-table{
+  margin-top:8px;
+}
+.pdf-render-stage .report-executive-summary{
+  border:1px solid #d9e3ea !important;
+  border-radius:11px !important;
+  background:#fff !important;
+}
+.pdf-render-stage .report-executive-summary > h2{
+  background:#f6f9fb !important;
+  border-bottom:1px solid #d9e3ea !important;
+}
+.pdf-render-stage .report-amendment{
+  border-color:#d9e3ea !important;
+  background:#fff !important;
+}
