@@ -114,3 +114,10 @@
   .audit-actions{position:sticky;bottom:0;z-index:4;margin:16px -14px -14px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 18px #17324e12}
   .audit-actions button{flex:1;min-width:0}
 }
+
+.header-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.account-btn{background:#ffffff14;color:white;border-color:#ffffff50;padding:7px 10px;font-size:.78rem;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.auth-form{display:grid;gap:12px}
+.auth-form>label{display:grid;gap:6px;font-size:.84rem;font-weight:750;color:#344c66}
+.auth-form h2{margin:.2rem 0}
+@media(max-width:650px){.header-actions{align-items:flex-end;flex-direction:column}.account-btn{max-width:150px}}
