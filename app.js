@@ -1034,11 +1034,11 @@ function reportCoverPageHtml(r){
    '<div class="report-cover-month">'+esc(r.month||'Monthly Audit')+'</div>'+
    (r.isTest?'<div class="report-cover-test">TEST REPORT · SYNTHETIC DATA</div>':'')+
    '</div>'+
-   '<div class="report-cover-meta">'+
-   '<div><span>Audit date</span><strong>'+esc(auditDate||'—')+'</strong></div>'+
-   '<div><span>Finalized date</span><strong>'+esc(finalized||'—')+'</strong></div>'+
-   '<div class="cover-auditor-box"><span>Certifying auditor</span><strong>'+esc(auditor||'—')+'</strong></div>'+
-   '<div class="cover-employee-box"><span>Employee number</span><strong>'+esc(r.attestationEmployeeNumber||r.auditorEmployeeNumber||'—')+'</strong></div>'+
+   '<div class="report-cover-meta balanced-cover-meta">'+
+   '<div class="cover-meta-cell"><span>Audit date</span><strong>'+esc(auditDate||'—')+'</strong></div>'+
+   '<div class="cover-meta-cell"><span>Finalized date</span><strong>'+esc(finalized||'—')+'</strong></div>'+
+   '<div class="cover-meta-cell"><span>Certifying auditor</span><strong>'+esc(auditor||'—')+'</strong></div>'+
+   '<div class="cover-meta-cell"><span>Employee number</span><strong>'+esc(r.attestationEmployeeNumber||r.auditorEmployeeNumber||'—')+'</strong></div>'+
    '<div class="cover-auditor-signature centered-cover-signature">'+
      (r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'<div class="report-signature-placeholder"></div>')+
      '<small>Final certifying auditor signature</small>'+
