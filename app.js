@@ -1163,13 +1163,15 @@ function executiveSummaryHtml(r){
 }
 
 function newReportFrontMatterHtml(r){
- let cover='',summary='';
+ let cover='';
  try{cover=reportCoverPageHtml(r)}catch(err){console.error('Report cover failed',err)}
- try{summary=executiveSummaryHtml(r)}catch(err){
+ return cover;
+}
+function newReportSummaryHtml(r){
+ try{return executiveSummaryHtml(r)}catch(err){
    console.error('Executive summary failed',err);
-   summary='<section class="report-executive-summary"><h2>Executive summary</h2><p>The summary could not be calculated from this preview. The detailed audit sections below remain available and unchanged.</p></section>';
+   return '<section class="report-executive-summary simple-summary paragraph-summary pdf-executive-page"><h2>Executive summary</h2><p>The summary could not be calculated from this preview. The detailed audit sections below remain available and unchanged.</p></section>';
  }
- return cover+summary;
 }
 
 function reportHtml(r){
@@ -1198,7 +1200,7 @@ function reportHtml(r){
  '<header class="report-top"><img src="'+logo+'" alt="Gladstone Fire Department patch"><div><div class="report-kicker">FINALIZED MONTHLY RECORD</div><h1>Gladstone Fire Department Narcotic<br>Inventory / Audit Form</h1></div></header>'+
  '<div class="report-meta-grid"><div><b>Audit month:</b> '+esc(r.month||'')+'</div><div><b>Created:</b> '+esc(r.createdDisplay||fmtDate(r.createdAt)||'')+'</div><div><b>Email:</b> '+esc(r.email||'travisw@gladstone.mo.us')+'</div><div></div><div><b>Date of audit:</b> '+esc(r.auditDate||'')+'</div><div></div><div class="wide"><b>Audit period:</b> '+esc(r.dateRangeStart||'—')+' through '+esc(r.dateRangeEnd||'—')+' (both dates included)</div></div>'+
  '<hr class="report-blue-rule">'+
- ''+
+ ((r.isTest||!r.legacyRecordNumber)?newReportSummaryHtml(r):'')+
  (amendment?'<section class="report-amendment"><h2>Amended inventory record — correction history</h2><p>The table below includes these corrections. Signatures were recorded before these amendments and certify the original record, not the corrected entries.</p>'+amendment+'</section>':'')+
  '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+esc(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
  '<section><h2>Breakaway tag record</h2><table class="report-table"><thead><tr><th>Location</th><th>Tag found / removed</th><th>New tag installed</th></tr></thead><tbody>'+tagRows+'</tbody></table></section>'+
