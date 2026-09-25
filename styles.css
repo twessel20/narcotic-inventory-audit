@@ -1899,3 +1899,17 @@ body.report-open{overflow:hidden}
     grid-template-columns:1fr;
   }
 }
+
+
+/* Header/details + executive summary share one PDF page */
+.pdf-render-stage .pdf-executive-page,
+.pdf-render-stage .report-executive-summary{
+  break-before:auto !important;
+  page-break-before:auto !important;
+  break-after:auto !important;
+  page-break-after:auto !important;
+  min-height:0 !important;
+  display:block !important;
+  break-inside:avoid !important;
+  page-break-inside:avoid !important;
+}
