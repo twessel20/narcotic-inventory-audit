@@ -1036,42 +1036,48 @@ function executiveSummaryHtml(r){
    const prior=priorKnown?priorValues.reduce((n,v)=>n+Number(v||0),0):null;
    return {m,current,prior,diff:priorKnown?current-prior:null};
  });
-
  const changed=medRows.filter(x=>x.diff!==null&&x.diff!==0);
+ const comparisonsKnown=medRows.every(x=>x.diff!==null);
+
  const adminRows=Array.isArray(r.administrationRows)?r.administrationRows:[];
  let vialTotal=null;
  try{vialTotal=adminRows.length?providerVialData(adminRows).total:null}catch(e){vialTotal=null}
+
  const amendmentCount=Array.isArray(r.amendments)?r.amendments.length:0;
  const certComplete=LOCS.every(loc=>{
    const x=r.signatures?.[loc]||{};
    return !!(x.signer&&x.employeeNumber&&x.witness&&x.witnessEmployeeNumber&&x.signature&&x.witnessSignature);
  });
 
- let inventoryText='No prior-audit comparison is available.';
+ let inventorySentence='';
  if(changed.length){
-   inventoryText='Inventory changed in '+changed.length+' medication categor'+(changed.length===1?'y':'ies')+'.';
- }else if(medRows.every(x=>x.diff!==null)){
-   inventoryText='No net change was identified in active inventory totals.';
+   inventorySentence='The physical inventory changed in '+changed.length+' medication categor'+(changed.length===1?'y':'ies')+' compared with the prior audit.';
+ }else if(comparisonsKnown){
+   inventorySentence='The active physical inventory did not show a net change from the prior audit.';
+ }else{
+   inventorySentence='A full comparison with the prior audit was not available for every medication.';
  }
 
- let adminText='No administration data is attached to this report.';
+ let usageSentence='';
  if(adminRows.length){
-   adminText=adminRows.length+' administration record'+(adminRows.length===1?'':'s')+
-     (vialTotal!==null?' calculated to '+vialTotal+' vial'+(vialTotal===1?'':'s'):'')+'.';
+   usageSentence=' The imported administration record shows '+adminRows.length+' dose entr'+(adminRows.length===1?'y':'ies')+
+     (vialTotal!==null?', which calculates to '+vialTotal+' vial'+(vialTotal===1?'':'s')+' used':'')+'.';
+ }else{
+   usageSentence=' No administration records were available in this report for vial-use calculation.';
  }
 
- return '<section class="report-executive-summary simple-summary">'+
+ const certSentence=certComplete
+   ?' All audit locations were fully certified by the auditor and witness.'
+   :' One or more audit locations were missing complete certification information.';
+
+ const amendmentSentence=amendmentCount
+   ?' '+amendmentCount+' amendment'+(amendmentCount===1?' was':'s were')+' recorded after the original audit entry.'
+   :' No amendments were recorded.';
+
+ return '<section class="report-executive-summary simple-summary paragraph-summary">'+
  '<h2>Executive summary</h2>'+
- '<div class="summary-lead">'+inventoryText+'</div>'+
- '<div class="summary-grid">'+
-   '<div><span>Administrations</span><strong>'+esc(adminText)+'</strong></div>'+
-   '<div><span>Certifications</span><strong>'+(certComplete?'All audit sites complete':'One or more audit sites incomplete')+'</strong></div>'+
-   '<div><span>Amendments</span><strong>'+(amendmentCount?amendmentCount+' recorded':'None recorded')+'</strong></div>'+
- '</div>'+
- (changed.length?'<div class="summary-changes"><span>Notable inventory changes</span>'+changed.map(x=>'<div><strong>'+esc(x.m)+'</strong><span>'+(x.diff>0?'+':'')+x.diff+' ('+x.prior+' → '+x.current+')</span></div>').join('')+'</div>':'')+
- '<div class="report-summary-current compact-current"><div class="report-summary-current-title">Current active inventory</div>'+
- medRows.map(x=>'<div><span>'+esc(x.m)+'</span><strong>'+x.current+'</strong></div>').join('')+
- '</div></section>';
+ '<p>'+esc(inventorySentence+usageSentence+certSentence+amendmentSentence)+'</p>'+
+ '</section>';
 }
 
 function newReportFrontMatterHtml(r){
