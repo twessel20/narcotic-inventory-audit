@@ -1047,3 +1047,88 @@ body.report-open{overflow:hidden}
     width:100%;
   }
 }
+
+
+/* Mobile card-by-card audit workflow */
+.mobile-card-nav{display:none}
+@media(max-width:700px){
+  .audit-workspace-shell{
+    padding-bottom:92px;
+  }
+  .audit-step-card{
+    display:none;
+    width:100%;
+    min-width:0;
+  }
+  .audit-step-card.active-step{
+    display:block;
+    animation:auditCardIn .16s ease-out;
+  }
+  .audit-step-card > .audit-card,
+  .audit-step-card > details.audit-card{
+    margin-top:0;
+    margin-bottom:0;
+  }
+  .audit-route{
+    position:sticky;
+    top:0;
+    z-index:15;
+    overflow-x:auto;
+    flex-wrap:nowrap;
+    -webkit-overflow-scrolling:touch;
+    background:#f4f7f9;
+    padding:8px 2px;
+    margin-bottom:8px;
+  }
+  .audit-route-title{
+    display:none;
+  }
+  .audit-route a{
+    flex:0 0 auto;
+    white-space:nowrap;
+  }
+  .mobile-card-nav{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:30;
+    display:grid;
+    grid-template-columns:auto minmax(0,1fr) auto;
+    align-items:center;
+    gap:8px;
+    padding:9px max(10px,env(safe-area-inset-right)) calc(9px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));
+    background:rgba(255,255,255,.97);
+    border-top:1px solid #d9e3ea;
+    box-shadow:0 -5px 18px rgba(23,40,56,.10);
+  }
+  .mobile-card-nav button{
+    min-width:78px;
+  }
+  .mobile-card-progress{
+    min-width:0;
+    text-align:center;
+    line-height:1.15;
+  }
+  .mobile-card-progress strong{
+    display:block;
+    overflow:hidden;
+    text-overflow:ellipsis;
+    white-space:nowrap;
+    font-size:.82rem;
+    color:#172838;
+  }
+  .mobile-card-progress span{
+    display:block;
+    margin-top:2px;
+    font-size:.68rem;
+    color:#687b8a;
+  }
+  .mobile-collapsible-admin{
+    margin:0;
+  }
+}
+@keyframes auditCardIn{
+  from{opacity:.55;transform:translateY(4px)}
+  to{opacity:1;transform:none}
+}
