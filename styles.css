@@ -63,3 +63,54 @@
   .report-final-signature img{height:95px}
   .report-cert{page-break-inside:avoid}
 }
+
+
+/* Audit workspace layout cleanup */
+.audit-workspace-shell{display:grid;gap:14px}
+.audit-workspace-shell .audit-card{margin-bottom:0}
+.audit-hero{padding:18px}
+.audit-hero h2{margin:.2rem 0 .25rem;font-size:clamp(1.4rem,3vw,1.8rem)}
+.autosave-status{display:inline-flex;align-items:center;gap:6px;margin-top:4px;padding:5px 9px;border-radius:999px;background:#eef5fa;color:#31566f;font-size:.78rem;font-weight:700}
+.audit-meta-grid{margin-top:16px}
+.audit-meta-grid label{min-width:0}
+.audit-section-card{padding:18px}
+.audit-section-card h3{margin:.2rem 0 4px}
+.audit-section-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.audit-section-card textarea{width:100%;resize:vertical;min-height:120px}
+.audit-grid-wrap{width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:white}
+.audit-grid{display:grid;grid-template-columns:minmax(170px,1.55fr) repeat(5,minmax(104px,1fr));gap:0;min-width:760px;overflow:visible}
+.audit-grid-corner,.audit-grid-head,.audit-med-label,.audit-count-cell{padding:10px;border-right:1px solid #e5ecf2;border-bottom:1px solid #e5ecf2}
+.audit-grid-corner,.audit-grid-head{position:sticky;top:0;background:#f6f9fb;z-index:2;font-weight:800;color:#29445f}
+.audit-grid-corner{left:0;z-index:3}
+.audit-med-label{position:sticky;left:0;z-index:1;background:#fbfcfd;font-weight:750;color:#29445f;display:flex;align-items:center}
+.audit-count-cell{background:white}
+.audit-count-cell input{width:100%;min-width:0;text-align:center;font-weight:750}
+.audit-grid>*:nth-last-child(-n+6){border-bottom:0}
+.audit-grid>*:nth-child(6n){border-right:0}
+.sig-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.signature-box{padding:14px;background:#fbfcfd}
+.signature-location{font-size:1.02rem;font-weight:850;color:#17324e;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid var(--line)}
+.signature-box label{display:grid;gap:5px;font-size:.78rem;font-weight:750;color:#53687c;margin-top:10px}
+.signature-label{font-size:.72rem;font-weight:800;letter-spacing:.05em;color:#6d7d8c;margin:8px 0 5px;text-transform:uppercase}
+.signature-box canvas{height:120px;background:white}
+.clear-signatures{margin-top:10px;width:100%}
+.attestation-card{border-width:2px;border-color:#b8cad8}
+.attest-check{display:flex;align-items:center;gap:10px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#f8fafc;font-weight:800;margin-top:14px}
+.attest-check input{width:18px;height:18px;margin:0}
+.final-signer-label{display:grid;gap:6px;font-size:.82rem;font-weight:750;color:#344c66;margin-top:12px}
+.audit-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.audit-actions button{min-width:130px}
+@media(max-width:760px){
+  .audit-header{flex-direction:column}
+  .audit-header>button{width:100%}
+  .audit-meta-grid{grid-template-columns:1fr 1fr}
+  .sig-grid{grid-template-columns:1fr}
+  .audit-section-card,.audit-hero{padding:14px}
+}
+@media(max-width:520px){
+  .audit-meta-grid{grid-template-columns:1fr}
+  .audit-grid{grid-template-columns:150px repeat(5,100px);min-width:650px}
+  .audit-grid-corner,.audit-grid-head,.audit-med-label,.audit-count-cell{padding:8px}
+  .audit-actions{position:sticky;bottom:0;z-index:4;margin:16px -14px -14px;padding:10px 14px calc(10px + env(safe-area-inset-bottom));background:#fff;border-top:1px solid var(--line);box-shadow:0 -6px 18px #17324e12}
+  .audit-actions button{flex:1;min-width:0}
+}
