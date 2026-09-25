@@ -207,3 +207,69 @@ body.report-open{overflow:hidden}
   #reportDialog::backdrop{display:none!important}
   body.report-open{overflow:visible!important}
 }
+
+
+/* Clarify audit form entry areas */
+.audit-workspace-shell input:not([type="checkbox"]),
+.audit-workspace-shell textarea{
+  background:#fff;
+  border:1.5px solid #b8c8d6;
+  box-shadow:inset 0 0 0 1px #ffffff;
+}
+.audit-workspace-shell input:not([type="checkbox"]):focus,
+.audit-workspace-shell textarea:focus{
+  outline:3px solid rgba(31,96,142,.13);
+  border-color:#1f608e;
+}
+.audit-workspace-shell input::placeholder,
+.audit-workspace-shell textarea::placeholder{
+  color:#8a98a5;
+  opacity:1;
+}
+.tag-entry-list{display:grid;gap:12px}
+.tag-entry-card{
+  border:1px solid #ccd8e2;
+  border-radius:12px;
+  background:#f9fbfc;
+  overflow:hidden;
+}
+.tag-entry-title{
+  padding:10px 12px;
+  font-weight:850;
+  color:#17324e;
+  background:#eef4f8;
+  border-bottom:1px solid #d7e1e8;
+}
+.tag-entry-fields{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+  padding:12px;
+}
+.tag-entry-fields label{
+  display:grid;
+  gap:6px;
+  font-size:.78rem;
+  font-weight:800;
+  color:#415a70;
+}
+.tag-entry-fields input{
+  width:100%;
+  min-height:44px;
+  font-size:1rem;
+  font-weight:750;
+}
+.audit-meta-grid label,
+.final-signer-label,
+.signature-box label{
+  font-weight:800;
+  color:#415a70;
+}
+.audit-meta-grid input,
+.final-signer-label input,
+.signature-box input{
+  min-height:44px;
+}
+@media(max-width:560px){
+  .tag-entry-fields{grid-template-columns:1fr}
+}
