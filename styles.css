@@ -1549,3 +1549,12 @@ body.report-open{overflow:hidden}
     padding:8px 10px;
   }
 }
+
+
+/* Generated PDF: every major report section begins on a new page */
+.pdf-render-stage .pdf-section-page{
+  break-before:page !important;
+  page-break-before:always !important;
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
