@@ -870,15 +870,22 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    el.style.pageBreakBefore='auto';
    el.style.breakAfter='auto';
    el.style.pageBreakAfter='auto';
-   // Keep compact sections together; allow long sections/tables to flow naturally.
-   const estimatedHeight=el.scrollHeight||0;
-   if(estimatedHeight && estimatedHeight<620){
-     el.style.breakInside='avoid';
-     el.style.pageBreakInside='avoid';
-   }else{
-     el.style.breakInside='auto';
-     el.style.pageBreakInside='auto';
-   }
+
+   const title=(el.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase();
+   const keepTitles=[
+     'executive summary',
+     'inventory comparison',
+     'breakaway tag record',
+     'narcotic usage exports',
+     'transactions in the audit reporting period',
+     'audit notes',
+     'final overall controlled-substance audit attestation'
+   ];
+   const keepTogether=keepTitles.some(t=>title.startsWith(t));
+   if(keepTogether)el.classList.add('pdf-keep-together');
+
+   el.style.breakInside=keepTogether?'avoid':'auto';
+   el.style.pageBreakInside=keepTogether?'avoid':'auto';
  });
  const signatureSection=clone.querySelector('.report-signature-section');
  if(signatureSection){
@@ -934,6 +941,31 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
  try{
    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+
+   // Keep compact report sections intact. If a whole section will not fit in the
+   // remaining printable space, move that complete section to the next page.
+   const sectionPageCapacity=9.45*96;
+   let usedOnPage=0;
+   for(const el of [...clone.children].filter(x=>!x.classList.contains('report-toolbar'))){
+     if(el.classList.contains('report-cover-page')){
+       usedOnPage=0;
+       continue;
+     }
+
+     const h=Math.max(0,el.getBoundingClientRect().height||0);
+     const keepTogether=el.classList.contains('pdf-keep-together');
+
+     if(keepTogether && h>0 && h<sectionPageCapacity && usedOnPage>0 && usedOnPage+h>sectionPageCapacity){
+       el.classList.add('pdf-break-before');
+       el.style.breakBefore='page';
+       el.style.pageBreakBefore='always';
+       usedOnPage=h;
+     }else{
+       usedOnPage+=h;
+     }
+
+     while(usedOnPage>sectionPageCapacity)usedOnPage-=sectionPageCapacity;
+   }
 
    // Pre-paginate Certification cards. The Certification section starts on a fresh
    // PDF page, so move any whole card that will not fit to the next page.
@@ -993,7 +1025,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        image:{type:'jpeg',quality:0.98},
        html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
-       pagebreak:{mode:['css','legacy'],before:['.pdf-break-before'],after:['.pdf-break-after'],avoid:['.report-cert','.report-signature-box','.report-attestation','.report-notes','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
+       pagebreak:{mode:['css','legacy'],before:['.pdf-break-before'],after:['.pdf-break-after'],avoid:['.pdf-keep-together','.report-cert','.report-signature-box','.report-attestation','.report-notes','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
      })
      .from(clone)
      .toPdf();
