@@ -22,7 +22,7 @@
         <p>Medic 1 · Medic 2 · Medic 3 · Safe · Expired</p>
       </div>
     </div>
-    <span id="offlineBadge" class="badge">Checking…</span>
+    <div class="header-actions"><span id="offlineBadge" class="badge">Checking…</span><button id="accountBtn" class="account-btn">Sign in</button></div>
   </header>
 
   <nav class="tabs" aria-label="Primary">
@@ -121,6 +121,21 @@
 
   <dialog id="reportDialog"><div id="reportPreview"></div></dialog>
 
+  <dialog id="authDialog">
+    <form method="dialog" id="authForm" class="dialog-form auth-form">
+      <div class="dialog-head"><div><span class="kicker">SECURE LIVE DATA</span><h2>Department sign in</h2></div></div>
+      <p class="meta">Sign in to save and resume the same live narcotic audit from any authorized device or location.</p>
+      <label>Email<input id="authEmail" type="email" autocomplete="username" required></label>
+      <label>Password<input id="authPassword" type="password" autocomplete="current-password" minlength="8" required></label>
+      <div id="authMessage" class="notice" hidden></div>
+      <div class="dialog-actions">
+        <button type="button" id="createAccountBtn">Create account</button>
+        <button type="submit" class="primary">Sign in</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="app.js"></script>
 </body>
 </html>
