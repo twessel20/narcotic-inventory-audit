@@ -743,6 +743,13 @@ async function renderReports(){
  const real=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month)+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+'</div><div class="button-row"><button data-report="'+r.id+'">View / print</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>';
  document.getElementById('reportsList').innerHTML=testCard+real;
 }
+function reportShareDate(v){
+ const d=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+ if(d)return d[2]+'/'+d[3]+'/'+d[1];
+ const dt=v?new Date(v):null;
+ if(dt&&!Number.isNaN(dt.getTime()))return String(dt.getMonth()+1).padStart(2,'0')+'/'+String(dt.getDate()).padStart(2,'0')+'/'+dt.getFullYear();
+ return '';
+}
 async function shareRenderedReport(preview,title='Narcotic Inventory Audit Report'){
  const sheet=preview?.querySelector('.report-sheet');
  if(!sheet)return alert('Report preview is not ready yet.');
@@ -785,7 +792,7 @@ async function showTestReport(){
    if(sheet)sheet.insertAdjacentHTML('afterbegin','<div class="test-report-banner">TEST REPORT · SYNTHETIC DATA · NOT AN OFFICIAL CONTROLLED-SUBSTANCE RECORD</div>');
    const close=document.getElementById('closeReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
    if(close)close.onclick=()=>d.close();
-   if(share)share.onclick=()=>shareRenderedReport(preview,'TEST — Gladstone FD Narcotic Inventory Audit Report');
+   if(share)share.onclick=()=>shareRenderedReport(preview,'TEST — Gladstone FD Narcotic Inventory Audit Report — '+(r.month||'Test Month')+' — '+reportShareDate(r.auditDate||r.finalizedAt));
    if(print)print.onclick=()=>window.print();
  }catch(err){
    preview.innerHTML='<div class="report-loading">Unable to render the test report.</div>';
@@ -807,7 +814,7 @@ async function showReport(id){
    d.scrollTop=0;
    const close=document.getElementById('closeReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
    if(close)close.onclick=()=>d.close();
-   if(share)share.onclick=()=>shareRenderedReport(preview,'Gladstone FD Narcotic Inventory Audit Report — '+(r.month||'Monthly'));
+   if(share)share.onclick=()=>shareRenderedReport(preview,'Gladstone FD Narcotic Inventory Audit Report — '+(r.month||'Monthly')+' — '+reportShareDate(r.auditDate||r.finalizedAt));
    if(print)print.onclick=()=>window.print();
    requestAnimationFrame(()=>{d.scrollTop=0;preview.scrollTop=0});
  }catch(err){
