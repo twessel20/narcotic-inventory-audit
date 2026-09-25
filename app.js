@@ -2,6 +2,9 @@ const MEDS=['Fentanyl 100 mcg','Versed 2 mg','Versed 5 mg','Ketamine 500 mg','Mo
 const LOCS=['Medic 1','Medic 2','Medic 3','Safe','Expired'];
 const DB_NAME='narcotic-audit-db', DB_VER=2;
 let db;
+let activeAuditId=null;
+let auditAutosaveTimer=null;
+let auditSaveInFlight=false;
 
 function uid(prefix='id'){return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8)}
 function nowISO(){return new Date().toISOString()}
@@ -50,13 +53,13 @@ async function saveTransaction(fd){
 function auditSkeleton(a){
  const b=a.counts||{};return '<div class="audit-card"><div class="audit-header"><div><h3>'+esc(a.month||'Draft audit')+'</h3><div class="meta">Status: '+esc(a.status||'draft')+' · Saved '+fmtDate(a.updatedAt)+'</div></div><div class="button-row"><button data-audit-action="open" data-id="'+a.id+'">Open</button><button data-audit-action="delete" data-id="'+a.id+'">Delete</button></div></div></div>'
 }
-async function renderAudits(){let rows=await getAll('audits');rows.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));document.getElementById('auditWorkspace').innerHTML=rows.length?rows.map(auditSkeleton).join(''):'<div class="card empty">No monthly audit drafts yet.</div>'}
+async function renderAudits(){let rows=await getAll('audits');rows.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));const drafts=rows.filter(a=>a.status!=='finalized');document.getElementById('auditWorkspace').innerHTML=(drafts.length?'<div class="notice">Audit drafts save automatically on this device. Reopen any draft and continue exactly where you stopped.</div>':'')+(rows.length?rows.map(auditSkeleton).join(''):'<div class="card empty">No monthly audit drafts yet.</div>')}
 
 async function startAudit(){
  const b=await balances();const d=new Date();const month=d.toLocaleString(undefined,{month:'long',year:'numeric'});
  const counts={};LOCS.forEach(l=>{counts[l]={};MEDS.forEach(m=>counts[l][m]=b[l][m])});
  const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),counts,priorCounts:{},dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',signatures:{},attestationName:'',attestationAccepted:false};
- await put('audits',a);await editAudit(a.id)
+ await put('audits',a);await put('meta',{id:'activeAudit',auditId:a.id,updatedAt:nowISO()});await editAudit(a.id)
 }
 function countTable(a){
  return '<div class="audit-card"><h3>Physical inventory</h3><div class="audit-grid"><div></div>'+LOCS.map(l=>'<b>'+l+'</b>').join('')+MEDS.map(m=>'<b>'+m+'</b>'+LOCS.map(l=>'<input type="number" min="0" step="1" data-count-loc="'+l+'" data-count-med="'+m+'" value="'+Number(a.counts?.[l]?.[m]||0)+'">').join('')).join('')+'</div></div>'
@@ -64,21 +67,64 @@ function countTable(a){
 function sigBlock(loc,s={}){return '<div class="signature-box" data-sig-loc="'+loc+'"><strong>'+loc+'</strong><input placeholder="Signer name" data-signer value="'+esc(s.signer||'')+'"><canvas width="500" height="150" data-canvas></canvas><input placeholder="Witness name" data-witness value="'+esc(s.witness||'')+'"><canvas width="500" height="150" data-witness-canvas></canvas><button type="button" data-clear-sig>Clear signatures</button></div>'}
 async function editAudit(id){
  const a=await getOne('audits',id);if(!a)return;
- document.getElementById('auditWorkspace').innerHTML='<div class="audit-card"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2></div><button id="backAudits">Back</button></div><div class="form-grid"><label>Audit month / year<input id="auditMonth" value="'+esc(a.month||'')+'"></label><label>Audit status<input value="'+esc(a.status)+'" disabled></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div>'+countTable(a)+'<div class="audit-card"><h3>Administration import summary</h3><p class="meta">Paste or import the concise usage summary here. Imported usage documents are supporting evidence and do not subtract from the manually counted physical inventory.</p><textarea id="usageSummary" rows="6" style="width:100%">'+esc(a.usageSummary||'')+'</textarea></div><div class="audit-card"><h3>Audit notes</h3><textarea id="auditNotes" rows="5" style="width:100%">'+esc(a.notes||'')+'</textarea></div><div class="audit-card"><h3>Location verification signatures</h3><div class="sig-grid">'+LOCS.map(l=>sigBlock(l,a.signatures?.[l]||{})).join('')+'</div></div><div class="audit-card"><h3>Final attestation</h3><p>I attest that the controlled-substance inventory documented in this audit reflects the physical count performed, that discrepancies have been documented and escalated as required, and that supporting records have been reviewed to the extent indicated in this report.</p><label><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> I certify this audit.</label><input id="attestName" style="width:100%;margin-top:8px" placeholder="Final signer name" value="'+esc(a.attestationName||'')+'"><div class="button-row" style="margin-top:14px"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div>';
- document.getElementById('backAudits').onclick=renderAudits;
- document.querySelectorAll('.signature-box').forEach(box=>setupSignature(box,a.signatures?.[box.dataset.sigLoc]||{}));
+ activeAuditId=id;
+ await put('meta',{id:'activeAudit',auditId:id,updatedAt:nowISO()});
+ document.getElementById('auditWorkspace').innerHTML='<div class="audit-card"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="meta">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back</button></div><div class="form-grid"><label>Audit month / year<input id="auditMonth" value="'+esc(a.month||'')+'"></label><label>Audit status<input value="'+esc(a.status)+'" disabled></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div>'+countTable(a)+'<div class="audit-card"><h3>Administration import summary</h3><p class="meta">Paste or import the concise usage summary here. Imported usage documents are supporting evidence and do not subtract from the manually counted physical inventory.</p><textarea id="usageSummary" rows="6" style="width:100%">'+esc(a.usageSummary||'')+'</textarea></div><div class="audit-card"><h3>Audit notes</h3><textarea id="auditNotes" rows="5" style="width:100%">'+esc(a.notes||'')+'</textarea></div><div class="audit-card"><h3>Location verification signatures</h3><div class="sig-grid">'+LOCS.map(l=>sigBlock(l,a.signatures?.[l]||{})).join('')+'</div></div><div class="audit-card"><h3>Final attestation</h3><p>I attest that the controlled-substance inventory documented in this audit reflects the physical count performed, that discrepancies have been documented and escalated as required, and that supporting records have been reviewed to the extent indicated in this report.</p><label><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> I certify this audit.</label><input id="attestName" style="width:100%;margin-top:8px" placeholder="Final signer name" value="'+esc(a.attestationName||'')+'"><div class="button-row" style="margin-top:14px"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div>';
+ document.getElementById('backAudits').onclick=async()=>{await flushAuditAutosave();activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});renderAudits()};
+ document.querySelectorAll('.signature-box').forEach(box=>setupSignature(box,a.signatures?.[box.dataset.sigLoc]||{},()=>scheduleAuditAutosave(a.id)));
  document.getElementById('saveAudit').onclick=()=>saveAuditFromUI(a.id,false);
  document.getElementById('finalizeAudit').onclick=()=>saveAuditFromUI(a.id,true);
+ document.querySelectorAll('#auditWorkspace input,#auditWorkspace textarea,#auditWorkspace select').forEach(el=>{
+   if(el.disabled)return;
+   el.addEventListener('input',()=>scheduleAuditAutosave(a.id));
+   el.addEventListener('change',()=>scheduleAuditAutosave(a.id));
+ });
+ setAutosaveStatus('Saved '+fmtDate(a.updatedAt));
 }
-function setupCanvas(canvas,data){const ctx=canvas.getContext('2d');ctx.lineWidth=2;ctx.lineCap='round';if(data){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=data}let down=false,last=null;const pos=e=>{const r=canvas.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*canvas.width/r.width,y:(p.clientY-r.top)*canvas.height/r.height}};const start=e=>{down=true;last=pos(e);e.preventDefault()};const move=e=>{if(!down)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;e.preventDefault()};const end=()=>{down=false;last=null};canvas.addEventListener('mousedown',start);canvas.addEventListener('mousemove',move);window.addEventListener('mouseup',end);canvas.addEventListener('touchstart',start,{passive:false});canvas.addEventListener('touchmove',move,{passive:false});canvas.addEventListener('touchend',end)}
-function setupSignature(box,s){const c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');setupCanvas(c,s.signature||'');setupCanvas(w,s.witnessSignature||'');box.querySelector('[data-clear-sig]').onclick=()=>{[c,w].forEach(x=>x.getContext('2d').clearRect(0,0,x.width,x.height))}}
+function setupCanvas(canvas,data,onChange){const ctx=canvas.getContext('2d');ctx.lineWidth=2;ctx.lineCap='round';if(data){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=data}let down=false,last=null,changed=false;const pos=e=>{const r=canvas.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*canvas.width/r.width,y:(p.clientY-r.top)*canvas.height/r.height}};const start=e=>{down=true;changed=false;last=pos(e);e.preventDefault()};const move=e=>{if(!down)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;changed=true;e.preventDefault()};const end=()=>{if(down&&changed&&onChange)onChange();down=false;last=null;changed=false};canvas.addEventListener('mousedown',start);canvas.addEventListener('mousemove',move);window.addEventListener('mouseup',end);canvas.addEventListener('touchstart',start,{passive:false});canvas.addEventListener('touchmove',move,{passive:false});canvas.addEventListener('touchend',end)}
+function setupSignature(box,s,onChange){const c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');setupCanvas(c,s.signature||'',onChange);setupCanvas(w,s.witnessSignature||'',onChange);box.querySelector('[data-clear-sig]').onclick=()=>{[c,w].forEach(x=>x.getContext('2d').clearRect(0,0,x.width,x.height));if(onChange)onChange()}}
+function setAutosaveStatus(msg){const el=document.getElementById('autosaveStatus');if(el)el.textContent=msg}
+function collectAuditFromUI(a){
+ if(!document.getElementById('auditMonth'))return a;
+ a.month=document.getElementById('auditMonth').value;
+ a.dateRangeStart=document.getElementById('auditStart').value;
+ a.dateRangeEnd=document.getElementById('auditEnd').value;
+ a.usageSummary=document.getElementById('usageSummary').value;
+ a.notes=document.getElementById('auditNotes').value;
+ document.querySelectorAll('[data-count-loc]').forEach(i=>{a.counts??={};a.counts[i.dataset.countLoc]??={};a.counts[i.dataset.countLoc][i.dataset.countMed]=Number(i.value||0)});
+ a.signatures={};
+ document.querySelectorAll('.signature-box').forEach(box=>{const loc=box.dataset.sigLoc,c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');a.signatures[loc]={signer:box.querySelector('[data-signer]').value,witness:box.querySelector('[data-witness]').value,signature:c.toDataURL(),witnessSignature:w.toDataURL()}});
+ a.attestationAccepted=document.getElementById('attestCheck').checked;
+ a.attestationName=document.getElementById('attestName').value;
+ return a;
+}
+function scheduleAuditAutosave(id){
+ activeAuditId=id;
+ setAutosaveStatus('Saving…');
+ clearTimeout(auditAutosaveTimer);
+ auditAutosaveTimer=setTimeout(()=>autosaveAudit(id),450);
+}
+async function autosaveAudit(id){
+ if(auditSaveInFlight||!id)return;
+ auditSaveInFlight=true;
+ try{
+   const a=await getOne('audits',id);if(!a)return;
+   collectAuditFromUI(a);a.updatedAt=nowISO();a.lastAutosaveAt=a.updatedAt;
+   await put('audits',a);
+   await put('meta',{id:'activeAudit',auditId:id,updatedAt:a.updatedAt});
+   setAutosaveStatus('Saved '+new Date(a.updatedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'}));
+ }catch(e){setAutosaveStatus('Save failed — keep this screen open');}
+ finally{auditSaveInFlight=false}
+}
+async function flushAuditAutosave(){
+ clearTimeout(auditAutosaveTimer);
+ if(activeAuditId&&document.getElementById('auditMonth'))await autosaveAudit(activeAuditId);
+}
+
 async function saveAuditFromUI(id,finalize){
- const a=await getOne('audits',id);a.month=document.getElementById('auditMonth').value;a.dateRangeStart=document.getElementById('auditStart').value;a.dateRangeEnd=document.getElementById('auditEnd').value;a.usageSummary=document.getElementById('usageSummary').value;a.notes=document.getElementById('auditNotes').value;a.updatedAt=nowISO();
- document.querySelectorAll('[data-count-loc]').forEach(i=>{a.counts[i.dataset.countLoc]??={};a.counts[i.dataset.countLoc][i.dataset.countMed]=Number(i.value||0)});
- a.signatures={};document.querySelectorAll('.signature-box').forEach(box=>{const loc=box.dataset.sigLoc,c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');a.signatures[loc]={signer:box.querySelector('[data-signer]').value,witness:box.querySelector('[data-witness]').value,signature:c.toDataURL(),witnessSignature:w.toDataURL()}});
- a.attestationAccepted=document.getElementById('attestCheck').checked;a.attestationName=document.getElementById('attestName').value;
+ const a=await getOne('audits',id);collectAuditFromUI(a);a.updatedAt=nowISO();
  if(finalize){if(!a.attestationAccepted||!a.attestationName.trim())return alert('Final attestation and signer name are required.');for(const loc of LOCS){if(!a.signatures[loc]?.signer?.trim()||!a.signatures[loc]?.witness?.trim())return alert('Signer and witness names are required for '+loc+'.')}a.status='finalized';a.finalizedAt=nowISO();await put('reports',{...a,id:'report_'+a.id,auditId:a.id});}
- await put('audits',a);await refreshAll();if(finalize)showReport('report_'+a.id);else editAudit(a.id)
+ await put('audits',a);if(finalize){activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});}await refreshAll();if(finalize)showReport('report_'+a.id);else editAudit(a.id)
 }
 
 async function renderReports(){let rows=await getAll('reports');rows.sort((a,b)=>(b.finalizedAt||'').localeCompare(a.finalizedAt||''));document.getElementById('reportsList').innerHTML=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month)+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+'</div><div class="button-row"><button data-report="'+r.id+'">View / print</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>'}
@@ -128,4 +174,6 @@ function bind(){
  document.getElementById('exportBtn').onclick=exportBackup;document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();document.getElementById('importFile').onchange=async e=>{if(!e.target.files[0])return;try{await importBackup(e.target.files[0])}catch(err){alert(err.message)}};
  const status=()=>{const el=document.getElementById('offlineBadge');el.textContent=navigator.onLine?'Connected':'Offline';el.style.background=navigator.onLine?'#1f6e4d':'#7a4a1f'};window.addEventListener('online',status);window.addEventListener('offline',status);status()
 }
-(async()=>{await openDB();await seedInventory();fillSelects();bind();await refreshAll();if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js')})();
+window.addEventListener('pagehide',()=>{if(activeAuditId)scheduleAuditAutosave(activeAuditId)});
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeAuditId)flushAuditAutosave()});
+(async()=>{await openDB();await seedInventory();fillSelects();bind();await refreshAll();const active=await getOne('meta','activeAudit');if(active?.auditId&&await getOne('audits',active.auditId)){document.querySelector('[data-tab="audit"]').click();await editAudit(active.auditId)}if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js')})();
