@@ -2,3 +2,64 @@
 .brand-wrap{display:flex;align-items:center;gap:15px;min-width:0}
 .gfd-logo{width:78px;height:78px;object-fit:contain;background:#fff;border-radius:10px;padding:3px;box-shadow:0 3px 10px #0003;flex:0 0 auto}
 @media(max-width:650px){.gfd-logo{width:64px;height:64px}.brand-wrap{gap:11px}.app-header{align-items:center}}
+
+/* Finalized audit report — matches the original GFD audit PDF structure */
+.report-finalized{max-width:920px;margin:0 auto;background:#fff;color:#162433;padding:30px 34px 22px;box-shadow:none}
+.report-toolbar{display:flex;gap:8px;justify-content:flex-end;margin-bottom:14px}
+.report-top{display:flex;align-items:center;gap:24px;margin-bottom:14px}
+.report-top img{width:112px;height:112px;object-fit:contain}
+.report-kicker{font-size:.82rem;letter-spacing:.19em;font-weight:850;color:#1f608e;margin-bottom:5px}
+.report-top h1{margin:0;color:#142235;font-size:2rem;line-height:1.12}
+.report-meta-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:34px;row-gap:5px;font-size:.94rem}
+.report-meta-grid .wide{grid-column:1/-1}
+.report-blue-rule{border:0;border-top:4px solid #123a5a;margin:16px 0 20px}
+.report-finalized section{margin:20px 0}
+.report-finalized h2{font-size:1.22rem;margin:0 0 9px;color:#172838}
+.report-finalized p{line-height:1.45;margin:6px 0}
+.report-amendment{border:2px solid #d8be55;border-radius:15px;padding:15px 17px;background:#fffef9}
+.report-amendment-row{margin-top:8px;line-height:1.45}
+.report-table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid #53606d;border-radius:12px;overflow:hidden;font-size:.88rem}
+.report-table th,.report-table td{padding:9px 10px;border-right:1px solid #53606d;border-bottom:1px solid #53606d;vertical-align:middle}
+.report-table th:last-child,.report-table td:last-child{border-right:0}
+.report-table tr:last-child td{border-bottom:0}
+.report-table th{background:#fff;font-weight:800;text-align:center}
+.report-table td:first-child,.report-table th:first-child{text-align:left}
+.report-inventory th small{display:block;font-size:.67rem;font-weight:500;color:#8a9299;margin-top:2px}
+.report-inventory td:not(:first-child){text-align:center}
+.report-note{font-size:.83rem}
+.report-empty{text-align:center!important;padding:22px!important}
+.report-cert{break-inside:avoid;page-break-inside:avoid;margin-top:22px}
+.report-signature-grid{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-top:10px}
+.report-signature-box,.report-final-signature{border:1.6px solid #53606d;border-radius:13px;padding:14px 16px 12px;background:#fff}
+.report-signature-label{font-size:.78rem;font-weight:850;letter-spacing:.02em}
+.report-signature-box img,.report-final-signature img{display:block;width:100%;height:105px;object-fit:contain;object-position:left center;margin:8px 0 0;border-bottom:1px solid #53606d}
+.report-signature-placeholder{height:105px;margin:8px 0 0;border-bottom:1px solid #53606d}
+.report-signature-name{padding-top:8px;font-size:.92rem}
+.report-attestation{break-inside:avoid;page-break-inside:avoid}
+.report-final-signature{margin-top:14px}
+.report-final-signature img{height:120px}
+.report-notes{border:1.6px solid #53606d;border-radius:13px;padding:15px 17px;break-inside:avoid;page-break-inside:avoid}
+.report-footer{border-top:1px solid #9aa4ad;margin-top:28px;padding-top:12px;text-align:center;font-size:.88rem;color:#4d5964}
+@media(max-width:700px){
+  .report-finalized{padding:18px 14px}
+  .report-top{gap:12px;align-items:flex-start}
+  .report-top img{width:74px;height:74px}
+  .report-top h1{font-size:1.35rem}
+  .report-meta-grid{grid-template-columns:1fr}
+  .report-meta-grid .wide{grid-column:auto}
+  .report-signature-grid{grid-template-columns:1fr}
+  .report-table{font-size:.77rem}
+  .report-table th,.report-table td{padding:7px 6px}
+}
+@media print{
+  @page{size:letter;margin:.45in}
+  body{background:#fff}
+  .report-toolbar{display:none!important}
+  .report-finalized{max-width:none;padding:0;font-size:10.5pt}
+  .report-top h1{font-size:22pt}
+  .report-top img{width:88px;height:88px}
+  .report-finalized section{margin:15px 0}
+  .report-signature-box img{height:85px}
+  .report-final-signature img{height:95px}
+  .report-cert{page-break-inside:avoid}
+}
