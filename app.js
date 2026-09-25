@@ -922,6 +922,90 @@ async function showReport(id){
  }
  d.onclose=()=>{document.body.classList.remove('report-open');preview.innerHTML='';setTimeout(refreshAll,0)};
 }
+function executiveSummaryHtml(r){
+ const activeLocs=['Medic 1','Medic 2','Medic 3','Safe'];
+ const medRows=MEDS.map(m=>{
+   const current=activeLocs.reduce((n,l)=>n+Number(r.counts?.[l]?.[m]||0),0);
+   const priorValues=activeLocs.map(l=>r.priorCounts?.[l]?.[m]);
+   const priorKnown=priorValues.every(v=>v!==null&&v!==undefined&&v!=='');
+   const prior=priorKnown?priorValues.reduce((n,v)=>n+Number(v||0),0):null;
+   const diff=priorKnown?current-prior:null;
+   const expiredCurrent=Number(r.counts?.Expired?.[m]||0);
+   const expiredPriorRaw=r.priorCounts?.Expired?.[m];
+   const expiredPrior=(expiredPriorRaw===null||expiredPriorRaw===undefined||expiredPriorRaw==='')?null:Number(expiredPriorRaw||0);
+   const expiredDiff=expiredPrior===null?null:expiredCurrent-expiredPrior;
+   return {m,current,prior,diff,expiredCurrent,expiredPrior,expiredDiff};
+ });
+
+ const changed=medRows.filter(x=>x.diff!==null&&x.diff!==0);
+ const unchanged=medRows.filter(x=>x.diff===0);
+ const unknown=medRows.filter(x=>x.diff===null);
+ const adminRows=Array.isArray(r.administrationRows)?r.administrationRows:[];
+ let vialData=null;
+ try{vialData=adminRows.length?providerVialData(adminRows):null}catch(e){vialData=null}
+ const docs=Array.isArray(r.supportingDocuments)?r.supportingDocuments:[];
+ const amendmentCount=Array.isArray(r.amendments)?r.amendments.length:0;
+
+ const cert=LOCS.map(loc=>{
+   const x=r.signatures?.[loc]||{};
+   return {
+     loc,
+     auditor:!!(x.signer&&x.employeeNumber),
+     witness:!!(x.witness&&x.witnessEmployeeNumber),
+     auditorSig:!!x.signature,
+     witnessSig:!!x.witnessSignature
+   };
+ });
+ const fullyCertified=cert.filter(x=>x.auditor&&x.witness&&x.auditorSig&&x.witnessSig).length;
+
+ const lines=[];
+ if(changed.length){
+   lines.push('<li><b>Active physical inventory changed in '+changed.length+' medication categor'+(changed.length===1?'y':'ies')+':</b> '+changed.map(x=>esc(x.m)+' '+(x.diff>0?'+':'')+x.diff+' ('+x.prior+' → '+x.current+')').join('; ')+'.</li>');
+ }
+ if(unchanged.length){
+   lines.push('<li><b>No active-count change:</b> '+unchanged.map(x=>esc(x.m)+' ('+x.current+')').join('; ')+'.</li>');
+ }
+ if(unknown.length){
+   lines.push('<li><b>Prior comparison unavailable:</b> '+unknown.map(x=>esc(x.m)+'; current active total '+x.current).join('; ')+'.</li>');
+ }
+
+ const expiredChanges=medRows.filter(x=>x.expiredDiff!==null&&x.expiredDiff!==0);
+ if(expiredChanges.length){
+   lines.push('<li><b>Expired inventory changed:</b> '+expiredChanges.map(x=>esc(x.m)+' '+(x.expiredDiff>0?'+':'')+x.expiredDiff+' ('+x.expiredPrior+' → '+x.expiredCurrent+')').join('; ')+'.</li>');
+ }else if(medRows.every(x=>x.expiredDiff!==null)){
+   lines.push('<li><b>Expired inventory:</b> no net change from the prior audit.</li>');
+ }
+
+ if(adminRows.length){
+   const providers=new Set(adminRows.map(x=>String(x.provider||'').trim()).filter(Boolean)).size;
+   const vialTotal=vialData?.total;
+   lines.push('<li><b>Imported administration activity:</b> '+adminRows.length+' source dose row'+(adminRows.length===1?'':'s')+' across '+providers+' provider'+(providers===1?'':'s')+(Number.isFinite(vialTotal)?', calculating to '+vialTotal+' vial'+(vialTotal===1?'':'s')+' under the department vial rules':'')+'.</li>');
+ }else if(docs.length){
+   lines.push('<li><b>Administration source document:</b> supporting document present, but no administration rows are available in this report record for calculation.</li>');
+ }else{
+   lines.push('<li><b>Administration activity:</b> no supporting administration data is attached to this report record.</li>');
+ }
+
+ lines.push('<li><b>Location certifications:</b> '+fullyCertified+' of '+LOCS.length+' audit sites contain both auditor and witness identification plus both signatures in the report record.</li>');
+
+ if(amendmentCount){
+   lines.push('<li><b>Amendments:</b> '+amendmentCount+' correction'+(amendmentCount===1?'':'s')+' recorded after the original audit entry. See the amendment section for the exact field-level history.</li>');
+ }else{
+   lines.push('<li><b>Amendments:</b> none recorded in this report record.</li>');
+ }
+
+ if(r.notes&&String(r.notes).trim()){
+   lines.push('<li><b>Audit notes:</b> '+esc(String(r.notes).trim())+'</li>');
+ }
+
+ return '<section class="report-executive-summary"><h2>Executive summary</h2>'+
+ '<p>This summary is generated from the verified physical counts, prior-audit comparison values, imported administration data, certification records, amendments, and notes stored with this audit. It does not add or infer values that are not present in the audit record.</p>'+
+ '<ul>'+lines.join('')+'</ul>'+
+ '<div class="report-summary-current"><div class="report-summary-current-title">Current active inventory</div>'+
+ medRows.map(x=>'<div><span>'+esc(x.m)+'</span><strong>'+x.current+'</strong></div>').join('')+
+ '</div></section>';
+}
+
 function reportHtml(r){
  const logo='https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg';
  const recordNo=r.legacyRecordNumber||String(r.auditId||r.id||'').match(/\d+/)?.[0]||'';
@@ -947,6 +1031,7 @@ function reportHtml(r){
  '<header class="report-top"><img src="'+logo+'" alt="Gladstone Fire Department patch"><div><div class="report-kicker">FINALIZED MONTHLY RECORD</div><h1>Gladstone Fire Department Narcotic<br>Inventory / Audit Form</h1></div></header>'+
  '<div class="report-meta-grid"><div><b>Audit month:</b> '+esc(r.month||'')+'</div><div><b>Created:</b> '+esc(r.createdDisplay||fmtDate(r.createdAt)||'')+'</div><div><b>Email:</b> '+esc(r.email||'travisw@gladstone.mo.us')+'</div><div></div><div><b>Date of audit:</b> '+esc(r.auditDate||'')+'</div><div></div><div class="wide"><b>Audit period:</b> '+esc(r.dateRangeStart||'—')+' through '+esc(r.dateRangeEnd||'—')+' (both dates included)</div></div>'+
  '<hr class="report-blue-rule">'+
+ ((r.isTest||!r.legacyRecordNumber)?executiveSummaryHtml(r):'')+
  (amendment?'<section class="report-amendment"><h2>Amended inventory record — correction history</h2><p>The table below includes these corrections. Signatures were recorded before these amendments and certify the original record, not the corrected entries.</p>'+amendment+'</section>':'')+
  '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+esc(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
  '<section><h2>Breakaway tag record</h2><table class="report-table"><thead><tr><th>Location</th><th>Tag found / removed</th><th>New tag installed</th></tr></thead><tbody>'+tagRows+'</tbody></table></section>'+
