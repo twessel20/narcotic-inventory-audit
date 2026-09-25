@@ -13,6 +13,12 @@
       "sizes": "512x512",
       "type": "image/jpeg",
       "purpose": "any"
+    },
+    {
+      "src": "https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "maskable"
     }
   ]
 }
