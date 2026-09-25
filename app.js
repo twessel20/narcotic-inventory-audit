@@ -189,7 +189,7 @@ function unitAuditSection(a,loc,index){
  '<div class="unit-compact-panel certification-panel"><h4>Certification</h4>'+sigBlock(loc,sig,true)+'</div>'+
  '</div></section>';
 }
-function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="signature-person-grid"><div><label>Signer name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><div class="signature-label">Signer signature</div><canvas width="500" height="150" data-canvas></canvas></div><div><label>Witness name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><div class="signature-label">Witness signature</div><canvas width="500" height="150" data-witness-canvas></canvas></div></div><button type="button" class="clear-signatures" data-clear-sig>Clear signatures</button></div>'}
+function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="signature-person-grid"><div><div class="auditor-id-grid"><label>Auditor name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-employee-number value="'+esc(s.employeeNumber||'')+'"></label></div><div class="signature-label">Auditor signature</div><canvas width="500" height="150" data-canvas></canvas></div><div><label>Witness name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><div class="signature-label">Witness signature</div><canvas width="500" height="150" data-witness-canvas></canvas></div></div><button type="button" class="clear-signatures" data-clear-sig>Clear signatures</button></div>'}
 
 function adminDoseUnit(medication=''){
  const m=String(medication).toLowerCase();
@@ -456,12 +456,13 @@ function unitIsComplete(loc){
  const tags=[...section.querySelectorAll('[data-tag-loc]')];
  const counts=[...section.querySelectorAll('[data-count-loc]')];
  const signer=section.querySelector('[data-signer]');
+ const employeeNumber=section.querySelector('[data-employee-number]');
  const witness=section.querySelector('[data-witness]');
  const signerCanvas=section.querySelector('[data-canvas]');
  const witnessCanvas=section.querySelector('[data-witness-canvas]');
  const tagsDone=tags.length>=2&&tags.every(x=>String(x.value||'').trim()!=='');
  const countsDone=counts.length===MEDS.length&&counts.every(x=>String(x.value??'').trim()!=='');
- const namesDone=Boolean(signer?.value.trim()&&witness?.value.trim());
+ const namesDone=Boolean(signer?.value.trim()&&employeeNumber?.value.trim()&&witness?.value.trim());
  const signaturesDone=signerCanvas?.dataset.hasSignature==='true'&&witnessCanvas?.dataset.hasSignature==='true';
  return tagsDone&&countsDone&&namesDone&&signaturesDone;
 }
@@ -491,7 +492,7 @@ function collectAuditFromUI(a){
  a.breakawayTags??={};document.querySelectorAll('[data-tag-loc]').forEach(i=>{a.breakawayTags[i.dataset.tagLoc]??={};a.breakawayTags[i.dataset.tagLoc][i.dataset.tagKind]=i.value.trim()});
  a.attestationText=a.attestationText||FINAL_ATTESTATION;
  a.signatures={};
- document.querySelectorAll('.signature-box').forEach(box=>{const loc=box.dataset.sigLoc,c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');a.signatures[loc]={signer:box.querySelector('[data-signer]').value,witness:box.querySelector('[data-witness]').value,signature:c.toDataURL(),witnessSignature:w.toDataURL()}});
+ document.querySelectorAll('.signature-box').forEach(box=>{const loc=box.dataset.sigLoc,c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');a.signatures[loc]={signer:box.querySelector('[data-signer]').value,employeeNumber:box.querySelector('[data-employee-number]')?.value.trim()||'',witness:box.querySelector('[data-witness]').value,signature:c.toDataURL(),witnessSignature:w.toDataURL()}});
  a.attestationAccepted=document.getElementById('attestCheck').checked;
  a.attestationName=document.getElementById('attestName').value;
  return a;
@@ -531,7 +532,11 @@ async function saveAuditFromUI(id,finalize){
      return alert('Administration PDF import is required before finalizing this audit.');
    }
    if(!a.attestationAccepted||!a.attestationName.trim())return alert('Final attestation and signer name are required.');
-   for(const loc of LOCS){if(!a.signatures[loc]?.signer?.trim()||!a.signatures[loc]?.witness?.trim())return alert('Signer and witness names are required for '+loc+'.')}
+   for(const loc of LOCS){
+     if(!a.signatures[loc]?.signer?.trim())return alert('Auditor name is required for '+loc+'.');
+     if(!a.signatures[loc]?.employeeNumber?.trim())return alert('Auditor employee number is required for '+loc+'.');
+     if(!a.signatures[loc]?.witness?.trim())return alert('Witness name is required for '+loc+'.');
+   }
    a.status='finalized';a.finalizedAt=nowISO();await put('reports',{...a,id:'report_'+a.id,auditId:a.id});
  }
  await put('audits',a);if(finalize){activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});}await refreshAll();if(finalize)showReport('report_'+a.id);else editAudit(a.id)
@@ -569,7 +574,7 @@ async function reportHtml(r){
  const txRows=txs.length?txs.map(t=>'<tr><td>'+esc(t.date||t.timestamp||'')+'</td><td>'+esc(t.typeLabel||t.type||t.action||'')+'</td><td>'+esc(t.medication||'')+'</td><td>'+esc(t.quantity||'')+'</td><td>'+esc((t.fromLocation||'')+(t.toLocation?' → '+t.toLocation:''))+'</td><td>'+esc(t.reference||t.vendor||t.incident||t.lot||'')+'</td></tr>').join(''):'<tr><td colspan="6" class="report-empty">No transactions recorded during this month.</td></tr>';
  const sigCard=(loc)=>{
    const x=r.signatures?.[loc]||{};
-   return '<section class="report-cert"><h2>'+esc(loc)+' certification</h2><p>Signer: physical count and seal entries certified. Witness: personally observed and verified this count and seal record.</p><div class="report-signature-grid"><div class="report-signature-box"><div class="report-signature-label">SIGNER SIGNATURE</div>'+(x.signature?'<img src="'+x.signature+'" alt="'+esc(loc)+' signer signature">':'<div class="report-signature-placeholder"></div>')+'<div class="report-signature-name">'+esc(x.signer||'')+'</div></div><div class="report-signature-box"><div class="report-signature-label">WITNESS SIGNATURE</div>'+(x.witnessSignature?'<img src="'+x.witnessSignature+'" alt="'+esc(loc)+' witness signature">':'<div class="report-signature-placeholder"></div>')+'<div class="report-signature-name">'+esc(x.witness||'')+'</div></div></div></section>';
+   return '<section class="report-cert"><h2>'+esc(loc)+' certification</h2><p>Auditor: physical count and seal entries certified. Witness: personally observed and verified this count and seal record.</p><div class="report-signature-grid"><div class="report-signature-box"><div class="report-signature-label">AUDITOR SIGNATURE</div>'+(x.signature?'<img src="'+x.signature+'" alt="'+esc(loc)+' auditor signature">':'<div class="report-signature-placeholder"></div>')+'<div class="report-signature-name">'+esc(x.signer||'')+(x.employeeNumber?' · Employee #'+esc(x.employeeNumber):'')+'</div></div><div class="report-signature-box"><div class="report-signature-label">WITNESS SIGNATURE</div>'+(x.witnessSignature?'<img src="'+x.witnessSignature+'" alt="'+esc(loc)+' witness signature">':'<div class="report-signature-placeholder"></div>')+'<div class="report-signature-name">'+esc(x.witness||'')+'</div></div></div></section>';
  };
  const sourceDoc=(r.supportingDocuments||[])[0];
  return '<div class="report-sheet report-finalized">'+
