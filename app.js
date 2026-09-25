@@ -721,7 +721,7 @@ function buildTestAuditReport(){
    attestationAccepted:true,
    attestationName:'TEST AUDITOR',
    attestationEmployeeNumber:'0000',
-   attestationSignature:''
+   attestationSignature:'data:image/svg+xml;utf8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="900" height="260" viewBox="0 0 900 260"><path d="M65 172 C135 72 170 220 235 132 C285 68 310 200 365 128 C420 62 450 210 510 122 C570 56 610 192 665 118 C715 76 760 126 825 108" fill="none" stroke="#172838" stroke-width="8" stroke-linecap="round"/><text x="60" y="225" font-family="cursive" font-size="34" fill="#172838">TEST AUDITOR</text></svg>')
  };
 }
 
