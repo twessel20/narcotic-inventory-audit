@@ -355,3 +355,11 @@ body.report-open{overflow:hidden}
   .unit-med-name{font-size:.88rem}
   .signature-person-grid{grid-template-columns:1fr}
 }
+
+.admin-import-card{border:1.5px solid #bfd1de;background:#fbfdfe}
+.admin-import-actions{display:flex;gap:10px;align-items:center;margin:12px 0}
+.admin-summary-label{display:grid;gap:7px;margin-top:12px;font-weight:850;color:#415a70}
+.admin-summary-label textarea{min-height:190px;line-height:1.4;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.82rem}
+.admin-transcript{margin-top:10px;border:1px solid #d8e2e9;border-radius:10px;background:#fff}
+.admin-transcript summary{cursor:pointer;padding:10px 12px;font-weight:800;color:#35536c}
+.admin-transcript pre{white-space:pre-wrap;max-height:320px;overflow:auto;margin:0;padding:12px;border-top:1px solid #e4ebf0;font-size:.76rem;line-height:1.35;background:#f8fafb}
