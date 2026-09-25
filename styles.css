@@ -1025,3 +1025,25 @@ body.report-open{overflow:hidden}
 @media(max-width:520px){
   .final-auditor-grid{grid-template-columns:minmax(0,1fr) minmax(105px,.7fr);gap:6px}
 }
+
+
+/* Keep final auditor identity fields aligned on mobile */
+.final-auditor-grid{
+  align-items:end;
+}
+.final-auditor-grid .final-signer-label{
+  min-width:0;
+}
+.final-auditor-grid input{
+  width:100%;
+  min-width:0;
+}
+@media(max-width:520px){
+  .final-auditor-grid{
+    grid-template-columns:1fr;
+    gap:8px;
+  }
+  .final-auditor-grid .final-signer-label{
+    width:100%;
+  }
+}
