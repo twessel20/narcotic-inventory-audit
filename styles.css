@@ -1826,3 +1826,76 @@ body.report-open{overflow:hidden}
   line-height:1.55;
   color:#253746;
 }
+
+
+/* Executive summary gets a dedicated PDF page */
+.pdf-render-stage .pdf-executive-page{
+  break-before:page !important;
+  page-break-before:always !important;
+  break-after:page !important;
+  page-break-after:always !important;
+  min-height:9.2in;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+}
+
+/* Try to keep the complete signature section together on one PDF page */
+.report-signature-section{
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+.report-signature-section > h2{
+  margin-bottom:10px;
+}
+.report-signature-section-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+.report-signature-section .report-cert{
+  margin:0;
+  padding:10px 12px;
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+.report-signature-section .report-cert h2{
+  font-size:1rem;
+  margin:0 0 5px;
+}
+.report-signature-section .report-cert p,
+.report-signature-section .report-cert-statement{
+  font-size:.76rem;
+  line-height:1.28;
+  margin:.2rem 0 .45rem;
+}
+.report-signature-section .report-signature-grid{
+  gap:8px;
+}
+.report-signature-section .report-signature-box{
+  padding:8px;
+  min-height:0;
+}
+.report-signature-section .report-signature-box img{
+  max-height:58px;
+}
+.report-signature-section .report-signature-label,
+.report-signature-section .report-signature-site,
+.report-signature-section .report-signature-name{
+  font-size:.68rem;
+}
+.pdf-render-stage .report-signature-section{
+  break-before:page !important;
+  page-break-before:always !important;
+  break-inside:avoid !important;
+  page-break-inside:avoid !important;
+}
+.pdf-render-stage .report-signature-section .report-cert{
+  break-inside:avoid !important;
+  page-break-inside:avoid !important;
+}
+@media(max-width:700px){
+  .report-signature-section-grid{
+    grid-template-columns:1fr;
+  }
+}
