@@ -857,9 +857,19 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
  clone.style.overflow='visible';
  clone.querySelectorAll('.report-imported-admin, section').forEach(el=>{el.style.overflow='visible';});
  clone.querySelectorAll('section').forEach((el,index)=>{
+   if(el.classList.contains('report-cert'))return;
    el.classList.add('pdf-section-page');
    el.style.breakBefore='page';
    el.style.pageBreakBefore='always';
+   el.style.breakInside='avoid';
+   el.style.pageBreakInside='avoid';
+ });
+ const signatureSection=clone.querySelector('.report-signature-section');
+ if(signatureSection){
+   signatureSection.style.breakInside='avoid';
+   signatureSection.style.pageBreakInside='avoid';
+ }
+ clone.querySelectorAll('.report-signature-section .report-cert').forEach(el=>{
    el.style.breakInside='avoid';
    el.style.pageBreakInside='avoid';
  });
@@ -1146,7 +1156,7 @@ function executiveSummaryHtml(r){
    ?' '+amendmentCount+' amendment'+(amendmentCount===1?' was':'s were')+' recorded after the original audit entry.'
    :' No amendments were recorded.';
 
- return '<section class="report-executive-summary simple-summary paragraph-summary">'+
+ return '<section class="report-executive-summary simple-summary paragraph-summary pdf-executive-page">'+
  '<h2>Executive summary</h2>'+
  '<p>'+esc(inventorySentence+usageSentence+certSentence+amendmentSentence)+'</p>'+
  '</section>';
@@ -1211,7 +1221,9 @@ function reportHtml(r){
    return '<div class="report-vial-row report-vial-row-detailed"><div class="report-vial-provider"><strong>'+esc(provider)+'</strong><span>'+detail+'</span></div><div class="report-vial-count">'+total+' vial'+(total===1?'':'s')+'</div></div>';
  }).join('')+
  '<div class="report-vial-total"><span>Total calculated vials</span><strong>'+providerVialData(r.administrationRows).total+'</strong></div></div></section>':'')+'<section><h2>Transactions in the audit reporting period</h2><table class="report-table report-transactions"><thead><tr><th>Date</th><th>Action</th><th>Medication</th><th>Qty</th><th>Movement</th><th>Vendor / incident / lot</th></tr></thead><tbody>'+txRows+'</tbody></table></section>'+
+ '<section class="report-signature-section"><h2>Audit site certifications</h2><div class="report-signature-section-grid">'+
  sigCard('Medic 1')+sigCard('Medic 2')+sigCard('Medic 3')+sigCard('Safe')+sigCard('Expired')+
+ '</div></section>'+
  '<section class="report-attestation"><h2>Final overall controlled-substance audit attestation</h2><p>'+esc(r.attestationText||FINAL_ATTESTATION).replace(/\n/g,'<br>')+'</p><div class="report-final-signature'+(r.isTest?' report-final-signature-explicit':'')+'"><div class="report-signature-label">FINAL CERTIFYING AUDITOR SIGNATURE</div>'+(r.isTest?'<div class="report-final-signature-capture">'+(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'<div class="report-signature-placeholder"></div>')+'</div>':(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':''))+'<div class="report-signature-name">'+esc(r.attestationName||'')+(r.attestationEmployeeNumber?' · Employee #'+esc(r.attestationEmployeeNumber):'')+'</div></div></section>'+
  '<section class="report-notes"><h2>Audit notes</h2><p class="audit-notes-text">'+esc(r.notes||'').replace(/\n/g,'<br>')+'</p>'+(r.usageSummary?'<div class="report-usage-summary">'+esc(r.usageSummary||'').replace(/\n/g,'<br>')+'</div>':'')+'</section>'+
  '<footer class="report-footer">Finalized inventory snapshot'+(recordNo?' · Record #'+esc(recordNo):'')+'</footer>'+
