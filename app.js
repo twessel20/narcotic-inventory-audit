@@ -808,10 +808,20 @@ function reportHtml(r){
  r.administrationRows.map(x=>'<tr><td>'+esc(formatAdminDate(x.date))+'</td><td>'+esc(x.report)+'</td><td>'+esc(x.provider)+'</td><td>'+esc(x.medication)+'</td><td><b>'+esc(x.dose)+' '+esc(adminDoseUnit(x.medication))+'</b></td><td>'+esc(String(x.unit||'').replace(/^M([123])$/,'Medic $1'))+'</td></tr>').join('')+
  '</tbody></table>'+
  '<div class="report-usage-summary report-vial-summary"><div class="report-vial-summary-title">Calculated vial use by provider</div>'+
- providerVialData(r.administrationRows).providers.map(([provider,items])=>{const total=items.reduce((n,x)=>n+x.vials,0);return '<div class="report-vial-row"><span>'+esc(provider)+'</span><strong>'+total+' vial'+(total===1?'':'s')+'</strong></div>'}).join('')+
+ providerVialData(r.administrationRows).providers.map(([provider,items])=>{
+   const total=items.reduce((n,x)=>n+x.vials,0);
+   const breakdown=new Map();
+   items.forEach(x=>{
+     const key=x.medication+'|'+x.strength;
+     const cur=breakdown.get(key)||{medication:x.medication,strength:x.strength,vials:0};
+     cur.vials+=x.vials;breakdown.set(key,cur);
+   });
+   const detail=[...breakdown.values()].map(x=>esc(x.medication)+' — '+x.vials+' × '+esc(x.strength)+' vial'+(x.vials===1?'':'s')).join('<br>');
+   return '<div class="report-vial-row report-vial-row-detailed"><div class="report-vial-provider"><strong>'+esc(provider)+'</strong><span>'+detail+'</span></div><div class="report-vial-count">'+total+' vial'+(total===1?'':'s')+'</div></div>';
+ }).join('')+
  '<div class="report-vial-total"><span>Total calculated vials</span><strong>'+providerVialData(r.administrationRows).total+'</strong></div></div></section>':'')+'<section><h2>Transactions in the audit reporting period</h2><table class="report-table report-transactions"><thead><tr><th>Date</th><th>Action</th><th>Medication</th><th>Qty</th><th>Movement</th><th>Vendor / incident / lot</th></tr></thead><tbody>'+txRows+'</tbody></table></section>'+
  sigCard('Medic 1')+sigCard('Medic 2')+sigCard('Medic 3')+sigCard('Safe')+sigCard('Expired')+
- '<section class="report-attestation"><h2>Final overall controlled-substance audit attestation</h2><p>'+esc(r.attestationText||FINAL_ATTESTATION).replace(/\n/g,'<br>')+'</p><div class="report-final-signature"><div class="report-signature-label">FINAL CERTIFYING AUDITOR SIGNATURE</div>'+(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'')+'<div class="report-signature-name">'+esc(r.attestationName||'')+(r.attestationEmployeeNumber?' · Employee #'+esc(r.attestationEmployeeNumber):'')+'</div></div></section>'+
+ '<section class="report-attestation"><h2>Final overall controlled-substance audit attestation</h2><p>'+esc(r.attestationText||FINAL_ATTESTATION).replace(/\n/g,'<br>')+'</p><div class="report-final-signature'+(r.isTest?' report-final-signature-explicit':'')+'"><div class="report-signature-label">FINAL CERTIFYING AUDITOR SIGNATURE</div>'+(r.isTest?'<div class="report-final-signature-capture">'+(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'<div class="report-signature-placeholder"></div>')+'</div>':(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':''))+'<div class="report-signature-name">'+esc(r.attestationName||'')+(r.attestationEmployeeNumber?' · Employee #'+esc(r.attestationEmployeeNumber):'')+'</div></div></section>'+
  '<section class="report-notes"><h2>Audit notes</h2><p class="audit-notes-text">'+esc(r.notes||'').replace(/\n/g,'<br>')+'</p>'+(r.usageSummary?'<div class="report-usage-summary">'+esc(r.usageSummary||'').replace(/\n/g,'<br>')+'</div>':'')+'</section>'+
  '<footer class="report-footer">Finalized inventory snapshot'+(recordNo?' · Record #'+esc(recordNo):'')+'</footer>'+
  '</div>';
