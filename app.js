@@ -1034,14 +1034,14 @@ function reportCoverPageHtml(r){
    '<div class="report-cover-month">'+esc(r.month||'Monthly Audit')+'</div>'+
    (r.isTest?'<div class="report-cover-test">TEST REPORT · SYNTHETIC DATA</div>':'')+
    '</div>'+
-   '<div class="report-cover-meta balanced-cover-meta">'+
-   '<div class="cover-meta-cell"><span>Audit date</span><strong>'+esc(auditDate||'—')+'</strong></div>'+
-   '<div class="cover-meta-cell"><span>Finalized date</span><strong>'+esc(finalized||'—')+'</strong></div>'+
-   '<div class="cover-meta-cell"><span>Certifying auditor</span><strong>'+esc(auditor||'—')+'</strong></div>'+
-   '<div class="cover-meta-cell"><span>Employee number</span><strong>'+esc(r.attestationEmployeeNumber||r.auditorEmployeeNumber||'—')+'</strong></div>'+
-   '<div class="cover-auditor-signature centered-cover-signature">'+
-     (r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'<div class="report-signature-placeholder"></div>')+
-     '<small>Final certifying auditor signature</small>'+
+   '<div class="report-cover-meta balanced-cover-meta" style="display:grid;grid-template-columns:1fr 1fr;gap:18px 34px;border:0;border-radius:0;overflow:visible;background:transparent;padding:0;">'+
+   '<div class="cover-meta-cell" style="border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:8px 10px;"><span style="text-align:center;width:100%;">Audit date</span><strong style="text-align:center;width:100%;">'+esc(auditDate||'—')+'</strong></div>'+
+   '<div class="cover-meta-cell" style="border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:8px 10px;"><span style="text-align:center;width:100%;">Finalized date</span><strong style="text-align:center;width:100%;">'+esc(finalized||'—')+'</strong></div>'+
+   '<div class="cover-meta-cell" style="border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:8px 10px;"><span style="text-align:center;width:100%;">Certifying auditor</span><strong style="text-align:center;width:100%;">'+esc(auditor||'—')+'</strong></div>'+
+   '<div class="cover-meta-cell" style="border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:8px 10px;"><span style="text-align:center;width:100%;">Employee number</span><strong style="text-align:center;width:100%;">'+esc(r.attestationEmployeeNumber||r.auditorEmployeeNumber||'—')+'</strong></div>'+
+   '<div class="cover-auditor-signature centered-cover-signature" style="grid-column:1/-1;border:0;background:transparent;text-align:center;margin:2px auto 0;padding:4px 0 0;width:100%;">'+
+     (r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature" style="display:block;max-width:170px;max-height:48px;margin:0 auto 3px;object-fit:contain;">':'<div class="report-signature-placeholder" style="width:170px;height:36px;margin:0 auto 3px;border:0;border-bottom:1px solid #aab9c4;"></div>')+
+     '<small style="display:block;text-align:center;">Final certifying auditor signature</small>'+
    '</div>'+
    '</div>'+
    '<div class="report-cover-footer">Gladstone Fire Department · Monthly Narcotic Inventory / Audit</div>'+
