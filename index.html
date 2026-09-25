@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#0f2742">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>Narcotic Inventory Audit</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <div class="eyebrow">PERSONAL WORKSPACE</div>
+      <h1>Narcotic Inventory / Audit</h1>
+      <p>Medic 1 · Medic 2 · Medic 3 · Safe · Expired</p>
+    </div>
+    <span id="offlineBadge" class="badge">Checking…</span>
+  </header>
+
+  <nav class="tabs" aria-label="Primary">
+    <button data-tab="inventory" class="active">Inventory</button>
+    <button data-tab="activity">Activity</button>
+    <button data-tab="audit">Monthly audit</button>
+    <button data-tab="reports">Reports</button>
+    <button data-tab="settings">Data</button>
+  </nav>
+
+  <main id="app">
+    <section id="inventory" class="tab-panel active">
+      <div class="section-head">
+        <div><span class="kicker">CURRENT PHYSICAL BALANCE</span><h2>Inventory at a glance</h2></div>
+        <button class="primary" id="newTxBtn">Record transaction</button>
+      </div>
+      <div id="inventoryGrid" class="location-grid"></div>
+      <div class="card totals-card">
+        <h3>Active stock totals</h3>
+        <div id="activeTotals"></div>
+      </div>
+    </section>
+
+    <section id="activity" class="tab-panel">
+      <div class="section-head">
+        <div><span class="kicker">AUDIT TRAIL</span><h2>Inventory activity</h2></div>
+        <button id="exportActivityBtn">Export CSV</button>
+      </div>
+      <div class="card">
+        <div class="toolbar">
+          <input id="activitySearch" placeholder="Search medication, location, reason, person">
+        </div>
+        <div id="activityList" class="list"></div>
+      </div>
+    </section>
+
+    <section id="audit" class="tab-panel">
+      <div class="section-head">
+        <div><span class="kicker">MONTHLY CONTROLLED-SUBSTANCE AUDIT</span><h2>Audit workspace</h2></div>
+        <button class="primary" id="newAuditBtn">Start audit</button>
+      </div>
+      <div id="auditWorkspace"></div>
+    </section>
+
+    <section id="reports" class="tab-panel">
+      <div class="section-head">
+        <div><span class="kicker">FINALIZED RECORDS</span><h2>Reports</h2></div>
+      </div>
+      <div id="reportsList" class="list"></div>
+    </section>
+
+    <section id="settings" class="tab-panel">
+      <div class="section-head"><div><span class="kicker">DATA OWNERSHIP</span><h2>Backup & migration</h2></div></div>
+      <div class="card stack">
+        <h3>Historical data migration</h3>
+        <p>The original GPT Site remains the source of truth until its submitted records are exported and imported here. Importing does not overwrite newer records unless IDs match.</p>
+        <div class="button-row">
+          <button class="primary" id="importBtn">Import backup JSON</button>
+          <button id="exportBtn">Export full backup</button>
+          <input id="importFile" type="file" accept="application/json,.json" hidden>
+        </div>
+        <div id="migrationStatus" class="notice">No migration file imported yet.</div>
+      </div>
+      <div class="card stack">
+        <h3>Device storage</h3>
+        <p>Audit records and signatures are stored in this browser using IndexedDB. Keep a current encrypted/device-secure backup according to department policy.</p>
+        <div id="storageStats" class="stats"></div>
+      </div>
+    </section>
+  </main>
+
+  <dialog id="txDialog">
+    <form method="dialog" id="txForm" class="dialog-form">
+      <div class="dialog-head"><h2>Record inventory transaction</h2><button value="cancel" class="icon-btn">×</button></div>
+      <div class="form-grid">
+        <label>Type<select name="type" required>
+          <option value="adjustment">Physical count / adjustment</option>
+          <option value="transfer">Transfer</option>
+          <option value="received">Received / restock</option>
+          <option value="expired">Move to expired</option>
+          <option value="destroyed">Destroyed / transferred out</option>
+          <option value="waste">Waste</option>
+        </select></label>
+        <label>Medication<select name="medication" required></select></label>
+        <label>From<select name="fromLocation"></select></label>
+        <label>To<select name="toLocation"></select></label>
+        <label>Quantity<input name="quantity" type="number" step="1" min="0" required></label>
+        <label>Report / reference<input name="reference"></label>
+        <label class="wide">Reason / notes<textarea name="notes" rows="3"></textarea></label>
+        <label>Recorded by<input name="recordedBy"></label>
+        <label>Witness<input name="witness"></label>
+      </div>
+      <div class="dialog-actions"><button value="cancel">Cancel</button><button class="primary" value="default" id="saveTxBtn">Save transaction</button></div>
+    </form>
+  </dialog>
+
+  <dialog id="reportDialog"><div id="reportPreview"></div></dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
