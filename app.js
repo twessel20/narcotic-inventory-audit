@@ -778,6 +778,15 @@ async function shareRenderedReport(preview,title='Narcotic Inventory Audit Repor
    clone.style.overflow='visible';
    clone.querySelectorAll('.report-imported-admin, section').forEach(el=>{el.style.overflow='visible';});
    clone.querySelectorAll('.report-table').forEach(el=>{el.style.minWidth='0';el.style.width='100%';});
+   clone.querySelectorAll('.report-cert,.report-attestation,.report-notes,.report-vial-summary,.report-final-signature').forEach(el=>{
+     el.style.breakInside='avoid';
+     el.style.pageBreakInside='avoid';
+   });
+   clone.querySelectorAll('.report-table thead').forEach(el=>{el.style.display='table-header-group';});
+   clone.querySelectorAll('.report-table tr').forEach(el=>{
+     el.style.breakInside='avoid';
+     el.style.pageBreakInside='avoid';
+   });
 
    const stage=document.createElement('div');
    stage.className='pdf-render-stage';
@@ -805,7 +814,7 @@ async function shareRenderedReport(preview,title='Narcotic Inventory Audit Repor
        image:{type:'jpeg',quality:0.98},
        html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
-       pagebreak:{mode:['css','legacy'],avoid:['.report-cert','.report-attestation','.report-notes','.report-signature-box','.report-vial-row']}
+       pagebreak:{mode:['css','legacy'],before:['.pdf-break-before'],after:['.pdf-break-after'],avoid:['.report-cert','.report-attestation','.report-notes','.report-signature-box','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
      })
      .from(clone)
      .outputPdf('blob');
