@@ -970,3 +970,18 @@ body.report-open{overflow:hidden}
 .audit-route a.complete .route-label{
   font-weight:900;
 }
+
+
+/* Auditor identity fields */
+.auditor-id-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.5fr) minmax(120px,.75fr);
+  gap:8px;
+}
+.auditor-id-grid label{margin-top:0!important}
+@media(max-width:520px){
+  .auditor-id-grid{
+    grid-template-columns:minmax(0,1fr) minmax(105px,.7fr);
+    gap:6px;
+  }
+}
