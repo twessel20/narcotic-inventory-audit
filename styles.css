@@ -2176,3 +2176,19 @@ body.report-open{overflow:hidden}
   margin-top:4px !important;
   padding-top:6px !important;
 }
+
+
+/* PDF certification pagination: section may continue, individual cards may not split */
+.pdf-render-stage .report-signature-section{
+  break-inside:auto !important;
+  page-break-inside:auto !important;
+}
+.pdf-render-stage .report-signature-section-grid{
+  break-inside:auto !important;
+  page-break-inside:auto !important;
+}
+.pdf-render-stage .report-signature-section .report-cert,
+.pdf-render-stage .report-signature-section .report-signature-box{
+  break-inside:avoid !important;
+  page-break-inside:avoid !important;
+}
