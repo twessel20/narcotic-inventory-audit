@@ -1982,3 +1982,69 @@ body.report-open{overflow:hidden}
 .report-cover-signature{
   display:none !important;
 }
+
+
+/* Balanced auditor information on report cover */
+.report-cover-meta{
+  align-items:stretch;
+}
+.cover-auditor-pair{
+  grid-column:1/-1;
+  display:grid !important;
+  grid-template-columns:1fr 1fr;
+  gap:0;
+  border:1px solid #d9e3ea;
+  border-radius:10px;
+  overflow:hidden;
+  background:#fff;
+}
+.cover-auditor-pair > div{
+  padding:10px 14px;
+  min-height:92px;
+}
+.cover-auditor-name{
+  border-right:1px solid #d9e3ea;
+}
+.cover-auditor-pair span{
+  display:block;
+  font-size:.7rem;
+  font-weight:800;
+  color:#687b8a;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  margin-bottom:4px;
+}
+.cover-auditor-pair strong{
+  display:block;
+  font-size:.95rem;
+  color:#172838;
+}
+.cover-auditor-number{
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start;
+}
+.cover-auditor-number strong{
+  margin-top:2px;
+}
+.cover-auditor-signature{
+  margin-top:8px;
+  padding-top:6px;
+  border-top:1px solid #e5ebef;
+}
+.cover-auditor-signature img{
+  max-width:150px;
+  max-height:42px;
+}
+.cover-auditor-signature small{
+  margin-top:2px;
+}
+@media(max-width:650px){
+  .cover-auditor-pair{
+    grid-template-columns:1fr;
+  }
+  .cover-auditor-name{
+    border-right:0;
+    border-bottom:1px solid #d9e3ea;
+  }
+}
