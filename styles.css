@@ -1305,3 +1305,20 @@ body.report-open{overflow:hidden}
 .report-final-signature-explicit .report-signature-name{
   margin-top:0;
 }
+
+
+/* Report preview sharing */
+.report-toolbar{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  align-items:center;
+}
+#shareReport{
+  font-weight:800;
+}
+@media(max-width:520px){
+  .report-toolbar button{
+    flex:1 1 auto;
+  }
+}
