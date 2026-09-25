@@ -189,8 +189,7 @@ function unitAuditSection(a,loc,index){
  '<div class="unit-compact-panel certification-panel"><h4>Certification</h4>'+sigBlock(loc,sig,true)+'</div>'+
  '</div></section>';
 }
-function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="signature-person-grid"><div><div class="auditor-id-grid"><label>Auditor name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-employee-number value="'+esc(s.employeeNumber||'')+'"></label></div><div class="signature-label">Auditor signature</div><canvas width="500" height="150" data-canvas></canvas></div><div><label>Witness name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><div class="signature-label">Witness signature</div><canvas width="500" height="150" data-witness-canvas></canvas></div></div><button type="button" class="clear-signatures" data-clear-sig>Clear signatures</button></div>'}
-
+function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="signature-person-grid"><div><div class="auditor-id-grid"><label>Auditor name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-employee-number value="'+esc(s.employeeNumber||'')+'"></label></div><div class="signature-label-row"><div class="signature-label">Auditor signature</div><button type="button" class="expand-signature" data-expand-signature="auditor">Open larger</button></div><canvas width="500" height="150" data-canvas></canvas></div><div><div class="auditor-id-grid"><label>Witness name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-witness-employee-number value="'+esc(s.witnessEmployeeNumber||'')+'"></label></div><div class="signature-label-row"><div class="signature-label">Witness signature</div><button type="button" class="expand-signature" data-expand-signature="witness">Open larger</button></div><canvas width="500" height="150" data-witness-canvas></canvas></div></div><button type="button" class="clear-signatures" data-clear-sig>Clear signatures</button></div>'}
 function adminDoseUnit(medication=''){
  const m=String(medication).toLowerCase();
  return m==='fentanyl'?'mcg':'mg';
@@ -426,10 +425,49 @@ async function editAudit(id){
  updateAuditRouteProgress();
  setAutosaveStatus('Saved '+fmtDate(a.updatedAt));
 }
+function openSignatureCapture(box,kind,onChange){
+ const source=kind==='witness'?box.querySelector('[data-witness-canvas]'):box.querySelector('[data-canvas]');
+ if(!source)return;
+ let dialog=document.getElementById('signatureCaptureDialog');
+ if(!dialog){
+   dialog=document.createElement('dialog');
+   dialog.id='signatureCaptureDialog';
+   dialog.className='signature-capture-dialog';
+   dialog.innerHTML='<div class="signature-capture-shell"><div class="signature-capture-head"><div><span class="kicker">SIGNATURE CAPTURE</span><h2 id="signatureCaptureTitle">Signature</h2></div><button type="button" id="signatureCaptureClose">Done</button></div><div class="signature-capture-hint">Rotate your phone to landscape for the largest signing area.</div><canvas id="signatureCaptureCanvas" width="1200" height="500"></canvas><div class="signature-capture-actions"><button type="button" id="signatureCaptureClear">Clear</button><button type="button" class="primary" id="signatureCaptureSave">Use signature</button></div></div>';
+   document.body.appendChild(dialog);
+ }
+ const title=dialog.querySelector('#signatureCaptureTitle');
+ title.textContent=(kind==='witness'?'Witness':'Auditor')+' signature';
+ const old=dialog.querySelector('#signatureCaptureCanvas');
+ const live=old.cloneNode(true);
+ old.replaceWith(live);
+ live.width=1200;live.height=500;
+ const lctx=live.getContext('2d');lctx.lineWidth=5;lctx.lineCap='round';
+ if(source.dataset.hasSignature==='true'){
+   const img=new Image();img.onload=()=>lctx.drawImage(img,0,0,live.width,live.height);img.src=source.toDataURL();
+ }
+ live.dataset.hasSignature=source.dataset.hasSignature||'false';
+ let down=false,last=null,moved=false;
+ const pos=e=>{const r=live.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*live.width/r.width,y:(p.clientY-r.top)*live.height/r.height}};
+ const start=e=>{down=true;moved=false;last=pos(e);e.preventDefault()};
+ const move=e=>{if(!down)return;const p=pos(e);lctx.beginPath();lctx.moveTo(last.x,last.y);lctx.lineTo(p.x,p.y);lctx.stroke();last=p;moved=true;e.preventDefault()};
+ const end=()=>{if(down&&moved)live.dataset.hasSignature='true';down=false;last=null;moved=false};
+ live.addEventListener('mousedown',start);live.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
+ live.addEventListener('touchstart',start,{passive:false});live.addEventListener('touchmove',move,{passive:false});live.addEventListener('touchend',end);
+ const apply=()=>{
+   const sctx=source.getContext('2d');sctx.clearRect(0,0,source.width,source.height);
+   sctx.drawImage(live,0,0,source.width,source.height);
+   source.dataset.hasSignature=live.dataset.hasSignature||'false';
+   updateAuditRouteProgress();if(onChange)onChange();
+ };
+ dialog.querySelector('#signatureCaptureClear').onclick=()=>{lctx.clearRect(0,0,live.width,live.height);live.dataset.hasSignature='false'};
+ dialog.querySelector('#signatureCaptureSave').onclick=()=>{apply();dialog.close()};
+ dialog.querySelector('#signatureCaptureClose').onclick=()=>{apply();dialog.close()};
+ dialog.showModal();
+ setTimeout(()=>dialog.scrollTop=0,0);
+}
 function setupCanvas(canvas,data,onChange){
- const ctx=canvas.getContext('2d');
- ctx.lineWidth=2;ctx.lineCap='round';
- canvas.dataset.hasSignature=data?'true':'false';
+ const ctx=canvas.getContext('2d');ctx.lineWidth=2;ctx.lineCap='round';canvas.dataset.hasSignature=data?'true':'false';
  if(data){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=data}
  let down=false,last=null,changed=false;
  const pos=e=>{const r=canvas.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*canvas.width/r.width,y:(p.clientY-r.top)*canvas.height/r.height}};
@@ -442,39 +480,9 @@ function setupCanvas(canvas,data,onChange){
 function setupSignature(box,s,onChange){
  const c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');
  const changed=()=>{updateAuditRouteProgress();if(onChange)onChange()};
- setupCanvas(c,s.signature||'',changed);
- setupCanvas(w,s.witnessSignature||'',changed);
- box.querySelector('[data-clear-sig]').onclick=()=>{
-   [c,w].forEach(x=>{x.getContext('2d').clearRect(0,0,x.width,x.height);x.dataset.hasSignature='false'});
-   updateAuditRouteProgress();
-   if(onChange)onChange();
- };
-}
-function unitIsComplete(loc){
- const section=document.querySelector('[data-unit-section="'+CSS.escape(loc)+'"]');
- if(!section)return false;
- const tags=[...section.querySelectorAll('[data-tag-loc]')];
- const counts=[...section.querySelectorAll('[data-count-loc]')];
- const signer=section.querySelector('[data-signer]');
- const employeeNumber=section.querySelector('[data-employee-number]');
- const witness=section.querySelector('[data-witness]');
- const signerCanvas=section.querySelector('[data-canvas]');
- const witnessCanvas=section.querySelector('[data-witness-canvas]');
- const tagsDone=tags.length>=2&&tags.every(x=>String(x.value||'').trim()!=='');
- const countsDone=counts.length===MEDS.length&&counts.every(x=>String(x.value??'').trim()!=='');
- const namesDone=Boolean(signer?.value.trim()&&employeeNumber?.value.trim()&&witness?.value.trim());
- const signaturesDone=signerCanvas?.dataset.hasSignature==='true'&&witnessCanvas?.dataset.hasSignature==='true';
- return tagsDone&&countsDone&&namesDone&&signaturesDone;
-}
-function updateAuditRouteProgress(){
- document.querySelectorAll('.audit-route [data-route-loc]').forEach(link=>{
-   const loc=link.dataset.routeLoc;
-   const complete=unitIsComplete(loc);
-   link.classList.toggle('complete',complete);
-   const mark=link.querySelector('.route-status-mark');
-   if(mark)mark.textContent=complete?'✓':'';
-   link.setAttribute('aria-label',loc+(complete?' complete':' incomplete'));
- });
+ setupCanvas(c,s.signature||'',changed);setupCanvas(w,s.witnessSignature||'',changed);
+ box.querySelectorAll('[data-expand-signature]').forEach(btn=>btn.onclick=()=>openSignatureCapture(box,btn.dataset.expandSignature,changed));
+ box.querySelector('[data-clear-sig]').onclick=()=>{[c,w].forEach(x=>{x.getContext('2d').clearRect(0,0,x.width,x.height);x.dataset.hasSignature='false'});updateAuditRouteProgress();if(onChange)onChange()};
 }
 function setAutosaveStatus(msg){const el=document.getElementById('autosaveStatus');if(el)el.textContent=msg}
 function collectAuditFromUI(a){
@@ -492,7 +500,7 @@ function collectAuditFromUI(a){
  a.breakawayTags??={};document.querySelectorAll('[data-tag-loc]').forEach(i=>{a.breakawayTags[i.dataset.tagLoc]??={};a.breakawayTags[i.dataset.tagLoc][i.dataset.tagKind]=i.value.trim()});
  a.attestationText=a.attestationText||FINAL_ATTESTATION;
  a.signatures={};
- document.querySelectorAll('.signature-box').forEach(box=>{const loc=box.dataset.sigLoc,c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');a.signatures[loc]={signer:box.querySelector('[data-signer]').value,employeeNumber:box.querySelector('[data-employee-number]')?.value.trim()||'',witness:box.querySelector('[data-witness]').value,signature:c.toDataURL(),witnessSignature:w.toDataURL()}});
+ document.querySelectorAll('.signature-box').forEach(box=>{const loc=box.dataset.sigLoc,c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');a.signatures[loc]={signer:box.querySelector('[data-signer]').value,employeeNumber:box.querySelector('[data-employee-number]')?.value.trim()||'',witness:box.querySelector('[data-witness]').value,witnessEmployeeNumber:box.querySelector('[data-witness-employee-number]')?.value.trim()||'',signature:c.toDataURL(),witnessSignature:w.toDataURL()}});
  a.attestationAccepted=document.getElementById('attestCheck').checked;
  a.attestationName=document.getElementById('attestName').value;
  return a;
@@ -536,6 +544,7 @@ async function saveAuditFromUI(id,finalize){
      if(!a.signatures[loc]?.signer?.trim())return alert('Auditor name is required for '+loc+'.');
      if(!a.signatures[loc]?.employeeNumber?.trim())return alert('Auditor employee number is required for '+loc+'.');
      if(!a.signatures[loc]?.witness?.trim())return alert('Witness name is required for '+loc+'.');
+     if(!a.signatures[loc]?.witnessEmployeeNumber?.trim())return alert('Witness employee number is required for '+loc+'.');
    }
    a.status='finalized';a.finalizedAt=nowISO();await put('reports',{...a,id:'report_'+a.id,auditId:a.id});
  }
@@ -574,7 +583,7 @@ async function reportHtml(r){
  const txRows=txs.length?txs.map(t=>'<tr><td>'+esc(t.date||t.timestamp||'')+'</td><td>'+esc(t.typeLabel||t.type||t.action||'')+'</td><td>'+esc(t.medication||'')+'</td><td>'+esc(t.quantity||'')+'</td><td>'+esc((t.fromLocation||'')+(t.toLocation?' → '+t.toLocation:''))+'</td><td>'+esc(t.reference||t.vendor||t.incident||t.lot||'')+'</td></tr>').join(''):'<tr><td colspan="6" class="report-empty">No transactions recorded during this month.</td></tr>';
  const sigCard=(loc)=>{
    const x=r.signatures?.[loc]||{};
-   return '<section class="report-cert"><h2>'+esc(loc)+' certification</h2><p>Auditor: physical count and seal entries certified. Witness: personally observed and verified this count and seal record.</p><div class="report-signature-grid"><div class="report-signature-box"><div class="report-signature-label">AUDITOR SIGNATURE</div>'+(x.signature?'<img src="'+x.signature+'" alt="'+esc(loc)+' auditor signature">':'<div class="report-signature-placeholder"></div>')+'<div class="report-signature-name">'+esc(x.signer||'')+(x.employeeNumber?' · Employee #'+esc(x.employeeNumber):'')+'</div></div><div class="report-signature-box"><div class="report-signature-label">WITNESS SIGNATURE</div>'+(x.witnessSignature?'<img src="'+x.witnessSignature+'" alt="'+esc(loc)+' witness signature">':'<div class="report-signature-placeholder"></div>')+'<div class="report-signature-name">'+esc(x.witness||'')+'</div></div></div></section>';
+   return '<section class="report-cert"><h2>'+esc(loc)+' certification</h2><p>Auditor: physical count and seal entries certified. Witness: personally observed and verified this count and seal record.</p><div class="report-signature-grid"><div class="report-signature-box"><div class="report-signature-label">AUDITOR SIGNATURE</div>'+(x.signature?'<img src="'+x.signature+'" alt="'+esc(loc)+' auditor signature">':'<div class="report-signature-placeholder"></div>')+'<div class="report-signature-name">'+esc(x.signer||'')+(x.employeeNumber?' · Employee #'+esc(x.employeeNumber):'')+'</div></div><div class="report-signature-box"><div class="report-signature-label">WITNESS SIGNATURE</div>'+(x.witnessSignature?'<img src="'+x.witnessSignature+'" alt="'+esc(loc)+' witness signature">':'<div class="report-signature-placeholder"></div>')+'<div class="report-signature-name">'+esc(x.witness||'')+(x.witnessEmployeeNumber?' · Employee #'+esc(x.witnessEmployeeNumber):'')+'</div></div></div></section>';
  };
  const sourceDoc=(r.supportingDocuments||[])[0];
  return '<div class="report-sheet report-finalized">'+
