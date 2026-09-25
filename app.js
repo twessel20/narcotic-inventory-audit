@@ -268,7 +268,7 @@ function buildAdministrationSummary(transcript,fileName){
  });
  const monthMatch=String(transcript).match(/Months in Treatment Date Timestamp\s+(\d{2}\/\d{4})/i);
  const heading='Narcotic administration summary'+(monthMatch?' ('+monthMatch[1]+')':'')+' — '+fileName;
- return heading+'\n'+lines.join('\n')+'\nTotal: '+totalVials+' vial'+(totalVials===1?'':'s')+'. Combined doses per report, medication, provider, and source location; vial use is calculated from the department vial strengths.\nReference only; manual inventory counts unchanged.';
+ return heading+'\n\n'+lines.join('\n\n')+'\n\nTotal: '+totalVials+' vial'+(totalVials===1?'':'s')+'. Combined doses per report, medication, and source location; vial use is calculated from the department vial strengths.\nReference only; manual inventory counts unchanged.';
 }
 async function handleAdministrationPdf(auditId,file){
  if(!file)return;
