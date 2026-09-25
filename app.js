@@ -1,12 +1,12 @@
 const MEDS=['Fentanyl 100 mcg','Versed 2 mg','Versed 5 mg','Ketamine 500 mg','Morphine 10 mg'];
 const LOCS=['Medic 1','Medic 2','Medic 3','Safe','Expired'];
-const DB_NAME='narcotic-audit-db', DB_VER=1;
+const DB_NAME='narcotic-audit-db', DB_VER=2;
 let db;
 
 function uid(prefix='id'){return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8)}
 function nowISO(){return new Date().toISOString()}
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
-function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VER);r.onupgradeneeded=()=>{const d=r.result;['inventory','transactions','audits','reports','meta'].forEach(n=>{if(!d.objectStoreNames.contains(n))d.createObjectStore(n,{keyPath:'id'})})};r.onsuccess=()=>{db=r.result;resolve(db)};r.onerror=()=>reject(r.error)})}
+function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VER);r.onupgradeneeded=()=>{const d=r.result;['inventory','transactions','audits','reports','meta','legacyArchive'].forEach(n=>{if(!d.objectStoreNames.contains(n))d.createObjectStore(n,{keyPath:'id'})})};r.onsuccess=()=>{db=r.result;resolve(db)};r.onerror=()=>reject(r.error)})}
 function store(name,mode='readonly'){return db.transaction(name,mode).objectStore(name)}
 function getAll(name){return new Promise((res,rej)=>{const r=store(name).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 function getOne(name,id){return new Promise((res,rej)=>{const r=store(name).get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
@@ -85,12 +85,37 @@ async function renderReports(){let rows=await getAll('reports');rows.sort((a,b)=
 async function showReport(id){const r=await getOne('reports',id);if(!r)return;const d=document.getElementById('reportDialog'),b=await reportHtml(r);document.getElementById('reportPreview').innerHTML=b;d.showModal();document.getElementById('closeReport').onclick=()=>d.close();document.getElementById('printReport').onclick=()=>window.print()}
 async function reportHtml(r){return '<div class="report-sheet"><button id="closeReport" class="close-report">Close</button><button id="printReport">Print</button><h1>Gladstone Fire Department</h1><h2>Narcotic Inventory / Audit Report</h2><p><b>Audit:</b> '+esc(r.month)+'<br><b>Period:</b> '+esc(r.dateRangeStart||'—')+' through '+esc(r.dateRangeEnd||'—')+'<br><b>Finalized:</b> '+fmtDate(r.finalizedAt)+'</p><h3>Physical inventory</h3><table><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+l+'</th>').join('')+'</tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+m+'</td>'+LOCS.map(l=>'<td>'+Number(r.counts?.[l]?.[m]||0)+'</td>').join('')+'</tr>').join('')+'</tbody></table><h3>Administration import summary</h3><p>'+esc(r.usageSummary||'None').replace(/\n/g,'<br>')+'</p><h3>Audit notes</h3><p>'+esc(r.notes||'None').replace(/\n/g,'<br>')+'</p><h3>Verification</h3>'+LOCS.map(l=>'<p><b>'+l+':</b> '+esc(r.signatures?.[l]?.signer||'')+' / witness '+esc(r.signatures?.[l]?.witness||'')+'</p>').join('')+'<h3>Final attestation</h3><p>Certified by '+esc(r.attestationName||'')+'.</p></div>'}
 
-async function exportBackup(){const payload={schemaVersion:1,exportedAt:nowISO(),inventory:await getAll('inventory'),transactions:await getAll('transactions'),audits:await getAll('audits'),reports:await getAll('reports'),meta:await getAll('meta')};download('narcotic-audit-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(payload,null,2),'application/json')}
-async function importBackup(file){const data=JSON.parse(await file.text());if(!data||!data.schemaVersion)throw new Error('Invalid backup file.');for(const name of ['inventory','transactions','audits','reports','meta'])if(Array.isArray(data[name]))for(const row of data[name])await put(name,row);await put('meta',{id:'migration',importedAt:nowISO(),sourceExportedAt:data.exportedAt||'',schemaVersion:data.schemaVersion});await refreshAll();document.getElementById('migrationStatus').textContent='Migration imported '+new Date().toLocaleString()+'. Verify inventory and reports before retiring the original Site.'}
+async function exportBackup(){const payload={schemaVersion:2,exportedAt:nowISO(),inventory:await getAll('inventory'),transactions:await getAll('transactions'),audits:await getAll('audits'),reports:await getAll('reports'),meta:await getAll('meta'),legacyArchive:await getAll('legacyArchive')};download('narcotic-audit-backup-'+new Date().toISOString().slice(0,10)+'.json',JSON.stringify(payload,null,2),'application/json')}
+async function sha256(text){const buf=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text));return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+async function importBackup(file){
+ const raw=await file.text(), hash=await sha256(raw);let data;
+ try{data=JSON.parse(raw)}catch(e){throw new Error('The selected file is not valid JSON.')}
+ if(!data||typeof data!=='object')throw new Error('Invalid migration file.');
+ // Preserve the original migration artifact verbatim before normalization.
+ await put('legacyArchive',{id:'legacy_'+Date.now(),importedAt:nowISO(),fileName:file.name||'migration.json',sha256:hash,raw});
+ const recognized=['inventory','transactions','audits','reports','meta','legacyArchive'];
+ let imported={inventory:0,transactions:0,audits:0,reports:0,signatures:0};
+ for(const name of recognized){
+   if(!Array.isArray(data[name]))continue;
+   for(const row of data[name]){if(row&&row.id!=null){await put(name,row);if(imported[name]!=null)imported[name]++;}}
+ }
+ // Accept common legacy wrappers without discarding their original raw archive.
+ const roots=[data,data.data||{},data.db||{},data.state||{}];
+ for(const root of roots){
+   if(Array.isArray(root.inventory))for(const row of root.inventory){if(row?.id){await put('inventory',row);imported.inventory++}}
+   if(Array.isArray(root.transactions))for(const row of root.transactions){if(row?.id){await put('transactions',row);imported.transactions++}}
+   if(Array.isArray(root.audits))for(const row of root.audits){if(row?.id){await put('audits',row);imported.audits++;countSignatures(row)}}
+   if(Array.isArray(root.reports))for(const row of root.reports){if(row?.id){await put('reports',row);imported.reports++;countSignatures(row)}}
+ }
+ function countSignatures(row){const s=row?.signatures||{};Object.values(s).forEach(v=>{if(v?.signature)imported.signatures++;if(v?.witnessSignature)imported.signatures++})}
+ await put('meta',{id:'migration',importedAt:nowISO(),sourceExportedAt:data.exportedAt||'',schemaVersion:data.schemaVersion||'legacy',sourceFile:file.name||'',sha256:hash,counts:imported});
+ await refreshAll();
+ document.getElementById('migrationStatus').textContent='Migration imported and archived intact. SHA-256 '+hash.slice(0,16)+'… · '+imported.inventory+' inventory rows · '+imported.transactions+' activity rows · '+imported.audits+' audits · '+imported.reports+' reports · '+imported.signatures+' captured signatures. Verify against the original Site before cutover.';
+}
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 async function exportActivity(){let rows=await getAll('transactions');const cols=['timestamp','type','medication','quantity','fromLocation','toLocation','reference','recordedBy','witness','notes'];const csv=[cols.join(','),...rows.map(r=>cols.map(c=>'"'+String(r[c]??'').replace(/"/g,'""')+'"').join(','))].join('\n');download('narcotic-activity.csv',csv,'text/csv')}
 
-async function renderStats(){const [tx,aud,rep]=await Promise.all(['transactions','audits','reports'].map(getAll));document.getElementById('storageStats').innerHTML=[['Activity entries',tx.length],['Audit drafts',aud.filter(x=>x.status!=='finalized').length],['Finalized reports',rep.length]].map(x=>'<div class="stat"><strong>'+x[1]+'</strong>'+x[0]+'</div>').join('');const m=await getOne('meta','migration');if(m)document.getElementById('migrationStatus').textContent='Last migration import: '+fmtDate(m.importedAt)}
+async function renderStats(){const [tx,aud,rep,arc]=await Promise.all(['transactions','audits','reports','legacyArchive'].map(getAll));document.getElementById('storageStats').innerHTML=[['Activity entries',tx.length],['Audit drafts',aud.filter(x=>x.status!=='finalized').length],['Finalized reports',rep.length],['Migration archives',arc.length]].map(x=>'<div class="stat"><strong>'+x[1]+'</strong>'+x[0]+'</div>').join('');const m=await getOne('meta','migration');if(m)document.getElementById('migrationStatus').textContent='Last migration import: '+fmtDate(m.importedAt)}
 async function refreshAll(){await Promise.all([renderInventory(),renderActivity(),renderAudits(),renderReports(),renderStats()])}
 function fillSelects(){document.querySelector('select[name=medication]').innerHTML=MEDS.map(x=>'<option>'+x+'</option>').join('');['fromLocation','toLocation'].forEach(n=>document.querySelector('select[name='+n+']').innerHTML='<option value="">—</option>'+LOCS.map(x=>'<option>'+x+'</option>').join(''))}
 function bind(){
