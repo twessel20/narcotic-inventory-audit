@@ -736,6 +736,16 @@ function buildTestAuditReport(){
  };
 }
 
+function reportShareDate(v){
+ const d=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
+ if(d)return d[2]+'/'+d[3]+'/'+d[1];
+ const dt=v?new Date(v):null;
+ if(dt&&!Number.isNaN(dt.getTime())){
+   return String(dt.getMonth()+1).padStart(2,'0')+'/'+String(dt.getDate()).padStart(2,'0')+'/'+dt.getFullYear();
+ }
+ return '';
+}
+
 function reportYear(r){
  const m=String(r.month||'').match(/\b(20\d{2})\b/);
  if(m)return Number(m[1]);
