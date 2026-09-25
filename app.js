@@ -883,15 +883,16 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    signatureSection.style.pageBreakInside='auto';
    const grid=signatureSection.querySelector('.report-signature-section-grid');
    if(grid){
-     grid.style.display='grid';
-     grid.style.gridTemplateColumns='1fr 1fr';
-     grid.style.gap='10px';
+     // PDF-only: use a simple vertical flow so page-break rules are reliable.
+     grid.style.display='block';
      grid.style.breakInside='auto';
      grid.style.pageBreakInside='auto';
    }
  }
  clone.querySelectorAll('.report-signature-section .report-cert').forEach(el=>{
    el.style.display='block';
+   el.style.width='100%';
+   el.style.margin='0 0 10px';
    el.style.breakInside='avoid';
    el.style.pageBreakInside='avoid';
    el.style.overflow='hidden';
@@ -930,6 +931,29 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
  try{
    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+
+   // Pre-paginate certification cards. The certification section starts on a fresh
+   // PDF page, so move any whole card that will not fit to the next page.
+   const pdfSignatureSection=clone.querySelector('.report-signature-section');
+   if(pdfSignatureSection){
+     const cards=[...pdfSignatureSection.querySelectorAll('.report-cert')];
+     const sectionHeading=pdfSignatureSection.querySelector(':scope > h2');
+     const pageCapacity=9.45*96;
+     let used=(sectionHeading?.getBoundingClientRect().height||0)+18;
+     for(const card of cards){
+       card.classList.remove('pdf-break-before');
+       const h=(card.getBoundingClientRect().height||0)+10;
+       if(used>25 && used+h>pageCapacity){
+         card.classList.add('pdf-break-before');
+         card.style.breakBefore='page';
+         card.style.pageBreakBefore='always';
+         used=h;
+       }else{
+         used+=h;
+       }
+     }
+   }
+
    const safeName=String(title||'Narcotic Audit Report')
      .replace(/[\\/:*?"<>|]+/g,'-')
      .replace(/\s+/g,' ')
