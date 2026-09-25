@@ -1322,3 +1322,115 @@ body.report-open{overflow:hidden}
     flex:1 1 auto;
   }
 }
+
+
+/* Prevent finalized reports from bleeding outside the mobile viewport */
+.report-sheet,
+.report-finalized,
+.report-finalized *{
+  box-sizing:border-box;
+}
+.report-finalized{
+  width:100%;
+  max-width:100%;
+  min-width:0;
+  overflow-x:hidden;
+}
+.report-finalized section,
+.report-top,
+.report-meta-grid,
+.report-signature-grid,
+.report-signature-box,
+.report-final-signature,
+.report-notes,
+.report-vial-summary{
+  min-width:0;
+  max-width:100%;
+}
+.report-finalized img{
+  max-width:100%;
+}
+@media(max-width:700px){
+  .report-finalized{
+    width:100%;
+    max-width:100vw;
+    padding-left:10px;
+    padding-right:10px;
+  }
+  .report-top{
+    display:grid;
+    grid-template-columns:64px minmax(0,1fr);
+    gap:10px;
+    width:100%;
+  }
+  .report-top img{
+    width:64px;
+    height:64px;
+  }
+  .report-top h1,
+  .report-top div,
+  .report-meta-grid > div,
+  .report-cert,
+  .report-attestation,
+  .report-notes{
+    min-width:0;
+    overflow-wrap:anywhere;
+  }
+  .report-signature-grid{
+    width:100%;
+    grid-template-columns:minmax(0,1fr);
+  }
+  .report-signature-box,
+  .report-final-signature{
+    width:100%;
+    max-width:100%;
+    overflow:hidden;
+  }
+  .report-signature-box img,
+  .report-final-signature img,
+  .report-final-signature-capture img{
+    width:100%;
+    max-width:100%;
+  }
+  .report-imported-admin,
+  .report-finalized section:has(.report-table){
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .report-table{
+    width:100%;
+    max-width:100%;
+  }
+  .report-inventory{
+    min-width:680px;
+  }
+  .report-transactions{
+    min-width:640px;
+  }
+  .report-imported-admin .report-table{
+    min-width:660px;
+  }
+  .report-vial-row,
+  .report-vial-total{
+    width:100%;
+    min-width:0;
+  }
+  .report-vial-provider{
+    min-width:0;
+    overflow-wrap:anywhere;
+  }
+  .report-vial-count{
+    flex:0 0 auto;
+    max-width:42%;
+    white-space:normal;
+    text-align:right;
+  }
+  .report-toolbar{
+    position:sticky;
+    top:0;
+    z-index:8;
+    width:100%;
+    padding:6px 0;
+    background:#fff;
+  }
+}
