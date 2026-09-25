@@ -202,15 +202,13 @@ function actualAdministrationPreview(rows=[]){
    const da=new Date(formatAdminDate(a.date)),db=new Date(formatAdminDate(b.date));
    return da-db||String(a.report).localeCompare(String(b.report));
  });
- return '<div class="admin-simple-section"><h4>Imported administrations</h4>'+
- '<div class="admin-actual-table"><div class="admin-actual-head"><span>Date</span><span>Report</span><span>Provider</span><span>Medication</span><span>Dose</span><span>Unit</span></div>'+
+ return '<details class="admin-detail-block"><summary>View imported doses</summary><div class="admin-actual-table"><div class="admin-actual-head"><span>Date</span><span>Report</span><span>Provider</span><span>Medication</span><span>Dose</span><span>Unit</span></div>'+
  sorted.map(r=>'<div class="admin-actual-row"><span data-label="Date">'+esc(formatAdminDate(r.date))+'</span><span data-label="Report">'+esc(r.report)+'</span><span data-label="Provider">'+esc(r.provider)+'</span><span data-label="Medication">'+esc(r.medication)+'</span><span data-label="Dose"><b>'+esc(r.dose)+' '+esc(adminDoseUnit(r.medication))+'</b></span><span data-label="Unit">'+esc(String(r.unit||'').replace(/^M([123])$/,'M$1'))+'</span></div>').join('')+
- '</div></div>';
+ '</div></details>';
 }
-function providerVialSummary(rows=[]){
- if(!Array.isArray(rows)||!rows.length)return '';
+function providerVialData(rows=[]){
  const groups=new Map();
- for(const r of rows){
+ for(const r of rows||[]){
    const key=[r.date,r.report,r.medication,r.unit].join('|');
    const g=groups.get(key)||{...r,totalDose:0,providers:[]};
    g.totalDose+=Number(r.dose||0);
@@ -220,8 +218,7 @@ function providerVialSummary(rows=[]){
  const providerMap=new Map();
  for(const g of groups.values()){
    const vial=administrationVialCount(g.medication,g.totalDose);
-   const people=(g.providers?.length?g.providers:[g.provider]).filter(Boolean);
-   const provider=people.join(' / ')||'Unknown provider';
+   const provider=(g.providers?.length?g.providers:[g.provider]).filter(Boolean).join(' / ')||'Unknown provider';
    const key=provider+'|'+g.medication+'|'+vial.strength;
    const x=providerMap.get(key)||{provider,medication:g.medication,strength:vial.strength,vials:0};
    x.vials+=vial.count;providerMap.set(key,x);
@@ -231,20 +228,33 @@ function providerVialSummary(rows=[]){
    if(!byProvider.has(x.provider))byProvider.set(x.provider,[]);
    byProvider.get(x.provider).push(x);
  }
- let grand=0;
- const cards=[...byProvider.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([provider,items])=>{
-   const total=items.reduce((n,x)=>n+x.vials,0);grand+=total;
+ const providers=[...byProvider.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+ const total=providers.reduce((n,[,items])=>n+items.reduce((s,x)=>s+x.vials,0),0);
+ return {providers,total};
+}
+function providerVialSummary(rows=[]){
+ const data=providerVialData(rows);
+ if(!data.providers.length)return '';
+ const content=data.providers.map(([provider,items])=>{
+   const total=items.reduce((n,x)=>n+x.vials,0);
    return '<div class="provider-vial-row"><div><strong>'+esc(provider)+'</strong><div class="provider-vial-detail">'+items.map(x=>esc(x.medication)+' '+esc(x.strength)+': '+x.vials).join(' · ')+'</div></div><div class="provider-vial-total">'+total+' vial'+(total===1?'':'s')+'</div></div>';
  }).join('');
- return '<div class="admin-simple-section vial-by-provider"><div class="admin-simple-title"><h4>Vials used by provider</h4><strong>'+grand+' total</strong></div>'+cards+'</div>';
+ return '<details class="admin-detail-block"><summary>View vials by provider</summary><div class="provider-vial-list">'+content+'</div></details>';
+}
+function administrationImportStats(rows=[]){
+ const vialData=providerVialData(rows);
+ const providers=new Set((rows||[]).map(r=>String(r.provider||'').trim()).filter(Boolean));
+ return {administrations:(rows||[]).length,vials:vialData.total,providers:providers.size};
 }
 function administrationImportSection(a){
  const docs=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
  const latest=docs.length?docs[docs.length-1]:null;
  const rows=a.administrationRows||latest?.administrationRows||[];
+ const stats=administrationImportStats(rows);
  return '<div class="audit-card admin-import-card compact-admin-import">'+
  '<div class="admin-import-top"><div><span class="kicker">ADMINISTRATION RECORDS</span><h3>Administration import</h3></div><div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">Import Administration PDF</button><input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div></div>'+
  '<div id="adminImportStatus" class="admin-import-status">'+(latest?'Imported: '+esc(latest.name||'PDF'):'No administration PDF imported yet.')+'</div>'+
+ (rows.length?'<div class="admin-import-summary"><div><strong>'+stats.administrations+'</strong><span>Administrations</span></div><div><strong>'+stats.vials+'</strong><span>Calculated vials</span></div><div><strong>'+stats.providers+'</strong><span>Providers</span></div></div>':'')+
  actualAdministrationPreview(rows)+providerVialSummary(rows)+
  '<textarea id="usageSummary" hidden>'+esc(a.usageSummary||'')+'</textarea>'+
  '</div>';
