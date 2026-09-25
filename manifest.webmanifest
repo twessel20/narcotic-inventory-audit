@@ -4,15 +4,15 @@
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#f4f7fa",
-  "theme_color": "#0f2742",
+  "background_color": "#f4f7f9",
+  "theme_color": "#123a5a",
   "description": "Controlled-substance inventory and monthly audit PWA",
   "icons": [
     {
-      "src": "icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any"
     }
   ]
 }
