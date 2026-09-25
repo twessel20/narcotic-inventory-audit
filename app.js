@@ -202,35 +202,51 @@ function actualAdministrationPreview(rows=[]){
    const da=new Date(formatAdminDate(a.date)),db=new Date(formatAdminDate(b.date));
    return da-db||String(a.report).localeCompare(String(b.report));
  });
- return '<div class="admin-data-block"><div class="admin-data-title">Actual doses administered</div><div class="admin-data-note">Transcribed from the imported administration PDF. These are the documented doses, before vial-use rules are applied.</div>'+
- '<div class="admin-actual-table"><div class="admin-actual-head"><span>Date</span><span>Report</span><span>Provider</span><span>Medication</span><span>Dose given</span><span>Unit</span></div>'+
- sorted.map(r=>'<div class="admin-actual-row"><span data-label="Date">'+esc(formatAdminDate(r.date))+'</span><span data-label="Report">'+esc(r.report)+'</span><span data-label="Provider">'+esc(r.provider)+'</span><span data-label="Medication">'+esc(r.medication)+'</span><span data-label="Dose given"><b>'+esc(r.dose)+' '+esc(adminDoseUnit(r.medication))+'</b></span><span data-label="Unit">'+esc(String(r.unit||'').replace(/^M([123])$/,'Medic $1'))+'</span></div>').join('')+
+ return '<div class="admin-simple-section"><h4>Imported administrations</h4>'+
+ '<div class="admin-actual-table"><div class="admin-actual-head"><span>Date</span><span>Report</span><span>Provider</span><span>Medication</span><span>Dose</span><span>Unit</span></div>'+
+ sorted.map(r=>'<div class="admin-actual-row"><span data-label="Date">'+esc(formatAdminDate(r.date))+'</span><span data-label="Report">'+esc(r.report)+'</span><span data-label="Provider">'+esc(r.provider)+'</span><span data-label="Medication">'+esc(r.medication)+'</span><span data-label="Dose"><b>'+esc(r.dose)+' '+esc(adminDoseUnit(r.medication))+'</b></span><span data-label="Unit">'+esc(String(r.unit||'').replace(/^M([123])$/,'M$1'))+'</span></div>').join('')+
  '</div></div>';
 }
-function usageSummaryPreview(summary=''){
- const lines=String(summary||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
- const rows=[];
- for(const line of lines){
-   const m=line.match(/^•?\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Report\s+(GFD\d+)\s*\|\s*(.+?):\s*(\d+)\s+vials?\s*\|\s*(Medic\s+[123])(?:\s*\|\s*By\s+(.+))?$/i);
-   if(m)rows.push({date:m[1],report:m[2],medication:m[3],vials:m[4],unit:m[5],provider:m[6]||''});
+function providerVialSummary(rows=[]){
+ if(!Array.isArray(rows)||!rows.length)return '';
+ const groups=new Map();
+ for(const r of rows){
+   const key=[r.date,r.report,r.medication,r.unit].join('|');
+   const g=groups.get(key)||{...r,totalDose:0,providers:[]};
+   g.totalDose+=Number(r.dose||0);
+   if(r.provider&&!g.providers.includes(r.provider))g.providers.push(r.provider);
+   groups.set(key,g);
  }
- if(!rows.length)return '';
- const total=rows.reduce((n,r)=>n+Number(r.vials||0),0);
- return '<div class="admin-data-block vial-summary-block"><div class="admin-data-title">Calculated vial usage summary</div><div class="admin-data-note">Calculated from the documented doses using the department vial rules. Use this total to reconcile with the separate paper ambulance narcotic log.</div>'+
- '<div class="usage-preview"><div class="usage-preview-head"><span>Date</span><span>Report</span><span>Medication / vial</span><span>Vials</span><span>Unit</span><span>Provider</span></div>'+
- rows.map(r=>'<div class="usage-preview-row"><span data-label="Date">'+esc(r.date)+'</span><span data-label="Report">'+esc(r.report)+'</span><span data-label="Medication / vial">'+esc(r.medication)+'</span><span data-label="Vials">'+esc(r.vials)+'</span><span data-label="Unit">'+esc(r.unit)+'</span><span data-label="Provider">'+esc(r.provider)+'</span></div>').join('')+
- '</div><div class="vial-total">Total calculated vial use: <strong>'+total+' vial'+(total===1?'':'s')+'</strong></div></div>';
+ const providerMap=new Map();
+ for(const g of groups.values()){
+   const vial=administrationVialCount(g.medication,g.totalDose);
+   const people=(g.providers?.length?g.providers:[g.provider]).filter(Boolean);
+   const provider=people.join(' / ')||'Unknown provider';
+   const key=provider+'|'+g.medication+'|'+vial.strength;
+   const x=providerMap.get(key)||{provider,medication:g.medication,strength:vial.strength,vials:0};
+   x.vials+=vial.count;providerMap.set(key,x);
+ }
+ const byProvider=new Map();
+ for(const x of providerMap.values()){
+   if(!byProvider.has(x.provider))byProvider.set(x.provider,[]);
+   byProvider.get(x.provider).push(x);
+ }
+ let grand=0;
+ const cards=[...byProvider.entries()].sort((a,b)=>a[0].localeCompare(b[0])).map(([provider,items])=>{
+   const total=items.reduce((n,x)=>n+x.vials,0);grand+=total;
+   return '<div class="provider-vial-row"><div><strong>'+esc(provider)+'</strong><div class="provider-vial-detail">'+items.map(x=>esc(x.medication)+' '+esc(x.strength)+': '+x.vials).join(' · ')+'</div></div><div class="provider-vial-total">'+total+' vial'+(total===1?'':'s')+'</div></div>';
+ }).join('');
+ return '<div class="admin-simple-section vial-by-provider"><div class="admin-simple-title"><h4>Vials used by provider</h4><strong>'+grand+' total</strong></div>'+cards+'</div>';
 }
 function administrationImportSection(a){
  const docs=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
  const latest=docs.length?docs[docs.length-1]:null;
+ const rows=a.administrationRows||latest?.administrationRows||[];
  return '<div class="audit-card admin-import-card compact-admin-import">'+
  '<div class="admin-import-top"><div><span class="kicker">ADMINISTRATION RECORDS</span><h3>Administration import</h3></div><div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">Import Administration PDF</button><input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div></div>'+
- '<div id="adminImportStatus" class="admin-import-status">'+(latest?'Loaded: '+esc(latest.name||'PDF')+(latest.uploadedAt?' · '+esc(fmtDate(latest.uploadedAt)):''):'No administration PDF imported yet.')+'</div>'+
- (latest?.transcript?'<details class="admin-transcript"><summary>View extracted transcription</summary><pre>'+esc(latest.transcript)+'</pre></details>':'')+
- actualAdministrationPreview(a.administrationRows||latest?.administrationRows||[])+
- usageSummaryPreview(a.usageSummary||'')+
- '<label class="admin-summary-label">Vial usage summary / rules<textarea id="usageSummary" rows="8" placeholder="Calculated vial-use summary will appear here.">'+esc(a.usageSummary||'')+'</textarea></label>'+
+ '<div id="adminImportStatus" class="admin-import-status">'+(latest?'Imported: '+esc(latest.name||'PDF'):'No administration PDF imported yet.')+'</div>'+
+ actualAdministrationPreview(rows)+providerVialSummary(rows)+
+ '<textarea id="usageSummary" hidden>'+esc(a.usageSummary||'')+'</textarea>'+
  '</div>';
 }
 async function sha256Buffer(buf){const hash=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('')}
