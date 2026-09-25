@@ -588,3 +588,29 @@ body.report-open{overflow:hidden}
 @media(max-width:480px){
   .usage-preview-row{grid-template-columns:1fr}
 }
+
+
+/* Separate imported source doses from calculated vial usage */
+.admin-data-block{margin-top:12px}
+.admin-data-title{font-size:.9rem;font-weight:900;color:#17324e;margin-bottom:3px}
+.admin-data-note{font-size:.76rem;line-height:1.35;color:#687b8a;margin-bottom:8px}
+.admin-actual-table{border:1px solid #d7e1e8;border-radius:10px;overflow:hidden;background:#fff}
+.admin-actual-head,.admin-actual-row{
+  display:grid;
+  grid-template-columns:96px 132px minmax(145px,1fr) 110px 96px 78px;
+  align-items:center;
+}
+.admin-actual-head{background:#eef4f8;color:#38536b;font-size:.72rem;font-weight:900}
+.admin-actual-head span,.admin-actual-row span{padding:8px 9px;border-right:1px solid #e4ebf0}
+.admin-actual-head span:last-child,.admin-actual-row span:last-child{border-right:0}
+.admin-actual-row{border-top:1px solid #e4ebf0;font-size:.8rem;line-height:1.25}
+.admin-actual-row:nth-child(even){background:#fbfcfd}
+.vial-summary-block{margin-top:14px;padding-top:12px;border-top:1px solid #dfe7ed}
+.vial-total{padding:9px 10px;border-top:1px solid #dfe7ed;background:#f7fafc;font-size:.84rem;color:#304b62}
+@media(max-width:760px){
+ .admin-actual-head{display:none}
+ .admin-actual-row{grid-template-columns:1fr 1fr;padding:6px 8px}
+ .admin-actual-row span{border:0;padding:5px 6px;display:grid;grid-template-columns:78px 1fr;gap:5px}
+ .admin-actual-row span::before{content:attr(data-label);font-size:.68rem;font-weight:900;color:#6a7d8e;text-transform:uppercase}
+}
+@media(max-width:480px){.admin-actual-row{grid-template-columns:1fr}}
