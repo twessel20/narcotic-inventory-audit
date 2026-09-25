@@ -394,35 +394,38 @@ async function handleAdministrationPdf(auditId,file){
  }
 }
 
-function setupMobileAuditCards(){
+function setupMobileAuditCards(auditId){
  const shell=document.querySelector('.audit-workspace-shell');
  if(!shell)return;
  const steps=[...shell.querySelectorAll('[data-audit-step]')];
  const prev=document.getElementById('auditStepPrev'),next=document.getElementById('auditStepNext');
  const title=document.getElementById('auditStepTitle'),count=document.getElementById('auditStepCount');
  if(!steps.length||!prev||!next)return;
- let current=0;
  const isMobile=()=>window.matchMedia('(max-width:700px)').matches;
+ let current=Number(sessionStorage.getItem('narcoticAuditStep:'+auditId)||0);
+ if(!Number.isFinite(current)||current<0||current>=steps.length)current=0;
  const show=index=>{
-   current=Math.max(0,Math.min(index,steps.length-1));
+   current=Math.max(0,Math.min(Number(index)||0,steps.length-1));
    steps.forEach((s,i)=>s.classList.toggle('active-step',!isMobile()||i===current));
+   shell.querySelectorAll('[data-step-target]').forEach(x=>x.classList.toggle('current-step',Number(x.dataset.stepTarget)===current));
    if(title)title.textContent=steps[current]?.dataset.stepTitle||'Audit';
-   if(count)count.textContent=(current+1)+' of '+steps.length;
-   prev.disabled=current===0;
-   next.disabled=current===steps.length-1;
-   next.textContent=current===steps.length-1?'Last section':'Next';
+   if(count)count.textContent='Section '+(current+1)+' of '+steps.length;
+   prev.textContent='Sections';
+   prev.disabled=false;
+   next.textContent='Next section';
+   next.disabled=false;
+   sessionStorage.setItem('narcoticAuditStep:'+auditId,String(current));
    if(isMobile())window.scrollTo({top:Math.max(0,(document.querySelector('.audit-route')?.offsetTop||0)-8),behavior:'smooth'});
  };
- prev.onclick=()=>show(current-1);
- next.onclick=()=>show(current+1);
+ prev.onclick=()=>{
+   const route=document.querySelector('.audit-route');
+   if(route)route.scrollIntoView({behavior:'smooth',block:'start'});
+ };
+ next.onclick=()=>show((current+1)%steps.length);
  document.querySelectorAll('[data-step-target]').forEach(link=>{
    link.addEventListener('click',e=>{if(!isMobile())return;e.preventDefault();show(Number(link.dataset.stepTarget)||0)});
  });
- const admin=document.querySelector('.mobile-collapsible-admin');
- if(admin){
-   admin.querySelector('.admin-import-summarybar')?.addEventListener('click',()=>setTimeout(()=>{},0));
- }
- show(0);
+ show(current);
  window.addEventListener('resize',()=>show(current));
 }
 async function editAudit(id){
@@ -437,13 +440,19 @@ async function editAudit(id){
  activeAuditId=id;
  await put('meta',{id:'activeAudit',auditId:id,updatedAt:nowISO()});
  document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-shell">'+
- '<div class="audit-route"><div class="audit-route-title">Audit route</div>'+LOCS.map((l,i)=>'<a href="#unit-'+i+'" data-jump-unit="'+i+'" data-route-loc="'+esc(l)+'" data-step-target="'+(i+2)+'"><span class="route-status-mark"></span><span class="route-label">'+(i+1)+'. '+esc(l)+'</span></a>').join('')+'</div>'+
+ '<div class="audit-route"><div class="audit-route-title">Audit sections</div>'+
+ '<a href="#" data-step-target="0" data-route-section="details"><span class="route-label">Details</span></a>'+
+ '<a href="#" data-step-target="1" data-route-section="admin"><span class="route-label">Admin</span></a>'+
+ LOCS.map((l,i)=>'<a href="#unit-'+i+'" data-jump-unit="'+i+'" data-route-loc="'+esc(l)+'" data-step-target="'+(i+2)+'"><span class="route-status-mark"></span><span class="route-label">'+esc(l)+'</span></a>').join('')+
+ '<a href="#" data-step-target="'+(LOCS.length+2)+'" data-route-section="notes"><span class="route-label">Notes</span></a>'+
+ '<a href="#" data-step-target="'+(LOCS.length+3)+'" data-route-section="final"><span class="route-label">Final</span></a>'+
+ '</div>'+
  '<div class="audit-step-card active-step" data-audit-step="0" data-step-title="Audit details"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back to audits</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Status<input value="'+esc(a.status)+'" disabled></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div></div>'+
  '<div class="audit-step-card" data-audit-step="1" data-step-title="Administration import">'+administrationImportSection(a)+'</div>'+
  LOCS.map((l,i)=>'<div class="audit-step-card" data-audit-step="'+(i+2)+'" data-step-title="'+esc(l)+'" id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+
  '<div class="audit-step-card" data-audit-step="'+(LOCS.length+2)+'" data-step-title="Audit notes"><div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div></div>'+
  '<div class="audit-step-card" data-audit-step="'+(LOCS.length+3)+'" data-step-title="Final certification"><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><div class="final-auditor-grid"><label class="final-signer-label">Final auditor name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||'')+'"></label><label class="final-signer-label">Employee number<input id="attestEmployeeNumber" placeholder="Employee #" inputmode="numeric" value="'+esc(a.attestationEmployeeNumber||'')+'"></label></div><div class="final-signature-block"><div class="signature-label-row"><div class="signature-label">Final auditor signature</div><button type="button" class="expand-signature" id="expandFinalSignature">Open larger</button></div><canvas id="finalSignatureCanvas" width="500" height="150"></canvas></div><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>'+
- '<div class="mobile-card-nav" aria-label="Audit section navigation"><button type="button" id="auditStepPrev">Previous</button><div class="mobile-card-progress"><strong id="auditStepTitle"></strong><span id="auditStepCount"></span></div><button type="button" class="primary" id="auditStepNext">Next</button></div>'+
+ '<div class="mobile-card-nav" aria-label="Audit section navigation"><button type="button" id="auditStepPrev">Sections</button><div class="mobile-card-progress"><strong id="auditStepTitle"></strong><span id="auditStepCount"></span></div><button type="button" class="primary" id="auditStepNext">Next section</button></div>'+
  '</div>';
  document.getElementById('backAudits').onclick=async()=>{await flushAuditAutosave();activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});renderAudits()};
  const adminOuter=document.querySelector('.mobile-collapsible-admin');
@@ -467,7 +476,7 @@ async function editAudit(id){
    el.addEventListener('change',()=>{updateAuditRouteProgress();scheduleAuditAutosave(a.id,true)});
    el.addEventListener('blur',()=>{updateAuditRouteProgress();scheduleAuditAutosave(a.id,true)});
  });
- setupMobileAuditCards();
+ setupMobileAuditCards(a.id);
  updateAuditRouteProgress();
  setAutosaveStatus('Saved '+fmtDate(a.updatedAt));
 }
