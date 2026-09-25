@@ -73,9 +73,16 @@ async function subscribeRealtime(){
      const row=payload.new&&payload.new.store?payload.new:payload.old;
      if(!row||!CLOUD_STORES.has(row.store))return;
      if(payload.eventType==='DELETE')await delLocal(row.store,row.id);else if(payload.new?.data)await putLocal(payload.new.store,payload.new.data);
-     const reportOpen=document.getElementById('reportDialog')?.open;
-     if(reportOpen)return;
-     if(!(row.store==='audits'&&String(row.id)===String(activeAuditId)))await refreshAll();
+     if(document.getElementById('reportDialog')?.open)return;
+
+     const auditEditorOpen=!!(activeAuditId&&document.getElementById('auditMonth'));
+     if(auditEditorOpen){
+       // Never tear down an audit form that is actively being completed.
+       // Background live changes may update other screens, but Monthly Audit stays mounted.
+       await Promise.all([renderInventory(),renderActivity(),renderReports(),renderStats()]);
+       return;
+     }
+     await refreshAll();
    }).subscribe();
 }
 function updateAccountUI(){
@@ -89,7 +96,11 @@ async function initCloud(){
  const {data}=await sb.auth.getSession();cloudSession=data.session||null;updateAccountUI();
  sb.auth.onAuthStateChange(async(_event,session)=>{
    cloudSession=session||null;updateAccountUI();
-   if(cloudSession){await pullCloudRecords();await flushPendingWrites();await subscribeRealtime();await refreshAll()}
+   if(cloudSession){
+     await pullCloudRecords();await flushPendingWrites();await subscribeRealtime();
+     if(activeAuditId&&document.getElementById('auditMonth'))await Promise.all([renderInventory(),renderActivity(),renderReports(),renderStats()]);
+     else await refreshAll();
+   }
  });
  if(cloudSession){await pullCloudRecords();await flushPendingWrites();await subscribeRealtime()}
 }
