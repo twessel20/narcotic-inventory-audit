@@ -249,9 +249,11 @@ function buildAdministrationSummary(transcript,fileName){
  }
  const groups=new Map();
  for(const r of rows){
-   const key=[r.date,r.report,r.provider,r.medication,r.unit].join('|');
-   const g=groups.get(key)||{...r,totalDose:0,doseCount:0};
-   g.totalDose+=Number(r.dose||0);g.doseCount++;groups.set(key,g);
+   const key=[r.date,r.report,r.medication,r.unit].join('|');
+   const g=groups.get(key)||{...r,totalDose:0,doseCount:0,providers:[]};
+   g.totalDose+=Number(r.dose||0);g.doseCount++;
+   if(r.provider&&!g.providers.includes(r.provider))g.providers.push(r.provider);
+   groups.set(key,g);
  }
  const entries=[...groups.values()].sort((a,b)=>{
    const da=new Date(formatAdminDate(a.date)),db=new Date(formatAdminDate(b.date));
@@ -261,7 +263,8 @@ function buildAdministrationSummary(transcript,fileName){
  const lines=entries.map(g=>{
    const vial=administrationVialCount(g.medication,g.totalDose);totalVials+=vial.count;
    const location=g.unit.replace(/^M([123])$/,'Medic $1');
-   return formatAdminDate(g.date)+' | Report '+g.report+' | '+g.medication+' '+vial.strength+': '+vial.count+' vial'+(vial.count===1?'':'s')+' | '+location+' | By '+g.provider;
+   const providerText=(g.providers?.length?g.providers:[g.provider]).filter(Boolean).join(' / ');
+   return formatAdminDate(g.date)+' | Report '+g.report+' | '+g.medication+' '+vial.strength+': '+vial.count+' vial'+(vial.count===1?'':'s')+' | '+location+(providerText?' | By '+providerText:'');
  });
  const monthMatch=String(transcript).match(/Months in Treatment Date Timestamp\s+(\d{2}\/\d{4})/i);
  const heading='Narcotic administration summary'+(monthMatch?' ('+monthMatch[1]+')':'')+' — '+fileName;
