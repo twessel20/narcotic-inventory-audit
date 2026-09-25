@@ -1814,3 +1814,15 @@ body.report-open{overflow:hidden}
     align-items:flex-start;
   }
 }
+
+
+/* Plain-language paragraph executive summary */
+.paragraph-summary{
+  padding:16px 18px;
+}
+.paragraph-summary p{
+  margin:.35rem 0 0;
+  font-size:.98rem;
+  line-height:1.55;
+  color:#253746;
+}
