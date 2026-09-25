@@ -73,6 +73,8 @@ async function subscribeRealtime(){
      const row=payload.new&&payload.new.store?payload.new:payload.old;
      if(!row||!CLOUD_STORES.has(row.store))return;
      if(payload.eventType==='DELETE')await delLocal(row.store,row.id);else if(payload.new?.data)await putLocal(payload.new.store,payload.new.data);
+     const reportOpen=document.getElementById('reportDialog')?.open;
+     if(reportOpen)return;
      if(!(row.store==='audits'&&String(row.id)===String(activeAuditId)))await refreshAll();
    }).subscribe();
 }
@@ -223,7 +225,27 @@ async function saveAuditFromUI(id,finalize){
 }
 
 async function renderReports(){let rows=await getAll('reports');rows.sort((a,b)=>(b.finalizedAt||'').localeCompare(a.finalizedAt||''));document.getElementById('reportsList').innerHTML=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month)+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+'</div><div class="button-row"><button data-report="'+r.id+'">View / print</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>'}
-async function showReport(id){const r=await getOne('reports',id);if(!r)return;const d=document.getElementById('reportDialog'),b=await reportHtml(r);document.getElementById('reportPreview').innerHTML=b;d.showModal();document.getElementById('closeReport').onclick=()=>d.close();document.getElementById('printReport').onclick=()=>window.print()}
+async function showReport(id){
+ const r=await getOne('reports',id);if(!r)return;
+ const d=document.getElementById('reportDialog'),preview=document.getElementById('reportPreview');
+ if(d.open)d.close();
+ preview.innerHTML='<div class="report-loading">Opening finalized audit…</div>';
+ d.showModal();
+ document.body.classList.add('report-open');
+ try{
+   const b=reportHtml(r);
+   preview.innerHTML=b;
+   d.scrollTop=0;
+   const close=document.getElementById('closeReport'),print=document.getElementById('printReport');
+   if(close)close.onclick=()=>d.close();
+   if(print)print.onclick=()=>window.print();
+   requestAnimationFrame(()=>{d.scrollTop=0;preview.scrollTop=0});
+ }catch(err){
+   preview.innerHTML='<div class="report-loading">Unable to render this report. Close and try again.</div>';
+   console.error(err);
+ }
+ d.onclose=()=>{document.body.classList.remove('report-open');preview.innerHTML='';setTimeout(refreshAll,0)};
+}
 async function reportHtml(r){
  const logo='https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg';
  const recordNo=r.legacyRecordNumber||String(r.auditId||r.id||'').match(/\d+/)?.[0]||'';
