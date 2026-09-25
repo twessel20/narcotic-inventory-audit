@@ -273,3 +273,85 @@ body.report-open{overflow:hidden}
 @media(max-width:560px){
   .tag-entry-fields{grid-template-columns:1fr}
 }
+
+
+/* Location-first monthly audit workflow */
+.audit-route{
+  position:sticky;
+  top:8px;
+  z-index:12;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  overflow-x:auto;
+  padding:9px 10px;
+  margin:0 0 12px;
+  border:1px solid #d6e1e9;
+  border-radius:12px;
+  background:rgba(255,255,255,.96);
+  backdrop-filter:blur(8px);
+}
+.audit-route-title{font-size:.76rem;font-weight:900;color:#36526b;white-space:nowrap;margin-right:2px}
+.audit-route a{
+  text-decoration:none;
+  white-space:nowrap;
+  border:1px solid #c8d6e1;
+  border-radius:999px;
+  padding:7px 10px;
+  font-size:.78rem;
+  font-weight:800;
+  color:#244964;
+  background:#f7fafc;
+}
+.unit-audit-card{padding:0;overflow:hidden;scroll-margin-top:72px}
+.unit-audit-head{
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  align-items:flex-start;
+  padding:16px;
+  background:#f0f5f8;
+  border-bottom:1px solid #d6e1e9;
+}
+.unit-audit-head h3{font-size:1.35rem;margin:.2rem 0}
+.unit-step-badge{
+  padding:7px 10px;
+  border-radius:999px;
+  background:#fff;
+  border:1px solid #cad8e2;
+  font-weight:850;
+  color:#244964;
+  white-space:nowrap;
+}
+.unit-subsection{padding:16px;border-bottom:1px solid #e3eaf0}
+.unit-subsection:last-child{border-bottom:0}
+.unit-subsection h4{margin:0 0 6px;color:#17324e;font-size:1rem}
+.unit-med-list{display:grid;gap:8px;margin-top:10px}
+.unit-med-row{
+  display:grid;
+  grid-template-columns:minmax(150px,1.5fr) minmax(90px,.7fr) minmax(120px,.85fr);
+  gap:10px;
+  align-items:center;
+  border:1px solid #d9e3ea;
+  border-radius:10px;
+  padding:9px 10px;
+  background:#fbfcfd;
+}
+.unit-med-name{font-weight:850;color:#243f58}
+.unit-prior{display:flex;flex-direction:column;gap:2px}
+.unit-prior span,.unit-current{font-size:.72rem;font-weight:800;color:#687b8a}
+.unit-prior strong{font-size:1rem;color:#344c66}
+.unit-current{display:grid;gap:4px}
+.unit-current input{font-size:1rem;font-weight:850;min-height:42px}
+.embedded-signature{border:0;padding:0;background:transparent}
+.signature-person-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.embedded-signature canvas{height:120px}
+.embedded-signature .clear-signatures{margin-top:10px}
+@media(max-width:650px){
+  .audit-route{top:0;margin-left:-2px;margin-right:-2px}
+  .unit-audit-head{align-items:center}
+  .unit-step-badge{display:none}
+  .unit-med-row{grid-template-columns:1fr 72px 100px}
+  .unit-med-name{font-size:.88rem}
+  .signature-person-grid{grid-template-columns:1fr}
+}
