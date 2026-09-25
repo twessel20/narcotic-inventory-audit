@@ -1434,3 +1434,65 @@ body.report-open{overflow:hidden}
     background:#fff;
   }
 }
+
+
+/* Cleaner pagination for generated/shared PDFs */
+@media print{
+  .report-top,
+  .report-meta-grid,
+  .report-cert,
+  .report-attestation,
+  .report-final-signature,
+  .report-notes,
+  .report-vial-summary,
+  .report-vial-row{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+
+  .report-table thead{
+    display:table-header-group;
+  }
+
+  .report-table tr{
+    break-inside:avoid;
+    page-break-inside:avoid;
+  }
+
+  .report-finalized section{
+    orphans:3;
+    widows:3;
+  }
+
+  .report-finalized h2{
+    break-after:avoid;
+    page-break-after:avoid;
+  }
+}
+
+/* Same pagination intent for html2pdf/html2canvas rendering */
+.pdf-render-stage .report-top,
+.pdf-render-stage .report-meta-grid,
+.pdf-render-stage .report-cert,
+.pdf-render-stage .report-attestation,
+.pdf-render-stage .report-final-signature,
+.pdf-render-stage .report-notes,
+.pdf-render-stage .report-vial-summary,
+.pdf-render-stage .report-vial-row{
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+
+.pdf-render-stage .report-table thead{
+  display:table-header-group;
+}
+
+.pdf-render-stage .report-table tr{
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+
+.pdf-render-stage .report-finalized h2{
+  break-after:avoid;
+  page-break-after:avoid;
+}
