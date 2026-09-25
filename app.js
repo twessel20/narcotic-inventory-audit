@@ -1051,7 +1051,12 @@ function executiveSummaryHtml(r){
 
  let inventorySentence='';
  if(changed.length){
-   inventorySentence='The physical inventory changed in '+changed.length+' medication categor'+(changed.length===1?'y':'ies')+' compared with the prior audit.';
+   const vialChanges=changed.map(x=>{
+     const amount=Math.abs(x.diff);
+     const direction=x.diff>0?'increased':'decreased';
+     return esc(x.m)+' '+direction+' by '+amount+' vial'+(amount===1?'':'s');
+   });
+   inventorySentence='The physical inventory changed from the prior audit. '+vialChanges.join('; ')+'.';
  }else if(comparisonsKnown){
    inventorySentence='The active physical inventory did not show a net change from the prior audit.';
  }else{
