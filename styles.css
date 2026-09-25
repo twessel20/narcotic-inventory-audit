@@ -1173,3 +1173,52 @@ body.report-open{overflow:hidden}
   font-weight:900;
   letter-spacing:.06em;
 }
+
+
+/* Cleaner calculated vial summary in reports */
+.report-vial-summary{
+  margin-top:14px;
+  padding:0;
+  border:1px solid #d9e3ea;
+  border-radius:10px;
+  overflow:hidden;
+  background:#fff;
+}
+.report-vial-summary-title{
+  padding:9px 12px;
+  background:#eef4f8;
+  border-bottom:1px solid #d9e3ea;
+  font-size:.82rem;
+  font-weight:900;
+  color:#123a5a;
+}
+.report-vial-row,
+.report-vial-total{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:8px 12px;
+}
+.report-vial-row + .report-vial-row{
+  border-top:1px solid #edf2f5;
+}
+.report-vial-row span{
+  min-width:0;
+}
+.report-vial-row strong{
+  white-space:nowrap;
+}
+.report-vial-total{
+  margin-top:2px;
+  border-top:2px solid #c8d8e3;
+  background:#f7fafc;
+  font-weight:900;
+}
+@media(max-width:600px){
+  .report-vial-row,
+  .report-vial-total{
+    gap:10px;
+    padding:8px 10px;
+  }
+}
