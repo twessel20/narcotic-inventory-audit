@@ -2140,3 +2140,39 @@ body.report-open{overflow:hidden}
     padding:9px 10px;
   }
 }
+
+
+/* Clean centered 2x2 cover metadata without visible boxes */
+.balanced-cover-meta{
+  border:0 !important;
+  border-radius:0 !important;
+  overflow:visible !important;
+  background:transparent !important;
+  gap:14px 28px !important;
+}
+.balanced-cover-meta .cover-meta-cell{
+  min-height:62px;
+  padding:8px 10px !important;
+  background:transparent !important;
+  border:0 !important;
+  text-align:center;
+  align-items:center;
+  justify-content:center;
+}
+.balanced-cover-meta .cover-meta-cell:nth-child(1),
+.balanced-cover-meta .cover-meta-cell:nth-child(2),
+.balanced-cover-meta .cover-meta-cell:nth-child(3),
+.balanced-cover-meta .cover-meta-cell:nth-child(4){
+  border:0 !important;
+}
+.balanced-cover-meta .cover-meta-cell span,
+.balanced-cover-meta .cover-meta-cell strong{
+  width:100%;
+  text-align:center;
+}
+.balanced-cover-meta .centered-cover-signature{
+  border-top:0 !important;
+  background:transparent !important;
+  margin-top:4px !important;
+  padding-top:6px !important;
+}
