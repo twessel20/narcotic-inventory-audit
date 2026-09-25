@@ -1913,3 +1913,38 @@ body.report-open{overflow:hidden}
   break-inside:avoid !important;
   page-break-inside:avoid !important;
 }
+
+
+/* Final auditor signature on monthly report cover */
+.report-cover-signature{
+  width:min(430px,100%);
+  margin:22px auto 8px;
+  padding-top:12px;
+  border-top:1px solid #d9e3ea;
+  text-align:center;
+}
+.report-cover-signature .report-signature-label{
+  font-size:.7rem;
+  font-weight:900;
+  letter-spacing:.06em;
+  color:#687b8a;
+  margin-bottom:8px;
+}
+.report-cover-signature img{
+  display:block;
+  max-width:320px;
+  max-height:95px;
+  margin:0 auto 6px;
+  object-fit:contain;
+}
+.report-cover-signature .report-signature-placeholder{
+  width:100%;
+  max-width:320px;
+  height:70px;
+  margin:0 auto 6px;
+  border-bottom:1px solid #aab9c4;
+}
+.report-cover-signature .report-signature-name{
+  font-size:.78rem;
+  color:#253746;
+}
