@@ -732,6 +732,36 @@ async function renderReports(){
  const real=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month)+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+'</div><div class="button-row"><button data-report="'+r.id+'">View / print</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>';
  document.getElementById('reportsList').innerHTML=testCard+real;
 }
+async function shareRenderedReport(preview,title='Narcotic Inventory Audit Report'){
+ const sheet=preview?.querySelector('.report-sheet');
+ if(!sheet)return alert('Report preview is not ready yet.');
+ try{
+   let cssText='';
+   try{
+     const cssUrl=document.querySelector('link[rel="stylesheet"]')?.href;
+     if(cssUrl)cssText=await fetch(cssUrl,{cache:'no-store'}).then(r=>r.text());
+   }catch(e){}
+   const clone=sheet.cloneNode(true);
+   clone.querySelector('.report-toolbar')?.remove();
+   const html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+cssText+'</style></head><body><div style="max-width:1000px;margin:0 auto">'+clone.outerHTML+'</div></body></html>';
+   const safeName=String(title||'Narcotic Audit Report').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')||'Narcotic-Audit-Report';
+   const file=new File([html],safeName+'.html',{type:'text/html'});
+   if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+     await navigator.share({title,files:[file]});
+     return;
+   }
+   const url=URL.createObjectURL(file);
+   const a=document.createElement('a');
+   a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+   setTimeout(()=>URL.revokeObjectURL(url),1000);
+   alert('Direct sharing is not supported by this browser, so the report was saved as a file instead.');
+ }catch(err){
+   if(err?.name==='AbortError')return;
+   alert('Unable to share this report from this browser.');
+   console.error(err);
+ }
+}
+
 async function showTestReport(){
  const r=buildTestAuditReport();
  const d=document.getElementById('reportDialog'),preview=document.getElementById('reportPreview');
@@ -742,8 +772,9 @@ async function showTestReport(){
    preview.innerHTML=reportHtml(r);
    const sheet=preview.querySelector('.report-sheet');
    if(sheet)sheet.insertAdjacentHTML('afterbegin','<div class="test-report-banner">TEST REPORT · SYNTHETIC DATA · NOT AN OFFICIAL CONTROLLED-SUBSTANCE RECORD</div>');
-   const close=document.getElementById('closeReport'),print=document.getElementById('printReport');
+   const close=document.getElementById('closeReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
    if(close)close.onclick=()=>d.close();
+   if(share)share.onclick=()=>shareRenderedReport(preview,'TEST Narcotic Inventory Audit Report');
    if(print)print.onclick=()=>window.print();
  }catch(err){
    preview.innerHTML='<div class="report-loading">Unable to render the test report.</div>';
@@ -763,8 +794,9 @@ async function showReport(id){
    const b=reportHtml(r);
    preview.innerHTML=b;
    d.scrollTop=0;
-   const close=document.getElementById('closeReport'),print=document.getElementById('printReport');
+   const close=document.getElementById('closeReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
    if(close)close.onclick=()=>d.close();
+   if(share)share.onclick=()=>shareRenderedReport(preview,(r.month||'Monthly')+' Narcotic Inventory Audit Report');
    if(print)print.onclick=()=>window.print();
    requestAnimationFrame(()=>{d.scrollTop=0;preview.scrollTop=0});
  }catch(err){
@@ -794,7 +826,7 @@ function reportHtml(r){
  };
  const sourceDoc=(r.supportingDocuments||[])[0];
  return '<div class="report-sheet report-finalized">'+
- '<div class="report-toolbar"><button id="closeReport">Close</button><button id="printReport" class="primary">Print / Save PDF</button></div>'+
+ '<div class="report-toolbar"><button id="closeReport">Close</button><button id="shareReport">Share</button><button id="printReport" class="primary">Print / Save PDF</button></div>'+
  '<header class="report-top"><img src="'+logo+'" alt="Gladstone Fire Department patch"><div><div class="report-kicker">FINALIZED MONTHLY RECORD</div><h1>Gladstone Fire Department Narcotic<br>Inventory / Audit Form</h1></div></header>'+
  '<div class="report-meta-grid"><div><b>Audit month:</b> '+esc(r.month||'')+'</div><div><b>Created:</b> '+esc(r.createdDisplay||fmtDate(r.createdAt)||'')+'</div><div><b>Email:</b> '+esc(r.email||'travisw@gladstone.mo.us')+'</div><div></div><div><b>Date of audit:</b> '+esc(r.auditDate||'')+'</div><div></div><div class="wide"><b>Audit period:</b> '+esc(r.dateRangeStart||'—')+' through '+esc(r.dateRangeEnd||'—')+' (both dates included)</div></div>'+
  '<hr class="report-blue-rule">'+
