@@ -1142,3 +1142,6 @@ body.report-open{overflow:hidden}
 .audit-route a.complete.current-step{
   box-shadow:inset 0 0 0 2px #2f7750;
 }
+
+/* Primary auditor identity on audit details */
+.audit-primary-auditor input{font-weight:700}
