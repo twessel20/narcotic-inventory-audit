@@ -1,10 +1,14 @@
 const MEDS=['Fentanyl 100 mcg','Versed 2 mg','Versed 5 mg','Ketamine 500 mg','Morphine 10 mg'];
 const LOCS=['Medic 1','Medic 2','Medic 3','Safe','Expired'];
 const DB_NAME='narcotic-audit-db', DB_VER=2;
-let db;
+const SUPABASE_URL='https://fygyubamdxdfhvteyxyy.supabase.co';
+const SUPABASE_KEY='sb_publishable_oDnbAnpzDxJ14Fx1KMNtFA_5vemlptG';
+const CLOUD_STORES=new Set(['inventory','transactions','audits','reports','meta','legacyArchive']);
+let db, sb, cloudSession=null, realtimeChannel=null;
 let activeAuditId=null;
 let auditAutosaveTimer=null;
 let auditSaveInFlight=false;
+let lastCloudWrite='local';
 
 function uid(prefix='id'){return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8)}
 function nowISO(){return new Date().toISOString()}
@@ -13,8 +17,84 @@ function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(D
 function store(name,mode='readonly'){return db.transaction(name,mode).objectStore(name)}
 function getAll(name){return new Promise((res,rej)=>{const r=store(name).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
 function getOne(name,id){return new Promise((res,rej)=>{const r=store(name).get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
-function put(name,v){return new Promise((res,rej)=>{const r=store(name,'readwrite').put(v);r.onsuccess=()=>res(v);r.onerror=()=>rej(r.error)})}
-function del(name,id){return new Promise((res,rej)=>{const r=store(name,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function putLocal(name,v){return new Promise((res,rej)=>{const r=store(name,'readwrite').put(v);r.onsuccess=()=>res(v);r.onerror=()=>rej(r.error)})}
+function delLocal(name,id){return new Promise((res,rej)=>{const r=store(name,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
+function pendingWrites(){try{return JSON.parse(localStorage.getItem('narcoticPendingWrites')||'[]')}catch{return[]}}
+function queueCloudWrite(op,name,id,data=null){
+ const q=pendingWrites().filter(x=>!(x.store===name&&x.id===String(id)));
+ q.push({op,store:name,id:String(id),data,queuedAt:nowISO()});
+ localStorage.setItem('narcoticPendingWrites',JSON.stringify(q));
+}
+async function cloudUpsert(name,v){
+ if(!sb||!cloudSession||!CLOUD_STORES.has(name))return false;
+ const {error}=await sb.from('app_records').upsert({store:name,id:String(v.id),data:v,updated_at:v.updatedAt||nowISO()},{onConflict:'store,id'});
+ if(error)throw error;return true;
+}
+async function put(name,v){
+ await putLocal(name,v);
+ if(!CLOUD_STORES.has(name))return v;
+ if(!cloudSession||!navigator.onLine){queueCloudWrite('upsert',name,v.id,v);lastCloudWrite='pending';return v}
+ try{await cloudUpsert(name,v);lastCloudWrite='live'}catch(e){queueCloudWrite('upsert',name,v.id,v);lastCloudWrite='pending'}
+ return v;
+}
+async function del(name,id){
+ await delLocal(name,id);
+ if(!CLOUD_STORES.has(name))return;
+ if(!cloudSession||!navigator.onLine){queueCloudWrite('delete',name,id);lastCloudWrite='pending';return}
+ try{const {error}=await sb.from('app_records').delete().eq('store',name).eq('id',String(id));if(error)throw error;lastCloudWrite='live'}catch(e){queueCloudWrite('delete',name,id);lastCloudWrite='pending'}
+}
+async function flushPendingWrites(){
+ if(!sb||!cloudSession||!navigator.onLine)return;
+ const q=pendingWrites(), keep=[];
+ for(const x of q){
+   try{
+     if(x.op==='delete'){const {error}=await sb.from('app_records').delete().eq('store',x.store).eq('id',x.id);if(error)throw error}
+     else await cloudUpsert(x.store,x.data);
+   }catch(e){keep.push(x)}
+ }
+ localStorage.setItem('narcoticPendingWrites',JSON.stringify(keep));
+ if(!keep.length)lastCloudWrite='live';
+}
+async function pullCloudRecords(){
+ if(!sb||!cloudSession)return;
+ const {data,error}=await sb.from('app_records').select('store,id,data,updated_at');
+ if(error)throw error;
+ for(const r of data||[]){
+   if(!CLOUD_STORES.has(r.store)||!r.data)continue;
+   await putLocal(r.store,r.data);
+ }
+}
+async function subscribeRealtime(){
+ if(!sb||!cloudSession)return;
+ if(realtimeChannel)await sb.removeChannel(realtimeChannel);
+ realtimeChannel=sb.channel('narcotic-live-records')
+   .on('postgres_changes',{event:'*',schema:'public',table:'app_records'},async payload=>{
+     const row=payload.new&&payload.new.store?payload.new:payload.old;
+     if(!row||!CLOUD_STORES.has(row.store))return;
+     if(payload.eventType==='DELETE')await delLocal(row.store,row.id);else if(payload.new?.data)await putLocal(payload.new.store,payload.new.data);
+     if(!(row.store==='audits'&&String(row.id)===String(activeAuditId)))await refreshAll();
+   }).subscribe();
+}
+function updateAccountUI(){
+ const btn=document.getElementById('accountBtn');if(!btn)return;
+ btn.textContent=cloudSession?.user?.email||'Sign in';
+ document.body.classList.toggle('cloud-authenticated',!!cloudSession);
+}
+async function initCloud(){
+ if(!window.supabase)return;
+ sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
+ const {data}=await sb.auth.getSession();cloudSession=data.session||null;updateAccountUI();
+ sb.auth.onAuthStateChange(async(_event,session)=>{
+   cloudSession=session||null;updateAccountUI();
+   if(cloudSession){await pullCloudRecords();await flushPendingWrites();await subscribeRealtime();await refreshAll()}
+ });
+ if(cloudSession){await pullCloudRecords();await flushPendingWrites();await subscribeRealtime()}
+}
+function requireCloudAuth(){
+ if(cloudSession)return true;
+ document.getElementById('authDialog')?.showModal();
+ return false;
+}
 
 async function seedInventory(){const rows=await getAll('inventory');if(rows.length)return;for(const loc of LOCS)for(const med of MEDS)await put('inventory',{id:loc+'|'+med,location:loc,medication:med,quantity:0,updatedAt:nowISO()})}
 async function balances(){const rows=await getAll('inventory');const map={};for(const l of LOCS){map[l]={};for(const m of MEDS)map[l][m]=0}rows.forEach(r=>{if(map[r.location])map[r.location][r.medication]=Number(r.quantity||0)});return map}
@@ -27,6 +107,7 @@ document.getElementById('activeTotals').innerHTML=MEDS.map(m=>{const t=['Medic 1
 async function renderActivity(){const q=(document.getElementById('activitySearch')?.value||'').toLowerCase();let rows=await getAll('transactions');rows.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));if(q)rows=rows.filter(r=>JSON.stringify(r).toLowerCase().includes(q));document.getElementById('activityList').innerHTML=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+' · '+esc(r.medication)+' · '+esc(r.quantity)+'</strong><div>'+esc(r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy):'')+(r.reference?' · Ref '+esc(r.reference):'')+'</div>'+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+'</div>').join(''):'<div class="empty">No activity recorded yet.</div>'}
 
 async function saveTransaction(fd){
+ if(!requireCloudAuth())throw new Error('Sign in is required for live inventory changes.');
  const type=fd.get('type'), med=fd.get('medication'), qty=Number(fd.get('quantity')||0), from=fd.get('fromLocation'), to=fd.get('toLocation');
  const b=await balances();
  if(type==='adjustment'){
@@ -53,9 +134,10 @@ async function saveTransaction(fd){
 function auditSkeleton(a){
  const b=a.counts||{};return '<div class="audit-card"><div class="audit-header"><div><h3>'+esc(a.month||'Draft audit')+'</h3><div class="meta">Status: '+esc(a.status||'draft')+' · Saved '+fmtDate(a.updatedAt)+'</div></div><div class="button-row"><button data-audit-action="open" data-id="'+a.id+'">Open</button><button data-audit-action="delete" data-id="'+a.id+'">Delete</button></div></div></div>'
 }
-async function renderAudits(){let rows=await getAll('audits');rows.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));const drafts=rows.filter(a=>a.status!=='finalized');document.getElementById('auditWorkspace').innerHTML=(drafts.length?'<div class="notice">Audit drafts save automatically on this device. Reopen any draft and continue exactly where you stopped.</div>':'')+(rows.length?rows.map(auditSkeleton).join(''):'<div class="card empty">No monthly audit drafts yet.</div>')}
+async function renderAudits(){let rows=await getAll('audits');rows.sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt));const drafts=rows.filter(a=>a.status!=='finalized');document.getElementById('auditWorkspace').innerHTML=(drafts.length?'<div class="notice">Audit drafts autosave to the live department database. You can leave this location and resume the same audit from another authorized device.</div>':'')+(rows.length?rows.map(auditSkeleton).join(''):'<div class="card empty">No monthly audit drafts yet.</div>')}
 
 async function startAudit(){
+ if(!requireCloudAuth())return;
  const b=await balances();const d=new Date();const month=d.toLocaleString(undefined,{month:'long',year:'numeric'});
  const counts={};LOCS.forEach(l=>{counts[l]={};MEDS.forEach(m=>counts[l][m]=b[l][m])});
  const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),counts,priorCounts:{},dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',signatures:{},attestationName:'',attestationAccepted:false};
@@ -71,13 +153,14 @@ async function editAudit(id){
  await put('meta',{id:'activeAudit',auditId:id,updatedAt:nowISO()});
  document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-shell"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back to audits</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonth" value="'+esc(a.month||'')+'"></label><label>Status<input value="'+esc(a.status)+'" disabled></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div>'+countTable(a)+'<div class="audit-card audit-section-card"><span class="kicker">REFERENCE DATA</span><h3>Administration import summary</h3><p class="meta">Supporting usage data only. These entries do not subtract from the manually verified physical inventory.</p><textarea id="usageSummary" rows="7">'+esc(a.usageSummary||'')+'</textarea></div><div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div><div class="audit-card audit-section-card"><span class="kicker">CERTIFICATIONS</span><h3>Location verification signatures</h3><p class="meta">Each audited location requires a signer and witness certification.</p><div class="sig-grid">'+LOCS.map(l=>sigBlock(l,a.signatures?.[l]||{})).join('')+'</div></div><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>I attest that the controlled-substance inventory documented in this audit reflects the physical count performed, that discrepancies have been documented and escalated as required, and that supporting records have been reviewed to the extent indicated in this report.</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><label class="final-signer-label">Final signer name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||'')+'"></label><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>';
  document.getElementById('backAudits').onclick=async()=>{await flushAuditAutosave();activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});renderAudits()};
- document.querySelectorAll('.signature-box').forEach(box=>setupSignature(box,a.signatures?.[box.dataset.sigLoc]||{},()=>scheduleAuditAutosave(a.id)));
+ document.querySelectorAll('.signature-box').forEach(box=>setupSignature(box,a.signatures?.[box.dataset.sigLoc]||{},()=>scheduleAuditAutosave(a.id,true)));
  document.getElementById('saveAudit').onclick=()=>saveAuditFromUI(a.id,false);
  document.getElementById('finalizeAudit').onclick=()=>saveAuditFromUI(a.id,true);
  document.querySelectorAll('#auditWorkspace input,#auditWorkspace textarea,#auditWorkspace select').forEach(el=>{
    if(el.disabled)return;
    el.addEventListener('input',()=>scheduleAuditAutosave(a.id));
-   el.addEventListener('change',()=>scheduleAuditAutosave(a.id));
+   el.addEventListener('change',()=>scheduleAuditAutosave(a.id,true));
+   el.addEventListener('blur',()=>scheduleAuditAutosave(a.id,true));
  });
  setAutosaveStatus('Saved '+fmtDate(a.updatedAt));
 }
@@ -98,11 +181,11 @@ function collectAuditFromUI(a){
  a.attestationName=document.getElementById('attestName').value;
  return a;
 }
-function scheduleAuditAutosave(id){
+function scheduleAuditAutosave(id,immediate=false){
  activeAuditId=id;
- setAutosaveStatus('Saving…');
+ setAutosaveStatus(cloudSession&&navigator.onLine?'Saving live…':'Saving locally…');
  clearTimeout(auditAutosaveTimer);
- auditAutosaveTimer=setTimeout(()=>autosaveAudit(id),450);
+ auditAutosaveTimer=setTimeout(()=>autosaveAudit(id),immediate?0:150);
 }
 async function autosaveAudit(id){
  if(auditSaveInFlight||!id)return;
@@ -112,7 +195,8 @@ async function autosaveAudit(id){
    collectAuditFromUI(a);a.updatedAt=nowISO();a.lastAutosaveAt=a.updatedAt;
    await put('audits',a);
    await put('meta',{id:'activeAudit',auditId:id,updatedAt:a.updatedAt});
-   setAutosaveStatus('Saved '+new Date(a.updatedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'}));
+   const t=new Date(a.updatedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
+   setAutosaveStatus(lastCloudWrite==='live'?'Saved live '+t:'Saved locally · sync pending '+t);
  }catch(e){setAutosaveStatus('Save failed — keep this screen open');}
  finally{auditSaveInFlight=false}
 }
@@ -268,9 +352,13 @@ function bind(){
  document.getElementById('activitySearch').oninput=renderActivity;document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;
  document.getElementById('auditWorkspace').onclick=async e=>{const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open')editAudit(b.dataset.id);if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);renderAudits()}};
  document.getElementById('reportsList').onclick=e=>{const b=e.target.closest('[data-report]');if(b)showReport(b.dataset.report)};
- document.getElementById('exportBtn').onclick=exportBackup;document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();document.getElementById('importFile').onchange=async e=>{if(!e.target.files[0])return;try{await importBackup(e.target.files[0])}catch(err){alert(err.message)}};
- const status=()=>{const el=document.getElementById('offlineBadge');el.textContent=navigator.onLine?'Connected':'Offline';el.style.background=navigator.onLine?'#1f6e4d':'#7a4a1f'};window.addEventListener('online',status);window.addEventListener('offline',status);status()
+ document.getElementById('exportBtn').onclick=exportBackup;document.getElementById('importBtn').onclick=()=>{if(requireCloudAuth())document.getElementById('importFile').click()};document.getElementById('importFile').onchange=async e=>{if(!e.target.files[0])return;try{await importBackup(e.target.files[0]);await flushPendingWrites()}catch(err){alert(err.message)}};
+ const authDialog=document.getElementById('authDialog'),authForm=document.getElementById('authForm'),authMsg=document.getElementById('authMessage');
+ document.getElementById('accountBtn').onclick=async()=>{if(cloudSession){if(confirm('Sign out of the live narcotic database?'))await sb.auth.signOut()}else authDialog.showModal()};
+ authForm.onsubmit=async e=>{e.preventDefault();authMsg.hidden=true;const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;const {error}=await sb.auth.signInWithPassword({email,password});if(error){authMsg.textContent=error.message;authMsg.hidden=false}else authDialog.close()};
+ document.getElementById('createAccountBtn').onclick=async()=>{authMsg.hidden=true;const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||password.length<8){authMsg.textContent='Enter a valid email and a password of at least 8 characters.';authMsg.hidden=false;return}const {data,error}=await sb.auth.signUp({email,password});authMsg.textContent=error?error.message:(data.session?'Account created and signed in.':'Account created. Check your email if confirmation is required, then sign in.');authMsg.hidden=false;if(data.session)setTimeout(()=>authDialog.close(),700)};
+ const status=async()=>{const el=document.getElementById('offlineBadge');if(navigator.onLine){el.textContent=cloudSession?'Live sync':'Online · sign in';el.style.background=cloudSession?'#1f6e4d':'#31566f';await flushPendingWrites()}else{el.textContent='Offline · queued';el.style.background='#7a4a1f'}};window.addEventListener('online',status);window.addEventListener('offline',status);status()
 }
 window.addEventListener('pagehide',()=>{if(activeAuditId)scheduleAuditAutosave(activeAuditId)});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeAuditId)flushAuditAutosave()});
-(async()=>{await openDB();await seedInventory();fillSelects();bind();await refreshAll();const active=await getOne('meta','activeAudit');if(active?.auditId&&await getOne('audits',active.auditId)){document.querySelector('[data-tab="audit"]').click();await editAudit(active.auditId)}if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js')})();
+(async()=>{await openDB();await initCloud();await seedInventory();fillSelects();bind();await refreshAll();if(!cloudSession)setTimeout(()=>document.getElementById('authDialog')?.showModal(),300);const active=await getOne('meta','activeAudit');if(active?.auditId&&await getOne('audits',active.auditId)){document.querySelector('[data-tab="audit"]').click();await editAudit(active.auditId)}if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js')})();
