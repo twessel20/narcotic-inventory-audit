@@ -761,47 +761,43 @@ async function sharePdfFile(file,title){
  return false;
 }
 
-async function shareRenderedReport(preview,title='Narcotic Inventory Audit Report'){
+async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit Report'){
  const sheet=preview?.querySelector('.report-sheet');
- if(!sheet)return alert('Report preview is not ready yet.');
- const shareBtn=document.getElementById('shareReport');
- const originalLabel=shareBtn?.textContent||'Share';
+ if(!sheet)throw new Error('Report preview is not ready yet.');
+ if(!window.html2pdf)throw new Error('PDF generator is not available.');
+
+ const clone=sheet.cloneNode(true);
+ clone.querySelector('.report-toolbar')?.remove();
+ clone.style.width='7.6in';
+ clone.style.maxWidth='7.6in';
+ clone.style.margin='0';
+ clone.style.overflow='visible';
+ clone.querySelectorAll('.report-imported-admin, section').forEach(el=>{el.style.overflow='visible';});
+ clone.querySelectorAll('.report-table').forEach(el=>{el.style.minWidth='0';el.style.width='100%';});
+ clone.querySelectorAll('.report-cert,.report-attestation,.report-notes,.report-vial-summary,.report-final-signature').forEach(el=>{
+   el.style.breakInside='avoid';
+   el.style.pageBreakInside='avoid';
+ });
+ clone.querySelectorAll('.report-table thead').forEach(el=>{el.style.display='table-header-group';});
+ clone.querySelectorAll('.report-table tr').forEach(el=>{
+   el.style.breakInside='avoid';
+   el.style.pageBreakInside='avoid';
+ });
+
+ const stage=document.createElement('div');
+ stage.className='pdf-render-stage';
+ stage.style.position='fixed';
+ stage.style.left='-10000px';
+ stage.style.top='0';
+ stage.style.width='8.5in';
+ stage.style.padding='0.35in';
+ stage.style.background='#fff';
+ stage.style.zIndex='-1';
+ stage.appendChild(clone);
+ document.body.appendChild(stage);
+
  try{
-   if(!window.html2pdf)throw new Error('PDF generator is not available.');
-   if(shareBtn){shareBtn.disabled=true;shareBtn.textContent='Generating PDF…';}
-
-   const clone=sheet.cloneNode(true);
-   clone.querySelector('.report-toolbar')?.remove();
-   clone.style.width='7.6in';
-   clone.style.maxWidth='7.6in';
-   clone.style.margin='0';
-   clone.style.overflow='visible';
-   clone.querySelectorAll('.report-imported-admin, section').forEach(el=>{el.style.overflow='visible';});
-   clone.querySelectorAll('.report-table').forEach(el=>{el.style.minWidth='0';el.style.width='100%';});
-   clone.querySelectorAll('.report-cert,.report-attestation,.report-notes,.report-vial-summary,.report-final-signature').forEach(el=>{
-     el.style.breakInside='avoid';
-     el.style.pageBreakInside='avoid';
-   });
-   clone.querySelectorAll('.report-table thead').forEach(el=>{el.style.display='table-header-group';});
-   clone.querySelectorAll('.report-table tr').forEach(el=>{
-     el.style.breakInside='avoid';
-     el.style.pageBreakInside='avoid';
-   });
-
-   const stage=document.createElement('div');
-   stage.className='pdf-render-stage';
-   stage.style.position='fixed';
-   stage.style.left='-10000px';
-   stage.style.top='0';
-   stage.style.width='8.5in';
-   stage.style.padding='0.35in';
-   stage.style.background='#fff';
-   stage.style.zIndex='-1';
-   stage.appendChild(clone);
-   document.body.appendChild(stage);
-
    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
-
    const safeName=String(title||'Narcotic Audit Report')
      .replace(/[\\/:*?"<>|]+/g,'-')
      .replace(/\s+/g,' ')
@@ -819,18 +815,51 @@ async function shareRenderedReport(preview,title='Narcotic Inventory Audit Repor
      .from(clone)
      .outputPdf('blob');
 
+   return {blob:pdfBlob,file:new File([pdfBlob],safeName+'.pdf',{type:'application/pdf'}),safeName};
+ }finally{
    stage.remove();
+ }
+}
 
-   const file=new File([pdfBlob],safeName+'.pdf',{type:'application/pdf'});
-   if(await sharePdfFile(file,title))return;
+async function previewRenderedReportPdf(preview,title){
+ const btn=document.getElementById('previewPdfReport');
+ const original=btn?.textContent||'Generate PDF Preview';
+ let url='';
+ try{
+   if(btn){btn.disabled=true;btn.textContent='Generating Preview…';}
+   const result=await generateRenderedReportPdf(preview,title);
+   url=URL.createObjectURL(result.blob);
+   const d=document.getElementById('pdfPreviewDialog');
+   const frame=document.getElementById('pdfPreviewFrame');
+   const name=document.getElementById('pdfPreviewTitle');
+   if(!d||!frame)throw new Error('PDF preview window is unavailable.');
+   if(name)name.textContent=result.safeName+'.pdf';
+   frame.src=url;
+   d.dataset.objectUrl=url;
+   d.showModal();
+ }catch(err){
+   if(url)URL.revokeObjectURL(url);
+   alert('Unable to generate the PDF preview. Please try again.');
+   console.error(err);
+ }finally{
+   if(btn){btn.disabled=false;btn.textContent=original;}
+ }
+}
 
-   const url=URL.createObjectURL(pdfBlob);
+async function shareRenderedReport(preview,title='Narcotic Inventory Audit Report'){
+ const shareBtn=document.getElementById('shareReport');
+ const originalLabel=shareBtn?.textContent||'Share PDF';
+ try{
+   if(shareBtn){shareBtn.disabled=true;shareBtn.textContent='Generating PDF…';}
+   const result=await generateRenderedReportPdf(preview,title);
+   if(await sharePdfFile(result.file,title))return;
+
+   const url=URL.createObjectURL(result.blob);
    const a=document.createElement('a');
-   a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
+   a.href=url;a.download=result.file.name;document.body.appendChild(a);a.click();a.remove();
    setTimeout(()=>URL.revokeObjectURL(url),1500);
    alert('This browser cannot open the native share sheet for files, so the PDF was saved instead.');
  }catch(err){
-   document.querySelector('.pdf-render-stage')?.remove();
    if(err?.name==='AbortError')return;
    alert('Unable to generate the PDF for sharing. Please try again.');
    console.error(err);
@@ -849,9 +878,11 @@ async function showTestReport(){
    preview.innerHTML=reportHtml(r);
    const sheet=preview.querySelector('.report-sheet');
    if(sheet)sheet.insertAdjacentHTML('afterbegin','<div class="test-report-banner">TEST REPORT · SYNTHETIC DATA · NOT AN OFFICIAL CONTROLLED-SUBSTANCE RECORD</div>');
-   const close=document.getElementById('closeReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
+   const close=document.getElementById('closeReport'),pdfPreview=document.getElementById('previewPdfReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
+   const shareTitle='TEST — Gladstone FD Narcotic Inventory Audit Report — '+(r.month||'Test Month')+' — '+reportShareDate(r.auditDate||r.finalizedAt);
    if(close)close.onclick=()=>d.close();
-   if(share)share.onclick=()=>shareRenderedReport(preview,'TEST — Gladstone FD Narcotic Inventory Audit Report — '+(r.month||'Test Month')+' — '+reportShareDate(r.auditDate||r.finalizedAt));
+   if(pdfPreview)pdfPreview.onclick=()=>previewRenderedReportPdf(preview,shareTitle);
+   if(share)share.onclick=()=>shareRenderedReport(preview,shareTitle);
    if(print)print.onclick=()=>window.print();
  }catch(err){
    preview.innerHTML='<div class="report-loading">Unable to render the test report.</div>';
@@ -871,9 +902,11 @@ async function showReport(id){
    const b=reportHtml(r);
    preview.innerHTML=b;
    d.scrollTop=0;
-   const close=document.getElementById('closeReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
+   const close=document.getElementById('closeReport'),pdfPreview=document.getElementById('previewPdfReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
+   const shareTitle='Gladstone FD Narcotic Inventory Audit Report — '+(r.month||'Monthly')+' — '+reportShareDate(r.auditDate||r.finalizedAt);
    if(close)close.onclick=()=>d.close();
-   if(share)share.onclick=()=>shareRenderedReport(preview,'Gladstone FD Narcotic Inventory Audit Report — '+(r.month||'Monthly')+' — '+reportShareDate(r.auditDate||r.finalizedAt));
+   if(pdfPreview)pdfPreview.onclick=()=>previewRenderedReportPdf(preview,shareTitle);
+   if(share)share.onclick=()=>shareRenderedReport(preview,shareTitle);
    if(print)print.onclick=()=>window.print();
    requestAnimationFrame(()=>{d.scrollTop=0;preview.scrollTop=0});
  }catch(err){
@@ -903,7 +936,7 @@ function reportHtml(r){
  };
  const sourceDoc=(r.supportingDocuments||[])[0];
  return '<div class="report-sheet report-finalized">'+
- '<div class="report-toolbar"><button id="closeReport">Close</button><button id="shareReport">Share PDF</button><button id="printReport" class="primary">Print / Save PDF</button></div>'+
+ '<div class="report-toolbar"><button id="closeReport">Close</button><button id="previewPdfReport">Generate PDF Preview</button><button id="shareReport">Share PDF</button><button id="printReport" class="primary">Print / Save PDF</button></div>'+
  '<header class="report-top"><img src="'+logo+'" alt="Gladstone Fire Department patch"><div><div class="report-kicker">FINALIZED MONTHLY RECORD</div><h1>Gladstone Fire Department Narcotic<br>Inventory / Audit Form</h1></div></header>'+
  '<div class="report-meta-grid"><div><b>Audit month:</b> '+esc(r.month||'')+'</div><div><b>Created:</b> '+esc(r.createdDisplay||fmtDate(r.createdAt)||'')+'</div><div><b>Email:</b> '+esc(r.email||'travisw@gladstone.mo.us')+'</div><div></div><div><b>Date of audit:</b> '+esc(r.auditDate||'')+'</div><div></div><div class="wide"><b>Audit period:</b> '+esc(r.dateRangeStart||'—')+' through '+esc(r.dateRangeEnd||'—')+' (both dates included)</div></div>'+
  '<hr class="report-blue-rule">'+
@@ -1077,3 +1110,13 @@ function bind(){
 window.addEventListener('pagehide',()=>{if(activeAuditId)scheduleAuditAutosave(activeAuditId)});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeAuditId)flushAuditAutosave()});
 (async()=>{await openDB();await initCloud();await seedInventory();fillSelects();bind();await refreshAll();if(!cloudSession)setTimeout(()=>document.getElementById('authDialog')?.showModal(),300);const active=await getOne('meta','activeAudit');if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}if('serviceWorker'in navigator)navigator.serviceWorker.register('./sw.js')})();
+document.addEventListener('DOMContentLoaded',()=>{
+ const d=document.getElementById('pdfPreviewDialog');
+ const close=document.getElementById('closePdfPreview');
+ if(close&&d)close.onclick=()=>d.close();
+ if(d)d.addEventListener('close',()=>{
+   const frame=document.getElementById('pdfPreviewFrame');
+   if(frame)frame.src='about:blank';
+   if(d.dataset.objectUrl){URL.revokeObjectURL(d.dataset.objectUrl);delete d.dataset.objectUrl;}
+ });
+});
