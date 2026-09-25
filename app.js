@@ -965,7 +965,7 @@ async function showTestReport(){
    if(share)share.onclick=()=>shareRenderedReport(preview,shareTitle);
    if(print)print.onclick=()=>window.print();
  }catch(err){
-   preview.innerHTML='<div class="report-loading">Unable to render the test report.</div>';
+   preview.innerHTML='<div class="report-loading"><b>Unable to render the test report.</b><br><span>'+esc(err?.message||String(err))+'</span></div>';
    console.error(err);
  }
  d.onclose=()=>{document.body.classList.remove('report-open');preview.innerHTML=''};
@@ -1101,6 +1101,16 @@ function executiveSummaryHtml(r){
  '</div></section>';
 }
 
+function newReportFrontMatterHtml(r){
+ let cover='',summary='';
+ try{cover=reportCoverPageHtml(r)}catch(err){console.error('Report cover failed',err)}
+ try{summary=executiveSummaryHtml(r)}catch(err){
+   console.error('Executive summary failed',err);
+   summary='<section class="report-executive-summary"><h2>Executive summary</h2><p>The summary could not be calculated from this preview. The detailed audit sections below remain available and unchanged.</p></section>';
+ }
+ return cover+summary;
+}
+
 function reportHtml(r){
  const logo='https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg';
  const recordNo=r.legacyRecordNumber||String(r.auditId||r.id||'').match(/\d+/)?.[0]||'';
@@ -1123,11 +1133,11 @@ function reportHtml(r){
  const sourceDoc=(r.supportingDocuments||[])[0];
  return '<div class="report-sheet report-finalized">'+
  '<div class="report-toolbar"><button id="closeReport">Close</button><button id="previewPdfReport">Generate PDF Preview</button><button id="shareReport">Share PDF</button><button id="printReport" class="primary">Print / Save PDF</button></div>'+
- ((r.isTest||!r.legacyRecordNumber)?reportCoverPageHtml(r):'')+
+ ((r.isTest||!r.legacyRecordNumber)?newReportFrontMatterHtml(r):'')+
  '<header class="report-top"><img src="'+logo+'" alt="Gladstone Fire Department patch"><div><div class="report-kicker">FINALIZED MONTHLY RECORD</div><h1>Gladstone Fire Department Narcotic<br>Inventory / Audit Form</h1></div></header>'+
  '<div class="report-meta-grid"><div><b>Audit month:</b> '+esc(r.month||'')+'</div><div><b>Created:</b> '+esc(r.createdDisplay||fmtDate(r.createdAt)||'')+'</div><div><b>Email:</b> '+esc(r.email||'travisw@gladstone.mo.us')+'</div><div></div><div><b>Date of audit:</b> '+esc(r.auditDate||'')+'</div><div></div><div class="wide"><b>Audit period:</b> '+esc(r.dateRangeStart||'—')+' through '+esc(r.dateRangeEnd||'—')+' (both dates included)</div></div>'+
  '<hr class="report-blue-rule">'+
- ((r.isTest||!r.legacyRecordNumber)?executiveSummaryHtml(r):'')+
+ ''+
  (amendment?'<section class="report-amendment"><h2>Amended inventory record — correction history</h2><p>The table below includes these corrections. Signatures were recorded before these amendments and certify the original record, not the corrected entries.</p>'+amendment+'</section>':'')+
  '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+esc(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
  '<section><h2>Breakaway tag record</h2><table class="report-table"><thead><tr><th>Location</th><th>Tag found / removed</th><th>New tag installed</th></tr></thead><tbody>'+tagRows+'</tbody></table></section>'+
