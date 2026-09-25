@@ -862,20 +862,23 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
  clone.style.margin='0';
  clone.style.overflow='visible';
  clone.querySelectorAll('.report-imported-admin, section').forEach(el=>{el.style.overflow='visible';});
- clone.querySelectorAll('section').forEach((el,index)=>{
+ clone.querySelectorAll('section').forEach(el=>{
    if(el.classList.contains('report-cert'))return;
-   if(el.classList.contains('report-executive-summary')){
-     el.style.breakBefore='auto';
-     el.style.pageBreakBefore='auto';
+   el.classList.remove('pdf-section-page');
+   el.classList.add('pdf-report-section');
+   el.style.breakBefore='auto';
+   el.style.pageBreakBefore='auto';
+   el.style.breakAfter='auto';
+   el.style.pageBreakAfter='auto';
+   // Keep compact sections together; allow long sections/tables to flow naturally.
+   const estimatedHeight=el.scrollHeight||0;
+   if(estimatedHeight && estimatedHeight<620){
      el.style.breakInside='avoid';
      el.style.pageBreakInside='avoid';
-     return;
+   }else{
+     el.style.breakInside='auto';
+     el.style.pageBreakInside='auto';
    }
-   el.classList.add('pdf-section-page');
-   el.style.breakBefore='page';
-   el.style.pageBreakBefore='always';
-   el.style.breakInside='avoid';
-   el.style.pageBreakInside='avoid';
  });
  const signatureSection=clone.querySelector('.report-signature-section');
  if(signatureSection){
@@ -966,7 +969,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    let estimatedPage=1,pageHasContent=false,forceNextPage=false;
    for(const child of [...clone.children]){
      if(child.classList.contains('report-toolbar'))continue;
-     const startsNewPage=child.classList.contains('pdf-section-page');
+     const startsNewPage=child.classList.contains('pdf-break-before')||child.classList.contains('report-cover-page');
      if(forceNextPage||(startsNewPage&&pageHasContent)){
        estimatedPage++;
        sectionStartPages.add(estimatedPage);
@@ -990,7 +993,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        image:{type:'jpeg',quality:0.98},
        html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
-       pagebreak:{mode:['css','legacy'],before:['.pdf-section-page','.pdf-break-before'],after:['.pdf-break-after'],avoid:['.report-cert','.report-signature-box','.report-attestation','.report-notes','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
+       pagebreak:{mode:['css','legacy'],before:['.pdf-break-before'],after:['.pdf-break-after'],avoid:['.report-cert','.report-signature-box','.report-attestation','.report-notes','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
      })
      .from(clone)
      .toPdf();
