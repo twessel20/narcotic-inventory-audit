@@ -363,3 +363,27 @@ body.report-open{overflow:hidden}
 .admin-transcript{margin-top:10px;border:1px solid #d8e2e9;border-radius:10px;background:#fff}
 .admin-transcript summary{cursor:pointer;padding:10px 12px;font-weight:800;color:#35536c}
 .admin-transcript pre{white-space:pre-wrap;max-height:320px;overflow:auto;margin:0;padding:12px;border-top:1px solid #e4ebf0;font-size:.76rem;line-height:1.35;background:#f8fafb}
+
+
+/* Compact location-based audit layout */
+.compact-unit{padding:0;overflow:hidden}
+.compact-head{padding:12px 14px}
+.compact-head h3{margin:.1rem 0;font-size:1.25rem}
+.unit-compact-grid{display:grid;grid-template-columns:1fr;gap:0}
+.unit-compact-panel{padding:12px 14px;border-bottom:1px solid #e3eaf0}
+.unit-compact-panel:last-child{border-bottom:0}
+.unit-compact-panel h4{margin:0 0 8px;color:#17324e;font-size:.95rem}
+.unit-med-row.compact{padding:7px 9px}
+.unit-med-row.compact .unit-med-name{font-size:.9rem}
+.unit-med-row.compact .unit-current input{min-height:38px}
+.inventory-panel{background:#fbfcfd}
+.certification-panel{background:#fbfcfd}
+.compact-unit .signature-person-grid{gap:10px}
+.compact-unit .embedded-signature canvas{height:105px}
+.compact-unit .tag-entry-fields{grid-template-columns:1fr}
+@media(min-width:900px){
+  .unit-compact-grid{grid-template-columns:minmax(210px,.8fr) minmax(0,2fr) minmax(210px,.8fr)}
+  .unit-compact-panel{border-bottom:1px solid #e3eaf0}
+  .inventory-panel{grid-row:span 2;border-left:1px solid #e3eaf0;border-right:1px solid #e3eaf0}
+  .certification-panel{grid-column:1/-1}
+}
