@@ -945,3 +945,28 @@ body.report-open{overflow:hidden}
 .mobile-collapsible-admin .admin-import-summarybar:hover{
   background:#1a557e;
 }
+
+
+/* Live completion state for audit route */
+.audit-route a{
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  transition:background .15s ease,border-color .15s ease,color .15s ease;
+}
+.audit-route a .route-status-mark{
+  display:none;
+  font-weight:950;
+  line-height:1;
+}
+.audit-route a.complete{
+  background:#e8f4ec;
+  border-color:#8bb89a;
+  color:#235a36;
+}
+.audit-route a.complete .route-status-mark{
+  display:inline;
+}
+.audit-route a.complete .route-label{
+  font-weight:900;
+}
