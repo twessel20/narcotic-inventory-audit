@@ -2086,3 +2086,57 @@ body.report-open{overflow:hidden}
   text-transform:uppercase;
   letter-spacing:.04em;
 }
+
+
+/* Balanced 2x2 cover metadata grid */
+.balanced-cover-meta{
+  display:grid !important;
+  grid-template-columns:1fr 1fr;
+  gap:0 !important;
+  padding:0 !important;
+  border:1px solid #d9e3ea;
+  border-radius:10px;
+  overflow:hidden;
+}
+.balanced-cover-meta .cover-meta-cell{
+  padding:11px 14px;
+  min-height:64px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  background:#fff;
+}
+.balanced-cover-meta .cover-meta-cell:nth-child(1),
+.balanced-cover-meta .cover-meta-cell:nth-child(3){
+  border-right:1px solid #d9e3ea;
+}
+.balanced-cover-meta .cover-meta-cell:nth-child(1),
+.balanced-cover-meta .cover-meta-cell:nth-child(2){
+  border-bottom:1px solid #d9e3ea;
+}
+.balanced-cover-meta .cover-meta-cell span{
+  margin-bottom:4px;
+}
+.balanced-cover-meta .cover-meta-cell strong{
+  font-size:.98rem;
+  color:#172838;
+}
+.balanced-cover-meta .centered-cover-signature{
+  grid-column:1/-1;
+  width:100%;
+  max-width:none;
+  margin:0;
+  padding:10px 14px 8px;
+  border-top:1px solid #d9e3ea;
+  background:#fff;
+  text-align:center;
+}
+@media(max-width:650px){
+  .balanced-cover-meta{
+    grid-template-columns:1fr 1fr;
+  }
+  .balanced-cover-meta .cover-meta-cell{
+    min-height:58px;
+    padding:9px 10px;
+  }
+}
