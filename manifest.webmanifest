@@ -1,0 +1,10 @@
+{
+  "name": "Narcotic Inventory Audit",
+  "short_name": "Narcotic Audit",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f7fa",
+  "theme_color": "#0f2742",
+  "description": "Controlled-substance inventory and monthly audit PWA"
+}
