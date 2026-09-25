@@ -758,7 +758,7 @@ async function shareRenderedReport(preview,title='Narcotic Inventory Audit Repor
    const safeName=String(title||'Narcotic Audit Report').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')||'Narcotic-Audit-Report';
    const file=new File([html],safeName+'.html',{type:'text/html'});
    if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
-     await navigator.share({title,files:[file]});
+     await navigator.share({title,text:title,files:[file]});
      return;
    }
    const url=URL.createObjectURL(file);
@@ -785,7 +785,7 @@ async function showTestReport(){
    if(sheet)sheet.insertAdjacentHTML('afterbegin','<div class="test-report-banner">TEST REPORT · SYNTHETIC DATA · NOT AN OFFICIAL CONTROLLED-SUBSTANCE RECORD</div>');
    const close=document.getElementById('closeReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
    if(close)close.onclick=()=>d.close();
-   if(share)share.onclick=()=>shareRenderedReport(preview,'TEST Narcotic Inventory Audit Report');
+   if(share)share.onclick=()=>shareRenderedReport(preview,'TEST — Gladstone FD Narcotic Inventory Audit Report');
    if(print)print.onclick=()=>window.print();
  }catch(err){
    preview.innerHTML='<div class="report-loading">Unable to render the test report.</div>';
@@ -807,7 +807,7 @@ async function showReport(id){
    d.scrollTop=0;
    const close=document.getElementById('closeReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
    if(close)close.onclick=()=>d.close();
-   if(share)share.onclick=()=>shareRenderedReport(preview,(r.month||'Monthly')+' Narcotic Inventory Audit Report');
+   if(share)share.onclick=()=>shareRenderedReport(preview,'Gladstone FD Narcotic Inventory Audit Report — '+(r.month||'Monthly'));
    if(print)print.onclick=()=>window.print();
    requestAnimationFrame(()=>{d.scrollTop=0;preview.scrollTop=0});
  }catch(err){
