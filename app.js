@@ -175,7 +175,7 @@ async function startAudit(){
  const previous=reports[0]||null;
  const counts={},priorCounts={};LOCS.forEach(l=>{counts[l]={};priorCounts[l]={};MEDS.forEach(m=>{counts[l][m]=b[l][m];priorCounts[l][m]=previous?.counts?.[l]?.[m]??null})});
  const localDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
- const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],signatures:{},attestationText:FINAL_ATTESTATION,attestationName:'',attestationAccepted:false};
+ const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],signatures:{},attestationText:FINAL_ATTESTATION,attestationName:'',attestationAccepted:false};
  await put('audits',a);await put('meta',{id:'activeAudit',auditId:a.id,updatedAt:nowISO()});await editAudit(a.id)
 }
 function unitAuditSection(a,loc,index){
@@ -192,17 +192,34 @@ function unitAuditSection(a,loc,index){
 }
 function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="signature-person-grid"><div><label>Signer name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><div class="signature-label">Signer signature</div><canvas width="500" height="150" data-canvas></canvas></div><div><label>Witness name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><div class="signature-label">Witness signature</div><canvas width="500" height="150" data-witness-canvas></canvas></div></div><button type="button" class="clear-signatures" data-clear-sig>Clear signatures</button></div>'}
 
+function adminDoseUnit(medication=''){
+ const m=String(medication).toLowerCase();
+ return m==='fentanyl'?'mcg':'mg';
+}
+function actualAdministrationPreview(rows=[]){
+ if(!Array.isArray(rows)||!rows.length)return '';
+ const sorted=[...rows].sort((a,b)=>{
+   const da=new Date(formatAdminDate(a.date)),db=new Date(formatAdminDate(b.date));
+   return da-db||String(a.report).localeCompare(String(b.report));
+ });
+ return '<div class="admin-data-block"><div class="admin-data-title">Actual doses administered</div><div class="admin-data-note">Transcribed from the imported administration PDF. These are the documented doses, before vial-use rules are applied.</div>'+
+ '<div class="admin-actual-table"><div class="admin-actual-head"><span>Date</span><span>Report</span><span>Provider</span><span>Medication</span><span>Dose given</span><span>Unit</span></div>'+
+ sorted.map(r=>'<div class="admin-actual-row"><span data-label="Date">'+esc(formatAdminDate(r.date))+'</span><span data-label="Report">'+esc(r.report)+'</span><span data-label="Provider">'+esc(r.provider)+'</span><span data-label="Medication">'+esc(r.medication)+'</span><span data-label="Dose given"><b>'+esc(r.dose)+' '+esc(adminDoseUnit(r.medication))+'</b></span><span data-label="Unit">'+esc(String(r.unit||'').replace(/^M([123])$/,'Medic $1'))+'</span></div>').join('')+
+ '</div></div>';
+}
 function usageSummaryPreview(summary=''){
  const lines=String(summary||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
  const rows=[];
  for(const line of lines){
-   const m=line.match(/^•?\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Report\s+(GFD\d+)\s*\|\s*(.+?):\s*(\d+)\s+vials?\s*\|\s*(Medic\s+[123])\s*\|\s*By\s+(.+)$/i);
-   if(m)rows.push({date:m[1],report:m[2],medication:m[3],vials:m[4],unit:m[5],provider:m[6]});
+   const m=line.match(/^•?\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Report\s+(GFD\d+)\s*\|\s*(.+?):\s*(\d+)\s+vials?\s*\|\s*(Medic\s+[123])(?:\s*\|\s*By\s+(.+))?$/i);
+   if(m)rows.push({date:m[1],report:m[2],medication:m[3],vials:m[4],unit:m[5],provider:m[6]||''});
  }
  if(!rows.length)return '';
- return '<div class="usage-preview"><div class="usage-preview-head"><span>Date</span><span>Report</span><span>Medication</span><span>Vials</span><span>Unit</span><span>Provider</span></div>'+
- rows.map(r=>'<div class="usage-preview-row"><span data-label="Date">'+esc(r.date)+'</span><span data-label="Report">'+esc(r.report)+'</span><span data-label="Medication">'+esc(r.medication)+'</span><span data-label="Vials">'+esc(r.vials)+'</span><span data-label="Unit">'+esc(r.unit)+'</span><span data-label="Provider">'+esc(r.provider)+'</span></div>').join('')+
- '</div>';
+ const total=rows.reduce((n,r)=>n+Number(r.vials||0),0);
+ return '<div class="admin-data-block vial-summary-block"><div class="admin-data-title">Calculated vial usage summary</div><div class="admin-data-note">Calculated from the documented doses using the department vial rules. Use this total to reconcile with the separate paper ambulance narcotic log.</div>'+
+ '<div class="usage-preview"><div class="usage-preview-head"><span>Date</span><span>Report</span><span>Medication / vial</span><span>Vials</span><span>Unit</span><span>Provider</span></div>'+
+ rows.map(r=>'<div class="usage-preview-row"><span data-label="Date">'+esc(r.date)+'</span><span data-label="Report">'+esc(r.report)+'</span><span data-label="Medication / vial">'+esc(r.medication)+'</span><span data-label="Vials">'+esc(r.vials)+'</span><span data-label="Unit">'+esc(r.unit)+'</span><span data-label="Provider">'+esc(r.provider)+'</span></div>').join('')+
+ '</div><div class="vial-total">Total calculated vial use: <strong>'+total+' vial'+(total===1?'':'s')+'</strong></div></div>';
 }
 function administrationImportSection(a){
  const docs=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
@@ -211,8 +228,9 @@ function administrationImportSection(a){
  '<div class="admin-import-top"><div><span class="kicker">ADMINISTRATION RECORDS</span><h3>Administration import</h3></div><div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">Import Administration PDF</button><input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div></div>'+
  '<div id="adminImportStatus" class="admin-import-status">'+(latest?'Loaded: '+esc(latest.name||'PDF')+(latest.uploadedAt?' · '+esc(fmtDate(latest.uploadedAt)):''):'No administration PDF imported yet.')+'</div>'+
  (latest?.transcript?'<details class="admin-transcript"><summary>View extracted transcription</summary><pre>'+esc(latest.transcript)+'</pre></details>':'')+
+ actualAdministrationPreview(a.administrationRows||latest?.administrationRows||[])+
  usageSummaryPreview(a.usageSummary||'')+
- '<label class="admin-summary-label">Administration import summary<textarea id="usageSummary" rows="8" placeholder="Imported administration summary will appear here.">'+esc(a.usageSummary||'')+'</textarea></label>'+
+ '<label class="admin-summary-label">Vial usage summary / rules<textarea id="usageSummary" rows="8" placeholder="Calculated vial-use summary will appear here.">'+esc(a.usageSummary||'')+'</textarea></label>'+
  '</div>';
 }
 async function sha256Buffer(buf){const hash=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('')}
@@ -312,9 +330,11 @@ async function handleAdministrationPdf(auditId,file){
    const path=String(auditId)+'/'+Date.now()+'-'+safeStorageName(file.name);
    const {error:uploadError}=await sb.storage.from('audit-supporting-docs').upload(path,file,{contentType:'application/pdf',upsert:false});
    if(uploadError)throw uploadError;
+   const administrationRows=parseAdministrationRows(cleanText);
    const summary=buildAdministrationSummary(cleanText,file.name);
+   audit.administrationRows=administrationRows;
    audit.supportingDocuments=Array.isArray(audit.supportingDocuments)?audit.supportingDocuments:[];
-   audit.supportingDocuments.push({name:file.name,storageBucket:'audit-supporting-docs',storagePath:path,mimeType:'application/pdf',size:file.size,pageCount:extracted.pageCount,sha256:digest,uploadedAt:nowISO(),uploadedBy:cloudSession?.user?.email||'',transcript:cleanText,administrationRows:parseAdministrationRows(cleanText)});
+   audit.supportingDocuments.push({name:file.name,storageBucket:'audit-supporting-docs',storagePath:path,mimeType:'application/pdf',size:file.size,pageCount:extracted.pageCount,sha256:digest,uploadedAt:nowISO(),uploadedBy:cloudSession?.user?.email||'',transcript:cleanText,administrationRows});
    audit.usageSummary=summary;
    audit.updatedAt=nowISO();
    await put('audits',audit);
