@@ -137,26 +137,95 @@ async function importBackup(file){
  const raw=await file.text(), hash=await sha256(raw);let data;
  try{data=JSON.parse(raw)}catch(e){throw new Error('The selected file is not valid JSON.')}
  if(!data||typeof data!=='object')throw new Error('Invalid migration file.');
- // Preserve the original migration artifact verbatim before normalization.
  await put('legacyArchive',{id:'legacy_'+Date.now(),importedAt:nowISO(),fileName:file.name||'migration.json',sha256:hash,raw});
- const recognized=['inventory','transactions','audits','reports','meta','legacyArchive'];
- let imported={inventory:0,transactions:0,audits:0,reports:0,signatures:0};
- for(const name of recognized){
-   if(!Array.isArray(data[name]))continue;
-   for(const row of data[name]){if(row&&row.id!=null){await put(name,row);if(imported[name]!=null)imported[name]++;}}
+ const imported={inventory:0,transactions:0,audits:0,reports:0,signatures:0,legacyObjects:0};
+
+ function countSignatures(row){
+   const sigs=[];
+   const walk=v=>{
+     if(!v||typeof v!=='object')return;
+     for(const [k,x] of Object.entries(v)){
+       if(typeof x==='string' && /signature/i.test(k) && (x.startsWith('data:image/')||x.length>150))sigs.push(x);
+       else if(x&&typeof x==='object')walk(x);
+     }
+   };
+   walk(row);imported.signatures+=sigs.length;
  }
- // Accept common legacy wrappers without discarding their original raw archive.
+ async function add(storeName,row,prefix){
+   if(!row||typeof row!=='object')return;
+   const copy=structuredClone(row);
+   if(copy.id==null)copy.id=(prefix||storeName)+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8);
+   await put(storeName,copy);
+   if(imported[storeName]!=null)imported[storeName]++;
+   if(storeName==='audits'||storeName==='reports')countSignatures(copy);
+ }
+ function parseMaybe(v){
+   if(typeof v!=='string')return v;
+   const t=v.trim();
+   if(!t||(!t.startsWith('{')&&!t.startsWith('[')))return v;
+   try{return JSON.parse(t)}catch(e){return v}
+ }
+ function allObjects(root,out=[],seen=new WeakSet()){
+   root=parseMaybe(root);
+   if(!root||typeof root!=='object')return out;
+   if(seen.has(root))return out;seen.add(root);
+   if(Array.isArray(root)){root.forEach(x=>allObjects(x,out,seen));return out}
+   out.push(root);
+   Object.values(root).forEach(x=>allObjects(parseMaybe(x),out,seen));
+   return out;
+ }
+ function looksInventory(r){
+   const keys=Object.keys(r).join(' ').toLowerCase();
+   return (r.location||r.unit||r.storageLocation) && (r.medication||r.drug||r.medicationName) && (r.quantity!=null||r.count!=null||r.balance!=null) && !/audit|signature/.test(keys);
+ }
+ function normalizeInventory(r){
+   const location=r.location||r.unit||r.storageLocation;
+   const medication=r.medication||r.drug||r.medicationName;
+   const quantity=Number(r.quantity??r.count??r.balance??0);
+   return {id:String(location)+'|'+String(medication),location:String(location),medication:String(medication),quantity,updatedAt:r.updatedAt||r.updated_at||r.timestamp||nowISO(),legacySource:r};
+ }
+ function looksAudit(r){
+   const keys=Object.keys(r).join(' ').toLowerCase();
+   return /audit|auditor|attestation|auditmonth|signatures/.test(keys) && (/month|counts|inventory|signature|attestation/.test(keys));
+ }
+ function looksTransaction(r){
+   const keys=Object.keys(r).join(' ').toLowerCase();
+   return /transaction|movement|waste|received|transfer|activity/.test(keys) && (r.medication||r.drug||r.type||r.action);
+ }
+ function looksReport(r){
+   const keys=Object.keys(r).join(' ').toLowerCase();
+   return /finalized|finalizedat|report|certification/.test(keys) && /audit|signature|inventory|attestation/.test(keys);
+ }
+
+ const recognized=['inventory','transactions','audits','reports','meta','legacyArchive'];
+ for(const name of recognized){
+   if(Array.isArray(data[name]))for(const row of data[name])await add(name,row,name);
+ }
  const roots=[data,data.data||{},data.db||{},data.state||{}];
  for(const root of roots){
-   if(Array.isArray(root.inventory))for(const row of root.inventory){if(row?.id){await put('inventory',row);imported.inventory++}}
-   if(Array.isArray(root.transactions))for(const row of root.transactions){if(row?.id){await put('transactions',row);imported.transactions++}}
-   if(Array.isArray(root.audits))for(const row of root.audits){if(row?.id){await put('audits',row);imported.audits++;countSignatures(row)}}
-   if(Array.isArray(root.reports))for(const row of root.reports){if(row?.id){await put('reports',row);imported.reports++;countSignatures(row)}}
+   if(Array.isArray(root.inventory))for(const row of root.inventory)await add('inventory',row,'inventory');
+   if(Array.isArray(root.transactions))for(const row of root.transactions)await add('transactions',row,'tx');
+   if(Array.isArray(root.audits))for(const row of root.audits)await add('audits',row,'audit');
+   if(Array.isArray(root.reports))for(const row of root.reports)await add('reports',row,'report');
  }
- function countSignatures(row){const s=row?.signatures||{};Object.values(s).forEach(v=>{if(v?.signature)imported.signatures++;if(v?.witnessSignature)imported.signatures++})}
- await put('meta',{id:'migration',importedAt:nowISO(),sourceExportedAt:data.exportedAt||'',schemaVersion:data.schemaVersion||'legacy',sourceFile:file.name||'',sha256:hash,counts:imported});
+
+ // Legacy browser-storage exports: parse localStorage JSON strings and every IndexedDB store.
+ const legacyRoots=[];
+ if(data.localStorage&&typeof data.localStorage==='object')Object.values(data.localStorage).forEach(v=>legacyRoots.push(parseMaybe(v)));
+ if(Array.isArray(data.indexedDB))for(const d of data.indexedDB)if(d?.stores)Object.values(d.stores).forEach(v=>legacyRoots.push(v));
+ for(const root of legacyRoots){
+   for(const r of allObjects(root)){
+     imported.legacyObjects++;
+     if(looksInventory(r)){await add('inventory',normalizeInventory(r),'inventory');continue}
+     if(looksReport(r)){await add('reports',r,'report');continue}
+     if(looksAudit(r)){await add('audits',r,'audit');continue}
+     if(looksTransaction(r)){await add('transactions',r,'tx');continue}
+   }
+ }
+
+ await put('meta',{id:'migration',importedAt:nowISO(),sourceExportedAt:data.exportedAt||'',schemaVersion:data.schemaVersion||data.exportType||'legacy-browser-storage',sourceFile:file.name||'',sha256:hash,counts:imported,validationRequired:true});
  await refreshAll();
- document.getElementById('migrationStatus').textContent='Migration imported and archived intact. SHA-256 '+hash.slice(0,16)+'… · '+imported.inventory+' inventory rows · '+imported.transactions+' activity rows · '+imported.audits+' audits · '+imported.reports+' reports · '+imported.signatures+' captured signatures. Verify against the original Site before cutover.';
+ document.getElementById('migrationStatus').textContent='Migration source archived intact. SHA-256 '+hash.slice(0,16)+'… · mapped '+imported.inventory+' inventory rows · '+imported.transactions+' activity rows · '+imported.audits+' audits · '+imported.reports+' reports · '+imported.signatures+' signature payloads. Original source remains retained for reconciliation.';
 }
 function download(name,text,type){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([text],{type}));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
 async function exportActivity(){let rows=await getAll('transactions');const cols=['timestamp','type','medication','quantity','fromLocation','toLocation','reference','recordedBy','witness','notes'];const csv=[cols.join(','),...rows.map(r=>cols.map(c=>'"'+String(r[c]??'').replace(/"/g,'""')+'"').join(','))].join('\n');download('narcotic-activity.csv',csv,'text/csv')}
