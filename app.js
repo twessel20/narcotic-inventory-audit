@@ -1,5 +1,5 @@
 const MEDS=['Fentanyl 100 mcg','Versed 2 mg','Versed 5 mg','Ketamine 500 mg','Morphine 10 mg'];
-const FINAL_ATTESTATION='I certify that I have personally reviewed this controlled-substance audit, the physical counts and seal records for Medic 1, Medic 2, Medic 3, Safe, and Expired, and each location’s signer and witness certifications. To the best of my knowledge, this record is complete, accurate, and truthful. All shortages, overages, damaged or missing seals, expired stock, and other discrepancies identified during this audit are documented with corrective actions or escalation in the audit notes. I have not knowingly concealed a discrepancy or falsified any count, signature, or record. Unresolved discrepancies remain subject to investigation and required departmental reporting; this signature does not represent their resolution. By signing, I accept responsibility for this certification and authorize finalization of this audit record.';
+const FINAL_ATTESTATION='I certify that I have personally reviewed this controlled-substance audit, the physical counts and seal records for Medic 1, Medic 2, Medic 3, Safe, and Expired, and each location’s signer and witness Certifications. To the best of my knowledge, this record is complete, accurate, and truthful. All shortages, overages, damaged or missing seals, expired stock, and other discrepancies identified during this audit are documented with corrective actions or escalation in the audit notes. I have not knowingly concealed a discrepancy or falsified any count, signature, or record. Unresolved discrepancies remain subject to investigation and required departmental reporting; this signature does not represent their resolution. By signing, I accept responsibility for this Certification and authorize finalization of this audit record.';
 const LOCS=['Medic 1','Medic 2','Medic 3','Safe','Expired'];
 const DB_NAME='narcotic-audit-db', DB_VER=2;
 const SUPABASE_URL='https://fygyubamdxdfhvteyxyy.supabase.co';
@@ -211,7 +211,7 @@ function unitAuditSection(a,loc,index){
  '<div class="unit-compact-grid">'+
  '<div class="unit-compact-panel seal-panel"><h4>Seals</h4><div class="tag-entry-fields seal-pair"><label>Tag found / removed<input inputmode="numeric" autocomplete="off" placeholder="Tag #" data-tag-loc="'+loc+'" data-tag-kind="foundRemoved" aria-label="'+loc+' tag found or removed" value="'+esc(tag.foundRemoved||'')+'"></label><label>New tag installed<input inputmode="numeric" autocomplete="off" placeholder="Tag #" data-tag-loc="'+loc+'" data-tag-kind="newInstalled" aria-label="'+loc+' new tag installed" value="'+esc(tag.newInstalled||'')+'"></label></div></div>'+
  '<div class="unit-compact-panel inventory-panel"><h4>Physical inventory</h4><div class="unit-med-list">'+medRows+'</div></div>'+
- '<div class="unit-compact-panel certification-panel"><h4>Certification</h4>'+sigBlock(loc,sig,true)+'</div>'+
+ '<div class="unit-compact-panel Certification-panel"><h4>Certification</h4>'+sigBlock(loc,sig,true)+'</div>'+
  '</div></section>';
 }
 function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="signature-person-grid"><div><div class="auditor-id-grid"><label>Auditor name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-employee-number value="'+esc(s.employeeNumber||'')+'"></label></div><div class="signature-label-row"><div class="signature-label">Auditor signature</div><button type="button" class="expand-signature" data-expand-signature="auditor">Open larger</button></div><canvas width="500" height="150" data-canvas></canvas></div><div><div class="auditor-id-grid"><label>Witness name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-witness-employee-number value="'+esc(s.witnessEmployeeNumber||'')+'"></label></div><div class="signature-label-row"><div class="signature-label">Witness signature</div><button type="button" class="expand-signature" data-expand-signature="witness">Open larger</button></div><canvas width="500" height="150" data-witness-canvas></canvas></div></div><button type="button" class="clear-signatures" data-clear-sig>Clear signatures</button></div>'}
@@ -471,7 +471,7 @@ async function editAudit(id){
  '<div class="audit-step-card" data-audit-step="1" data-step-title="Administration import">'+administrationImportSection(a)+'</div>'+
  LOCS.map((l,i)=>'<div class="audit-step-card" data-audit-step="'+(i+2)+'" data-step-title="'+esc(l)+'" id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+
  '<div class="audit-step-card" data-audit-step="'+(LOCS.length+2)+'" data-step-title="Audit notes"><div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div></div>'+
- '<div class="audit-step-card" data-audit-step="'+(LOCS.length+3)+'" data-step-title="Final certification"><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><div class="final-auditor-grid"><label class="final-signer-label">Final auditor name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||a.auditorName||'')+'"></label><label class="final-signer-label">Employee number<input id="attestEmployeeNumber" placeholder="Employee #" inputmode="numeric" value="'+esc(a.attestationEmployeeNumber||a.auditorEmployeeNumber||'')+'"></label></div><div class="final-signature-block"><div class="signature-label-row"><div class="signature-label">Final auditor signature</div><button type="button" class="expand-signature" id="expandFinalSignature">Open larger</button></div><canvas id="finalSignatureCanvas" width="500" height="150"></canvas></div><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>'+
+ '<div class="audit-step-card" data-audit-step="'+(LOCS.length+3)+'" data-step-title="Final Certification"><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><div class="final-auditor-grid"><label class="final-signer-label">Final auditor name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||a.auditorName||'')+'"></label><label class="final-signer-label">Employee number<input id="attestEmployeeNumber" placeholder="Employee #" inputmode="numeric" value="'+esc(a.attestationEmployeeNumber||a.auditorEmployeeNumber||'')+'"></label></div><div class="final-signature-block"><div class="signature-label-row"><div class="signature-label">Final auditor signature</div><button type="button" class="expand-signature" id="expandFinalSignature">Open larger</button></div><canvas id="finalSignatureCanvas" width="500" height="150"></canvas></div><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>'+
  '<div class="mobile-card-nav" aria-label="Audit section navigation"><button type="button" id="auditStepPrev">Sections</button><div class="mobile-card-progress"><strong id="auditStepTitle"></strong><span id="auditStepCount"></span></div><button type="button" class="primary" id="auditStepNext">Next section</button></div>'+
  '</div>';
  document.getElementById('backAudits').onclick=async()=>{
@@ -795,7 +795,7 @@ function annualSummaryHtml(year,reports){
  '<ul>'+
  '<li><b>Finalized monthly audits:</b> '+reports.length+'.</li>'+
  '<li><b>Imported administration activity:</b> '+adminRows.length+' source dose row'+(adminRows.length===1?'':'s')+' across '+providerCount+' provider'+(providerCount===1?'':'s')+(vialTotal!==null?', calculating to '+vialTotal+' vial'+(vialTotal===1?'':'s'):'')+'.</li>'+
- '<li><b>Certification coverage:</b> '+certifiedSites+' of '+totalSites+' location certification blocks contain auditor/witness identification and both signatures.</li>'+
+ '<li><b>Certification coverage:</b> '+certifiedSites+' of '+totalSites+' location Certification blocks contain auditor/witness identification and both signatures.</li>'+
  '<li><b>Recorded amendments:</b> '+amendments+'.</li>'+
  '</ul></section>'+
  '<section><h2>Year-start to year-end active inventory</h2><table class="report-table"><thead><tr><th>Medication</th><th>First finalized audit</th><th>Last finalized audit</th><th>Net change</th></tr></thead><tbody>'+
@@ -932,7 +932,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
  try{
    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 
-   // Pre-paginate certification cards. The certification section starts on a fresh
+   // Pre-paginate Certification cards. The Certification section starts on a fresh
    // PDF page, so move any whole card that will not fit to the next page.
    const pdfSignatureSection=clone.querySelector('.report-signature-section');
    if(pdfSignatureSection){
@@ -1268,7 +1268,7 @@ function executiveSummaryHtml(r){
  });
  const certSentence=certComplete
    ?' All audit locations were fully certified by the auditor and witness.'
-   :' One or more audit locations were missing complete certification information.';
+   :' One or more audit locations were missing complete Certification information.';
  const amendmentSentence=amendmentCount
    ?' '+amendmentCount+' amendment'+(amendmentCount===1?' was':'s were')+' recorded after the original audit entry.'
    :' No amendments were recorded.';
@@ -1302,12 +1302,12 @@ function reportHtml(r){
  const sigCard=(loc)=>{
    const x=r.signatures?.[loc]||{};
    const explicit=r.isTest;
-   return '<section class="report-cert'+(explicit?' report-cert-explicit':'')+'"><h2>'+esc(loc)+' certification</h2>'+
+   return '<section class="report-cert'+(explicit?' report-cert-explicit':'')+'"><h2>'+esc(loc)+' Certification</h2>'+
    (explicit?'<div class="report-cert-site"><span>AUDIT SITE</span><strong>'+esc(loc)+'</strong></div><p class="report-cert-statement">These signatures certify the <b>'+esc(loc)+'</b> physical inventory count and seal record documented in this audit.</p>':'<p>Auditor: physical count and seal entries certified. Witness: personally observed and verified this count and seal record.</p>')+
    '<div class="report-signature-grid"><div class="report-signature-box">'+
-   (explicit?'<div class="report-signature-site">'+esc(loc)+' — Auditor certification</div>':'')+
+   (explicit?'<div class="report-signature-site">'+esc(loc)+' — Auditor Certification</div>':'')+
    '<div class="report-signature-label">AUDITOR SIGNATURE</div>'+(x.signature?'<img src="'+x.signature+'" alt="'+esc(loc)+' auditor signature">':'<div class="report-signature-placeholder"></div>')+'<div class="report-signature-name">'+esc(x.signer||'')+(x.employeeNumber?' · Employee #'+esc(x.employeeNumber):'')+'</div></div><div class="report-signature-box">'+
-   (explicit?'<div class="report-signature-site">'+esc(loc)+' — Witness certification</div>':'')+
+   (explicit?'<div class="report-signature-site">'+esc(loc)+' — Witness Certification</div>':'')+
    '<div class="report-signature-label">WITNESS SIGNATURE</div>'+(x.witnessSignature?'<img src="'+x.witnessSignature+'" alt="'+esc(loc)+' witness signature">':'<div class="report-signature-placeholder"></div>')+'<div class="report-signature-name">'+esc(x.witness||'')+(x.witnessEmployeeNumber?' · Employee #'+esc(x.witnessEmployeeNumber):'')+'</div></div></div></section>';
  };
  const sourceDoc=(r.supportingDocuments||[])[0];
@@ -1340,7 +1340,7 @@ function reportHtml(r){
    return '<div class="report-vial-row report-vial-row-detailed"><div class="report-vial-provider"><strong>'+esc(provider)+'</strong><span>'+detail+'</span></div><div class="report-vial-count">'+total+' vial'+(total===1?'':'s')+'</div></div>';
  }).join('')+
  '<div class="report-vial-total"><span>Total calculated vials</span><strong>'+providerVialData(r.administrationRows).total+'</strong></div></div></section>':'')+'<section><h2>Transactions in the audit reporting period</h2><table class="report-table report-transactions"><thead><tr><th>Date</th><th>Action</th><th>Medication</th><th>Qty</th><th>Movement</th><th>Vendor / incident / lot</th></tr></thead><tbody>'+txRows+'</tbody></table></section>'+
- '<section class="report-signature-section"><h2>Audit site certifications</h2><div class="report-signature-section-grid">'+
+ '<section class="report-signature-section"><h2>Audit site Certifications</h2><div class="report-signature-section-grid">'+
  sigCard('Medic 1')+sigCard('Medic 2')+sigCard('Medic 3')+sigCard('Safe')+sigCard('Expired')+
  '</div></section>'+
  '<section class="report-attestation"><h2>Final overall controlled-substance audit attestation</h2><p>'+esc(r.attestationText||FINAL_ATTESTATION).replace(/\n/g,'<br>')+'</p><div class="report-final-signature'+(r.isTest?' report-final-signature-explicit':'')+'"><div class="report-signature-label">FINAL CERTIFYING AUDITOR SIGNATURE</div>'+(r.isTest?'<div class="report-final-signature-capture">'+(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'<div class="report-signature-placeholder"></div>')+'</div>':(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':''))+'<div class="report-signature-name">'+esc(r.attestationName||'')+(r.attestationEmployeeNumber?' · Employee #'+esc(r.attestationEmployeeNumber):'')+'</div></div></section>'+
@@ -1412,7 +1412,7 @@ async function importBackup(file){
  }
  function looksReport(r){
    const keys=Object.keys(r).join(' ').toLowerCase();
-   return /finalized|finalizedat|report|certification/.test(keys) && /audit|signature|inventory|attestation/.test(keys);
+   return /finalized|finalizedat|report|Certification/.test(keys) && /audit|signature|inventory|attestation/.test(keys);
  }
 
  const recognized=['inventory','transactions','audits','reports','meta','legacyArchive'];
