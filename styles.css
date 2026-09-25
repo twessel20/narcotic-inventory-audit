@@ -2283,3 +2283,21 @@ body.report-open{overflow:hidden}
 .pdf-render-stage .report-table td{
   padding:7px 8px !important;
 }
+
+
+/* Keep cover page border contained to cover only */
+.pdf-render-stage .report-cover-page{
+  box-sizing:border-box !important;
+  width:100% !important;
+  max-width:100% !important;
+  min-height:9.0in !important;
+  height:9.0in !important;
+  overflow:hidden !important;
+  margin:0 !important;
+  break-after:page !important;
+  page-break-after:always !important;
+  border:1.5px solid #c8d6e0 !important;
+}
+.pdf-render-stage .report-cover-page + *{
+  margin-top:0 !important;
+}
