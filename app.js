@@ -252,7 +252,7 @@ function providerVialSummary(rows=[]){
    const detailRows=items.sort((a,b)=>a.date.localeCompare(b.date)||String(a.report).localeCompare(String(b.report))).map(x=>
      '<div class="provider-vial-detail-row">'+
        '<div><strong>'+esc(x.date)+'</strong><span>'+esc(x.report)+' · '+esc(x.unit)+'</span></div>'+
-       '<div><strong>'+esc(x.medication)+' '+esc(x.strength)+'</strong><span>'+esc(x.dose)+' '+esc(x.doseUnit)+' administered</span></div>'+
+       '<div><strong>'+esc(x.medication)+' — '+esc(x.dose)+' '+esc(x.doseUnit)+' given</strong><span>'+x.vials+' vial'+(x.vials===1?'':'s')+' used · '+esc(x.strength)+' vial</span></div>'+
        '<div class="provider-vial-calc">'+x.vials+' vial'+(x.vials===1?'':'s')+'</div>'+
      '</div>'
    ).join('');
