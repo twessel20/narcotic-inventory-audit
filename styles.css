@@ -387,3 +387,117 @@ body.report-open{overflow:hidden}
   .inventory-panel{grid-row:span 2;border-left:1px solid #e3eaf0;border-right:1px solid #e3eaf0}
   .certification-panel{grid-column:1/-1}
 }
+
+
+/* Final audit workspace spacing normalization */
+.audit-workspace-shell{
+  gap:10px;
+}
+.audit-workspace-shell .audit-card{
+  margin:0;
+}
+.audit-hero{
+  padding:14px 16px;
+}
+.audit-meta-grid{
+  margin-top:12px;
+  gap:10px;
+}
+.audit-meta-grid label{
+  gap:4px;
+}
+.audit-route{
+  margin:0;
+  padding:7px 8px;
+  gap:6px;
+}
+.audit-route a{
+  padding:6px 9px;
+}
+.admin-import-card,
+.audit-section-card{
+  padding:14px 16px;
+}
+.admin-import-card h3,
+.audit-section-card h3{
+  margin:.15rem 0 4px;
+}
+.admin-import-actions{
+  margin:9px 0;
+}
+.admin-summary-label{
+  margin-top:9px;
+}
+.compact-unit{
+  margin:0;
+}
+.compact-head{
+  padding:10px 12px;
+}
+.unit-compact-panel{
+  padding:10px 12px;
+}
+.unit-compact-panel h4{
+  margin:0 0 6px;
+}
+.compact-unit .tag-entry-fields{
+  padding:0;
+  gap:8px;
+}
+.compact-unit .tag-entry-fields label{
+  gap:4px;
+}
+.compact-unit .tag-entry-fields input{
+  min-height:40px;
+}
+.compact-unit .unit-med-list{
+  gap:6px;
+  margin-top:0;
+}
+.compact-unit .unit-med-row.compact{
+  padding:6px 8px;
+  gap:8px;
+}
+.compact-unit .unit-current{
+  gap:3px;
+}
+.compact-unit .unit-current input{
+  min-height:36px;
+  padding:7px 8px;
+}
+.compact-unit .signature-box{
+  padding:0;
+}
+.compact-unit .signature-box label{
+  margin-top:0;
+  gap:4px;
+}
+.compact-unit .signature-box input{
+  margin:0;
+  min-height:40px;
+}
+.compact-unit .signature-label{
+  margin:6px 0 4px;
+}
+.compact-unit .embedded-signature canvas{
+  height:96px;
+}
+.compact-unit .embedded-signature .clear-signatures{
+  margin-top:8px;
+}
+.audit-actions{
+  margin-top:12px;
+  padding-top:12px;
+}
+@media(max-width:650px){
+  .audit-workspace-shell{gap:8px}
+  .audit-hero,
+  .admin-import-card,
+  .audit-section-card{padding:12px}
+  .compact-head,
+  .unit-compact-panel{padding:10px}
+  .audit-meta-grid{margin-top:10px;gap:8px}
+  .unit-med-row.compact{grid-template-columns:minmax(0,1fr) 48px 86px}
+  .unit-prior{text-align:center}
+  .compact-unit .signature-person-grid{gap:8px}
+}
