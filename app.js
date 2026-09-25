@@ -474,7 +474,18 @@ async function flushAuditAutosave(){
 
 async function saveAuditFromUI(id,finalize){
  const a=await getOne('audits',id);collectAuditFromUI(a);a.updatedAt=nowISO();
- if(finalize){if(!a.attestationAccepted||!a.attestationName.trim())return alert('Final attestation and signer name are required.');for(const loc of LOCS){if(!a.signatures[loc]?.signer?.trim()||!a.signatures[loc]?.witness?.trim())return alert('Signer and witness names are required for '+loc+'.')}a.status='finalized';a.finalizedAt=nowISO();await put('reports',{...a,id:'report_'+a.id,auditId:a.id});}
+ if(finalize){
+   const docs=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
+   const hasAdminImport=docs.some(d=>String(d.mimeType||'').toLowerCase()==='application/pdf'&&d.storagePath&&Array.isArray(d.administrationRows)&&d.administrationRows.length);
+   if(!hasAdminImport){
+     const admin=document.querySelector('.mobile-collapsible-admin');
+     if(admin){admin.setAttribute('open','');admin.scrollIntoView({behavior:'smooth',block:'start'})}
+     return alert('Administration PDF import is required before finalizing this audit.');
+   }
+   if(!a.attestationAccepted||!a.attestationName.trim())return alert('Final attestation and signer name are required.');
+   for(const loc of LOCS){if(!a.signatures[loc]?.signer?.trim()||!a.signatures[loc]?.witness?.trim())return alert('Signer and witness names are required for '+loc+'.')}
+   a.status='finalized';a.finalizedAt=nowISO();await put('reports',{...a,id:'report_'+a.id,auditId:a.id});
+ }
  await put('audits',a);if(finalize){activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});}await refreshAll();if(finalize)showReport('report_'+a.id);else editAudit(a.id)
 }
 
