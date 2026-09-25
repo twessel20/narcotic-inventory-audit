@@ -182,13 +182,11 @@ function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(e
 function administrationImportSection(a){
  const docs=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
  const latest=docs.length?docs[docs.length-1]:null;
- return '<div class="audit-card audit-section-card admin-import-card">'+
- '<span class="kicker">ADMINISTRATION RECORDS</span><h3>Import narcotic administration PDF</h3>'+
- '<p class="meta">Upload the narcotic administration PDF for this audit period.</p>'+
- '<div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">Upload administration PDF</button><input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div>'+
- '<div id="adminImportStatus" class="notice">'+(latest?'Loaded: '+esc(latest.name||'PDF')+(latest.uploadedAt?' · '+esc(fmtDate(latest.uploadedAt)):''):'No administration PDF uploaded for this draft yet.')+'</div>'+
- (latest?.transcript?'<details class="admin-transcript"><summary>View extracted PDF transcription</summary><pre>'+esc(latest.transcript)+'</pre></details>':'')+
- '<label class="admin-summary-label">Administration import summary<textarea id="usageSummary" rows="10" placeholder="Upload an administration PDF to populate this summary.">'+esc(a.usageSummary||'')+'</textarea></label>'+
+ return '<div class="audit-card admin-import-card compact-admin-import">'+
+ '<div class="admin-import-top"><div><span class="kicker">ADMINISTRATION RECORDS</span><h3>Administration import</h3></div><div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">Import Administration PDF</button><input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div></div>'+
+ '<div id="adminImportStatus" class="admin-import-status">'+(latest?'Loaded: '+esc(latest.name||'PDF')+(latest.uploadedAt?' · '+esc(fmtDate(latest.uploadedAt)):''):'No administration PDF imported yet.')+'</div>'+
+ (latest?.transcript?'<details class="admin-transcript"><summary>View extracted transcription</summary><pre>'+esc(latest.transcript)+'</pre></details>':'')+
+ '<label class="admin-summary-label">Administration import summary<textarea id="usageSummary" rows="8" placeholder="Imported administration summary will appear here.">'+esc(a.usageSummary||'')+'</textarea></label>'+
  '</div>';
 }
 async function sha256Buffer(buf){const hash=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('')}
