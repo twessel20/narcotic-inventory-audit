@@ -405,13 +405,19 @@ async function editAudit(id){
  }
  activeAuditId=id;
  await put('meta',{id:'activeAudit',auditId:id,updatedAt:nowISO()});
- document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-shell"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back to audits</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Status<input value="'+esc(a.status)+'" disabled></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div>'+administrationImportSection(a)+'<div class="audit-route"><div class="audit-route-title">Audit route</div>'+LOCS.map((l,i)=>'<a href="#unit-'+i+'" data-jump-unit="'+i+'" data-route-loc="'+esc(l)+'"><span class="route-status-mark"></span><span class="route-label">'+(i+1)+'. '+esc(l)+'</span></a>').join('')+'</div>'+LOCS.map((l,i)=>'<div id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+'<div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><label class="final-signer-label">Final signer name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||'')+'"></label><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>';
+ document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-shell"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back to audits</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Status<input value="'+esc(a.status)+'" disabled></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div>'+administrationImportSection(a)+'<div class="audit-route"><div class="audit-route-title">Audit route</div>'+LOCS.map((l,i)=>'<a href="#unit-'+i+'" data-jump-unit="'+i+'" data-route-loc="'+esc(l)+'"><span class="route-status-mark"></span><span class="route-label">'+(i+1)+'. '+esc(l)+'</span></a>').join('')+'</div>'+LOCS.map((l,i)=>'<div id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+'<div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><div class="final-auditor-grid"><label class="final-signer-label">Final auditor name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||'')+'"></label><label class="final-signer-label">Employee number<input id="attestEmployeeNumber" placeholder="Employee #" inputmode="numeric" value="'+esc(a.attestationEmployeeNumber||'')+'"></label></div><div class="final-signature-block"><div class="signature-label-row"><div class="signature-label">Final auditor signature</div><button type="button" class="expand-signature" id="expandFinalSignature">Open larger</button></div><canvas id="finalSignatureCanvas" width="500" height="150"></canvas></div><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>';
  document.getElementById('backAudits').onclick=async()=>{await flushAuditAutosave();activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});renderAudits()};
  const adminOuter=document.querySelector('.mobile-collapsible-admin');
  if(adminOuter&&window.matchMedia('(max-width:650px)').matches)adminOuter.removeAttribute('open');
  const adminUploadBtn=document.getElementById('uploadAdminPdf'),adminPdfFile=document.getElementById('adminPdfFile');
  if(adminUploadBtn&&adminPdfFile){adminUploadBtn.onclick=()=>adminPdfFile.click();adminPdfFile.onchange=async e=>{const file=e.target.files?.[0];if(file)await handleAdministrationPdf(a.id,file);e.target.value=''}};
  document.querySelectorAll('.signature-box').forEach(box=>setupSignature(box,a.signatures?.[box.dataset.sigLoc]||{},()=>scheduleAuditAutosave(a.id,true)));
+ const finalSigCanvas=document.getElementById('finalSignatureCanvas');
+ if(finalSigCanvas){
+   setupCanvas(finalSigCanvas,a.attestationSignature||'',()=>scheduleAuditAutosave(a.id,true));
+   const btn=document.getElementById('expandFinalSignature');
+   if(btn)btn.onclick=()=>openStandaloneSignatureCapture(finalSigCanvas,'Final auditor signature',()=>scheduleAuditAutosave(a.id,true));
+ }
  document.getElementById('saveAudit').onclick=()=>saveAuditFromUI(a.id,false);
  document.getElementById('finalizeAudit').onclick=()=>saveAuditFromUI(a.id,true);
  const monthPicker=document.getElementById('auditMonthPicker');
@@ -466,6 +472,37 @@ function openSignatureCapture(box,kind,onChange){
  dialog.showModal();
  setTimeout(()=>dialog.scrollTop=0,0);
 }
+function openStandaloneSignatureCapture(source,titleText,onChange){
+ if(!source)return;
+ let dialog=document.getElementById('signatureCaptureDialog');
+ if(!dialog){
+   dialog=document.createElement('dialog');
+   dialog.id='signatureCaptureDialog';
+   dialog.className='signature-capture-dialog';
+   dialog.innerHTML='<div class="signature-capture-shell"><div class="signature-capture-head"><div><span class="kicker">SIGNATURE CAPTURE</span><h2 id="signatureCaptureTitle">Signature</h2></div><button type="button" id="signatureCaptureClose">Done</button></div><div class="signature-capture-hint">Rotate your phone to landscape for the largest signing area.</div><canvas id="signatureCaptureCanvas" width="1200" height="500"></canvas><div class="signature-capture-actions"><button type="button" id="signatureCaptureClear">Clear</button><button type="button" class="primary" id="signatureCaptureSave">Use signature</button></div></div>';
+   document.body.appendChild(dialog);
+ }
+ dialog.querySelector('#signatureCaptureTitle').textContent=titleText||'Signature';
+ const old=dialog.querySelector('#signatureCaptureCanvas');
+ const live=old.cloneNode(true);old.replaceWith(live);live.width=1200;live.height=500;
+ const lctx=live.getContext('2d');lctx.lineWidth=5;lctx.lineCap='round';
+ if(source.dataset.hasSignature==='true'){
+   const img=new Image();img.onload=()=>lctx.drawImage(img,0,0,live.width,live.height);img.src=source.toDataURL();
+ }
+ live.dataset.hasSignature=source.dataset.hasSignature||'false';
+ let down=false,last=null,moved=false;
+ const pos=e=>{const r=live.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*live.width/r.width,y:(p.clientY-r.top)*live.height/r.height}};
+ const start=e=>{down=true;moved=false;last=pos(e);e.preventDefault()};
+ const move=e=>{if(!down)return;const p=pos(e);lctx.beginPath();lctx.moveTo(last.x,last.y);lctx.lineTo(p.x,p.y);lctx.stroke();last=p;moved=true;e.preventDefault()};
+ const end=()=>{if(down&&moved)live.dataset.hasSignature='true';down=false;last=null;moved=false};
+ live.addEventListener('mousedown',start);live.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
+ live.addEventListener('touchstart',start,{passive:false});live.addEventListener('touchmove',move,{passive:false});live.addEventListener('touchend',end);
+ const apply=()=>{const sctx=source.getContext('2d');sctx.clearRect(0,0,source.width,source.height);sctx.drawImage(live,0,0,source.width,source.height);source.dataset.hasSignature=live.dataset.hasSignature||'false';if(onChange)onChange()};
+ dialog.querySelector('#signatureCaptureClear').onclick=()=>{lctx.clearRect(0,0,live.width,live.height);live.dataset.hasSignature='false'};
+ dialog.querySelector('#signatureCaptureSave').onclick=()=>{apply();dialog.close()};
+ dialog.querySelector('#signatureCaptureClose').onclick=()=>{apply();dialog.close()};
+ dialog.showModal();
+}
 function setupCanvas(canvas,data,onChange){
  const ctx=canvas.getContext('2d');ctx.lineWidth=2;ctx.lineCap='round';canvas.dataset.hasSignature=data?'true':'false';
  if(data){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=data}
@@ -503,6 +540,9 @@ function collectAuditFromUI(a){
  document.querySelectorAll('.signature-box').forEach(box=>{const loc=box.dataset.sigLoc,c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');a.signatures[loc]={signer:box.querySelector('[data-signer]').value,employeeNumber:box.querySelector('[data-employee-number]')?.value.trim()||'',witness:box.querySelector('[data-witness]').value,witnessEmployeeNumber:box.querySelector('[data-witness-employee-number]')?.value.trim()||'',signature:c.toDataURL(),witnessSignature:w.toDataURL()}});
  a.attestationAccepted=document.getElementById('attestCheck').checked;
  a.attestationName=document.getElementById('attestName').value;
+ a.attestationEmployeeNumber=document.getElementById('attestEmployeeNumber')?.value.trim()||'';
+ const finalSig=document.getElementById('finalSignatureCanvas');
+ a.attestationSignature=finalSig?.dataset.hasSignature==='true'?finalSig.toDataURL():(a.attestationSignature||'');
  return a;
 }
 function scheduleAuditAutosave(id,immediate=false){
@@ -539,7 +579,9 @@ async function saveAuditFromUI(id,finalize){
      if(admin){admin.setAttribute('open','');admin.scrollIntoView({behavior:'smooth',block:'start'})}
      return alert('Administration PDF import is required before finalizing this audit.');
    }
-   if(!a.attestationAccepted||!a.attestationName.trim())return alert('Final attestation and signer name are required.');
+   if(!a.attestationAccepted||!a.attestationName.trim())return alert('Final attestation and auditor name are required.');
+   if(!a.attestationEmployeeNumber?.trim())return alert('Final auditor employee number is required.');
+   if(!a.attestationSignature) return alert('Final auditor signature is required.');
    for(const loc of LOCS){
      if(!a.signatures[loc]?.signer?.trim())return alert('Auditor name is required for '+loc+'.');
      if(!a.signatures[loc]?.employeeNumber?.trim())return alert('Auditor employee number is required for '+loc+'.');
@@ -597,7 +639,7 @@ async function reportHtml(r){
  '<section><h2>Narcotic usage exports</h2><p>Reference documents only. Monthly inventory totals are the manually verified physical counts; usage exports do not calculate expected counts or variances.</p>'+(sourceDoc?'<p><u>'+esc(sourceDoc.name)+'</u> — uploaded '+esc(sourceDoc.uploadedAt||'')+(sourceDoc.uploadedBy?' by '+esc(sourceDoc.uploadedBy):'')+'</p>':'')+'<p class="report-note">Uploaded PDFs are separate supporting documents; open each attachment to print its contents.</p></section>'+
  '<section><h2>Transactions in the audit reporting period</h2><table class="report-table report-transactions"><thead><tr><th>Date</th><th>Action</th><th>Medication</th><th>Qty</th><th>Movement</th><th>Vendor / incident / lot</th></tr></thead><tbody>'+txRows+'</tbody></table></section>'+
  sigCard('Medic 1')+sigCard('Medic 2')+sigCard('Medic 3')+sigCard('Safe')+sigCard('Expired')+
- '<section class="report-attestation"><h2>Final overall controlled-substance audit attestation</h2><p>'+esc(r.attestationText||FINAL_ATTESTATION).replace(/\n/g,'<br>')+'</p><div class="report-final-signature"><div class="report-signature-label">FINAL CERTIFYING AUDITOR SIGNATURE</div>'+(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'')+'<div class="report-signature-name">'+esc(r.attestationName||'')+'</div></div></section>'+
+ '<section class="report-attestation"><h2>Final overall controlled-substance audit attestation</h2><p>'+esc(r.attestationText||FINAL_ATTESTATION).replace(/\n/g,'<br>')+'</p><div class="report-final-signature"><div class="report-signature-label">FINAL CERTIFYING AUDITOR SIGNATURE</div>'+(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'')+'<div class="report-signature-name">'+esc(r.attestationName||'')+(r.attestationEmployeeNumber?' · Employee #'+esc(r.attestationEmployeeNumber):'')+'</div></div></section>'+
  '<section class="report-notes"><h2>Audit notes</h2><p class="audit-notes-text">'+esc(r.notes||'').replace(/\n/g,'<br>')+'</p>'+(r.usageSummary?'<div class="report-usage-summary">'+esc(r.usageSummary||'').replace(/\n/g,'<br>')+'</div>':'')+'</section>'+
  '<footer class="report-footer">Finalized inventory snapshot'+(recordNo?' · Record #'+esc(recordNo):'')+'</footer>'+
  '</div>';
