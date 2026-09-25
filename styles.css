@@ -659,3 +659,57 @@ body.report-open{overflow:hidden}
 @media(max-width:480px){
   .compact-admin-import .admin-actual-row{grid-template-columns:1fr}
 }
+
+
+/* Summary-first administration import for live audit */
+.admin-import-summary{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:8px;
+  margin-top:10px;
+}
+.admin-import-summary>div{
+  border:1px solid #d7e1e8;
+  border-radius:10px;
+  padding:9px 8px;
+  background:#f8fafc;
+  text-align:center;
+}
+.admin-import-summary strong{
+  display:block;
+  font-size:1.05rem;
+  color:#17324e;
+}
+.admin-import-summary span{
+  display:block;
+  margin-top:2px;
+  font-size:.68rem;
+  font-weight:800;
+  color:#6b7c8b;
+  text-transform:uppercase;
+  letter-spacing:.03em;
+}
+.admin-detail-block{
+  margin-top:8px;
+  border:1px solid #d7e1e8;
+  border-radius:10px;
+  background:#fff;
+  overflow:hidden;
+}
+.admin-detail-block summary{
+  cursor:pointer;
+  padding:9px 11px;
+  font-size:.82rem;
+  font-weight:850;
+  color:#31566f;
+  background:#f8fafc;
+}
+.admin-detail-block[open] summary{border-bottom:1px solid #dfe7ed}
+.admin-detail-block .admin-actual-table{border:0;border-radius:0}
+.provider-vial-list{background:#fff}
+@media(max-width:520px){
+ .admin-import-summary{grid-template-columns:repeat(3,1fr);gap:6px}
+ .admin-import-summary>div{padding:8px 5px}
+ .admin-import-summary strong{font-size:1rem}
+ .admin-import-summary span{font-size:.62rem}
+}
