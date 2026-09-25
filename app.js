@@ -272,13 +272,14 @@ function administrationImportSection(a){
  const latest=docs.length?docs[docs.length-1]:null;
  const rows=a.administrationRows||latest?.administrationRows||[];
  const stats=administrationImportStats(rows);
- return '<div class="audit-card admin-import-card compact-admin-import">'+
- '<div class="admin-import-top"><div><span class="kicker">ADMINISTRATION RECORDS</span><h3>Administration import</h3></div><div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">Import Administration PDF</button><input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div></div>'+
- '<div id="adminImportStatus" class="admin-import-status">'+(latest?'Imported: '+esc(latest.name||'PDF'):'No administration PDF imported yet.')+'</div>'+
+ return '<details class="audit-card admin-import-card compact-admin-import mobile-collapsible-admin" open>'+
+ '<summary class="admin-import-summarybar"><div><span class="kicker">ADMINISTRATION RECORDS</span><h3>Administration import</h3></div><span class="admin-collapse-label">Show / hide</span></summary>'+
+ '<div class="admin-import-body">'+
+ '<div class="admin-import-top"><div id="adminImportStatus" class="admin-import-status">'+(latest?'Imported: '+esc(latest.name||'PDF'):'No administration PDF imported yet.')+'</div><div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">Import Administration PDF</button><input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div></div>'+
  (rows.length?'<div class="admin-import-summary"><div><strong>'+stats.administrations+'</strong><span>Administrations</span></div><div><strong>'+stats.vials+'</strong><span>Calculated vials</span></div><div><strong>'+stats.providers+'</strong><span>Providers</span></div></div>':'')+
  actualAdministrationPreview(rows)+providerVialSummary(rows)+
  '<textarea id="usageSummary" hidden>'+esc(a.usageSummary||'')+'</textarea>'+
- '</div>';
+ '</div></details>';
 }
 async function sha256Buffer(buf){const hash=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('')}
 function safeStorageName(name='document.pdf'){return String(name).replace(/[^a-zA-Z0-9._-]+/g,'_').slice(-120)||'document.pdf'}
@@ -407,6 +408,8 @@ async function editAudit(id){
  await put('meta',{id:'activeAudit',auditId:id,updatedAt:nowISO()});
  document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-shell"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back to audits</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Status<input value="'+esc(a.status)+'" disabled></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div>'+administrationImportSection(a)+'<div class="audit-route"><div class="audit-route-title">Audit route</div>'+LOCS.map((l,i)=>'<a href="#unit-'+i+'" data-jump-unit="'+i+'">'+(i+1)+'. '+l+'</a>').join('')+'</div>'+LOCS.map((l,i)=>'<div id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+'<div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><label class="final-signer-label">Final signer name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||'')+'"></label><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>';
  document.getElementById('backAudits').onclick=async()=>{await flushAuditAutosave();activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});renderAudits()};
+ const adminOuter=document.querySelector('.mobile-collapsible-admin');
+ if(adminOuter&&window.matchMedia('(max-width:650px)').matches)adminOuter.removeAttribute('open');
  const adminUploadBtn=document.getElementById('uploadAdminPdf'),adminPdfFile=document.getElementById('adminPdfFile');
  if(adminUploadBtn&&adminPdfFile){adminUploadBtn.onclick=()=>adminPdfFile.click();adminPdfFile.onchange=async e=>{const file=e.target.files?.[0];if(file)await handleAdministrationPdf(a.id,file);e.target.value=''}};
  document.querySelectorAll('.signature-box').forEach(box=>setupSignature(box,a.signatures?.[box.dataset.sigLoc]||{},()=>scheduleAuditAutosave(a.id,true)));
