@@ -793,3 +793,16 @@ body.report-open{overflow:hidden}
     align-self:center;
   }
 }
+
+
+/* Keep existing and new seal fields together */
+.compact-unit .seal-panel .tag-entry-fields.seal-pair{
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+}
+@media(max-width:560px){
+  .compact-unit .seal-panel .tag-entry-fields.seal-pair{
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+  }
+}
