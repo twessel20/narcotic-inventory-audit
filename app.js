@@ -666,7 +666,81 @@ async function saveAuditFromUI(id,finalize){
  await put('audits',a);if(finalize){activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});}await refreshAll();if(finalize)showReport('report_'+a.id);else editAudit(a.id)
 }
 
-async function renderReports(){let rows=await getAll('reports');rows.sort((a,b)=>(b.finalizedAt||'').localeCompare(a.finalizedAt||''));document.getElementById('reportsList').innerHTML=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month)+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+'</div><div class="button-row"><button data-report="'+r.id+'">View / print</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>'}
+function buildTestAuditReport(){
+ const testCounts={},testPrior={},testTags={},testSigs={};
+ LOCS.forEach((loc,li)=>{
+   testCounts[loc]={};testPrior[loc]={};
+   MEDS.forEach((med,mi)=>{testPrior[loc][med]=mi+1;testCounts[loc][med]=mi+2+li});
+   testTags[loc]={foundRemoved:'TEST-'+(100+li),newInstalled:'TEST-'+(200+li)};
+   testSigs[loc]={
+     signer:'TEST AUDITOR',
+     employeeNumber:'0000',
+     witness:'TEST WITNESS '+(li+1),
+     witnessEmployeeNumber:'900'+li,
+     signature:'',
+     witnessSignature:''
+   };
+ });
+ return {
+   id:'test_report_preview',
+   auditId:'test_audit_preview',
+   isTest:true,
+   month:'TEST AUDIT — September 2026',
+   status:'test',
+   createdAt:nowISO(),
+   updatedAt:nowISO(),
+   finalizedAt:nowISO(),
+   auditDate:'2026-09-25',
+   email:'test@example.invalid',
+   auditorName:'TEST AUDITOR',
+   auditorEmployeeNumber:'0000',
+   dateRangeStart:'2026-09-01',
+   dateRangeEnd:'2026-09-25',
+   counts:testCounts,
+   priorCounts:testPrior,
+   breakawayTags:testTags,
+   supportingDocuments:[{name:'TEST Administration Export.pdf',uploadedAt:'TEST',uploadedBy:'TEST USER'}],
+   administrationRows:[
+     {date:'9/10/26',report:'TEST-001',provider:'TEST PROVIDER',medication:'Fentanyl',dose:50,unit:'M1'},
+     {date:'9/15/26',report:'TEST-002',provider:'TEST PROVIDER 2',medication:'Versed',dose:5,unit:'M2'}
+   ],
+   usageSummary:'TEST DATA ONLY — synthetic administration summary for report-layout development.',
+   notes:'TEST AUDIT ONLY. This record contains synthetic data and is not a controlled-substance audit.',
+   signatures:testSigs,
+   attestationText:FINAL_ATTESTATION,
+   attestationAccepted:true,
+   attestationName:'TEST AUDITOR',
+   attestationEmployeeNumber:'0000',
+   attestationSignature:''
+ };
+}
+
+async function renderReports(){
+ let rows=await getAll('reports');
+ rows.sort((a,b)=>(b.finalizedAt||'').localeCompare(a.finalizedAt||''));
+ const testCard='<div class="list-item test-report-card"><div><span class="test-badge">TEST</span><strong>Test audit report</strong><div class="meta">Synthetic data · safe report-layout preview</div></div><div class="button-row"><button data-test-report="1">View test report</button></div></div>';
+ const real=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month)+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+'</div><div class="button-row"><button data-report="'+r.id+'">View / print</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>';
+ document.getElementById('reportsList').innerHTML=testCard+real;
+}
+async function showTestReport(){
+ const r=buildTestAuditReport();
+ const d=document.getElementById('reportDialog'),preview=document.getElementById('reportPreview');
+ if(d.open)d.close();
+ preview.innerHTML='<div class="report-loading">Opening test report…</div>';
+ d.showModal();document.body.classList.add('report-open');
+ try{
+   preview.innerHTML=reportHtml(r);
+   const sheet=preview.querySelector('.report-sheet');
+   if(sheet)sheet.insertAdjacentHTML('afterbegin','<div class="test-report-banner">TEST REPORT · SYNTHETIC DATA · NOT AN OFFICIAL CONTROLLED-SUBSTANCE RECORD</div>');
+   const close=document.getElementById('closeReport'),print=document.getElementById('printReport');
+   if(close)close.onclick=()=>d.close();
+   if(print)print.onclick=()=>window.print();
+ }catch(err){
+   preview.innerHTML='<div class="report-loading">Unable to render the test report.</div>';
+   console.error(err);
+ }
+ d.onclose=()=>{document.body.classList.remove('report-open');preview.innerHTML=''};
+}
 async function showReport(id){
  const r=await getOne('reports',id);
  if(!r){alert('This finalized report could not be loaded. Refresh Reports and try again.');return;}
@@ -844,7 +918,12 @@ function bind(){
  document.getElementById('saveTxBtn').onclick=async e=>{e.preventDefault();try{await saveTransaction(new FormData(document.getElementById('txForm')));document.getElementById('txDialog').close();document.getElementById('txForm').reset()}catch(err){alert(err.message)}};
  document.getElementById('activitySearch').oninput=renderActivity;document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;
  document.getElementById('auditWorkspace').onclick=async e=>{const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open')editAudit(b.dataset.id);if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);renderAudits()}};
- document.getElementById('reportsList').onclick=async e=>{const b=e.target.closest('[data-report]');if(b)await showReport(b.dataset.report)};
+ document.getElementById('reportsList').onclick=async e=>{
+   const test=e.target.closest('[data-test-report]');
+   if(test){await showTestReport();return}
+   const b=e.target.closest('[data-report]');
+   if(b)await showReport(b.dataset.report);
+ };
  document.getElementById('exportBtn').onclick=exportBackup;document.getElementById('importBtn').onclick=()=>{if(requireCloudAuth())document.getElementById('importFile').click()};document.getElementById('importFile').onchange=async e=>{if(!e.target.files[0])return;try{await importBackup(e.target.files[0]);await flushPendingWrites()}catch(err){alert(err.message)}};
  const authDialog=document.getElementById('authDialog'),authForm=document.getElementById('authForm'),authMsg=document.getElementById('authMessage');
  document.getElementById('accountBtn').onclick=async()=>{if(cloudSession){if(confirm('Sign out of the live narcotic database?'))await sb.auth.signOut()}else authDialog.showModal()};
