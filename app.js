@@ -113,7 +113,26 @@ function requireCloudAuth(){
 async function seedInventory(){const rows=await getAll('inventory');if(rows.length)return;for(const loc of LOCS)for(const med of MEDS)await put('inventory',{id:loc+'|'+med,location:loc,medication:med,quantity:0,updatedAt:nowISO()})}
 async function balances(){const rows=await getAll('inventory');const map={};for(const l of LOCS){map[l]={};for(const m of MEDS)map[l][m]=0}rows.forEach(r=>{if(map[r.location])map[r.location][r.medication]=Number(r.quantity||0)});return map}
 async function setBalance(location,medication,quantity){await put('inventory',{id:location+'|'+medication,location,medication,quantity:Number(quantity||0),updatedAt:nowISO()})}
-function fmtDate(v){if(!v)return'';return new Date(v).toLocaleString()}
+function formatDisplayDate(v){
+ if(v===null||v===undefined||v==='')return '';
+ const s=String(v).trim();
+
+ let m=s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[T\s].*)?$/);
+ if(m)return m[2]+'/'+m[3]+'/'+m[1];
+
+ m=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})(?:[\sT].*)?$/);
+ if(m){
+   const y=m[3].length===2?'20'+m[3]:m[3];
+   return String(m[1]).padStart(2,'0')+'/'+String(m[2]).padStart(2,'0')+'/'+y;
+ }
+
+ const d=v instanceof Date?v:new Date(v);
+ if(!Number.isNaN(d.getTime())){
+   return String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')+'/'+d.getFullYear();
+ }
+ return s;
+}
+function fmtDate(v){return formatDisplayDate(v)}
 function monthTextToValue(v=''){
  const m=String(v).trim().match(/^([A-Za-z]+)\s+(\d{4})$/);
  if(!m)return '';
@@ -333,12 +352,7 @@ function administrationVialCount(medication,totalDose){
  if(medication==='Morphine')return {count:Math.max(1,Math.ceil(totalDose/10)),strength:'10 mg'};
  return {count:1,strength:''};
 }
-function formatAdminDate(v){
- const m=String(v).match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
- if(!m)return v;
- const y=m[3].length===2?'20'+m[3]:m[3];
- return y+'-'+m[1].padStart(2,'0')+'-'+m[2].padStart(2,'0');
-}
+function formatAdminDate(v){return formatDisplayDate(v)}
 function buildAdministrationSummary(transcript,fileName){
  const rows=parseAdministrationRows(transcript);
  if(!rows.length){
@@ -736,15 +750,7 @@ function buildTestAuditReport(){
  };
 }
 
-function reportShareDate(v){
- const d=String(v||'').match(/^(\d{4})-(\d{2})-(\d{2})$/);
- if(d)return d[2]+'/'+d[3]+'/'+d[1];
- const dt=v?new Date(v):null;
- if(dt&&!Number.isNaN(dt.getTime())){
-   return String(dt.getMonth()+1).padStart(2,'0')+'/'+String(dt.getDate()).padStart(2,'0')+'/'+dt.getFullYear();
- }
- return '';
-}
+function reportShareDate(v){return formatDisplayDate(v)}
 
 function reportYear(r){
  const m=String(r.month||'').match(/\b(20\d{2})\b/);
@@ -782,7 +788,7 @@ function annualSummaryHtml(year,reports){
  '<section class="report-cover-page annual-cover">'+
  '<div class="report-cover-brand"><img src="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg" alt="Gladstone Fire Department patch"><div class="report-cover-dept">GLADSTONE FIRE DEPARTMENT</div></div>'+
  '<div class="report-cover-main"><div class="report-cover-kicker">YEAR-END CONTROLLED-SUBSTANCE REVIEW</div><h1>Narcotic Inventory / Audit<br>Annual Summary</h1><div class="report-cover-month">'+year+'</div></div>'+
- '<div class="report-cover-meta"><div><span>Monthly reports included</span><strong>'+reports.length+'</strong></div><div><span>First audit</span><strong>'+esc(reportShareDate(first?.auditDate||first?.finalizedAt)||'—')+'</strong></div><div><span>Last audit</span><strong>'+esc(reportShareDate(last?.auditDate||last?.finalizedAt)||'—')+'</strong></div><div><span>Generated</span><strong>'+esc(new Date().toLocaleDateString())+'</strong></div></div>'+
+ '<div class="report-cover-meta"><div><span>Monthly reports included</span><strong>'+reports.length+'</strong></div><div><span>First audit</span><strong>'+esc(reportShareDate(first?.auditDate||first?.finalizedAt)||'—')+'</strong></div><div><span>Last audit</span><strong>'+esc(reportShareDate(last?.auditDate||last?.finalizedAt)||'—')+'</strong></div><div><span>Generated</span><strong>'+esc(formatDisplayDate(new Date()))+'</strong></div></div>'+
  '<div class="report-cover-footer">Gladstone Fire Department · Year-End Narcotic Inventory / Audit Summary</div></section>'+
  '<section class="report-executive-summary"><h2>Year-end executive summary</h2>'+
  '<p>This summary is calculated from finalized monthly audit reports stored for '+year+'. It does not infer missing months or values.</p>'+
@@ -1039,7 +1045,7 @@ function reportCoverPageHtml(r){
    '<div class="cover-meta-cell" style="border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:8px 10px;"><span style="text-align:center;width:100%;">Finalized date</span><strong style="text-align:center;width:100%;">'+esc(finalized||'—')+'</strong></div>'+
    '<div class="cover-meta-cell" style="border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:8px 10px;"><span style="text-align:center;width:100%;">Certifying auditor</span><strong style="text-align:center;width:100%;">'+esc(auditor||'—')+'</strong></div>'+
    '<div class="cover-meta-cell" style="border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:8px 10px;"><span style="text-align:center;width:100%;">Employee number</span><strong style="text-align:center;width:100%;">'+esc(r.attestationEmployeeNumber||r.auditorEmployeeNumber||'—')+'</strong></div>'+
-   '<div class="cover-meta-cell" style="grid-column:1/-1;border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:4px 10px 8px;"><span style="text-align:center;width:100%;">Audit date range</span><strong style="text-align:center;width:100%;">'+esc(r.dateRangeStart||'—')+' through '+esc(r.dateRangeEnd||'—')+'</strong></div>'+
+   '<div class="cover-meta-cell" style="grid-column:1/-1;border:0;background:transparent;text-align:center;align-items:center;justify-content:center;padding:4px 10px 8px;"><span style="text-align:center;width:100%;">Audit date range</span><strong style="text-align:center;width:100%;">'+esc(formatDisplayDate(r.dateRangeStart)||'—')+' through '+esc(formatDisplayDate(r.dateRangeEnd)||'—')+'</strong></div>'+
    '<div class="cover-auditor-signature centered-cover-signature" style="grid-column:1/-1;border:0;background:transparent;text-align:center;margin:2px auto 0;padding:4px 0 0;width:100%;">'+
      (r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature" style="display:block;max-width:170px;max-height:48px;margin:0 auto 3px;object-fit:contain;">':'<div class="report-signature-placeholder" style="width:170px;height:36px;margin:0 auto 3px;border:0;border-bottom:1px solid #aab9c4;"></div>')+
      '<small style="display:block;text-align:center;">Final certifying auditor signature</small>'+
@@ -1190,10 +1196,10 @@ function reportHtml(r){
  const logo='https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg';
  const recordNo=r.legacyRecordNumber||String(r.auditId||r.id||'').match(/\d+/)?.[0]||'';
  const activeTotal=m=>['Medic 1','Medic 2','Medic 3','Safe'].reduce((n,l)=>n+Number(r.counts?.[l]?.[m]||0),0);
- const amendment=(r.amendments||[]).map(a=>'<div class="report-amendment-row"><b>'+esc(a.location)+' · '+esc(a.medication)+':</b> '+esc(a.from)+' → '+esc(a.to)+' '+esc(a.unit||'')+'. '+esc(a.reason||'')+(a.recordedAt?' Recorded '+esc(a.recordedAt):'')+(a.recordedBy?' by '+esc(a.recordedBy):'')+'.</div>').join('');
+ const amendment=(r.amendments||[]).map(a=>'<div class="report-amendment-row"><b>'+esc(a.location)+' · '+esc(a.medication)+':</b> '+esc(a.from)+' → '+esc(a.to)+' '+esc(a.unit||'')+'. '+esc(a.reason||'')+(a.recordedAt?' Recorded '+esc(formatDisplayDate(a.recordedAt)):'')+(a.recordedBy?' by '+esc(a.recordedBy):'')+'.</div>').join('');
  const tagRows=LOCS.map(l=>{const t=r.breakawayTags?.[l]||{};return '<tr><td>'+esc(l)+'</td><td>'+esc(t.foundRemoved||'—')+'</td><td><b>'+esc(t.newInstalled||'—')+'</b></td></tr>'}).join('');
  const txs=Array.isArray(r.transactions)?r.transactions:[];
- const txRows=txs.length?txs.map(t=>'<tr><td>'+esc(t.date||t.timestamp||'')+'</td><td>'+esc(t.typeLabel||t.type||t.action||'')+'</td><td>'+esc(t.medication||'')+'</td><td>'+esc(t.quantity||'')+'</td><td>'+esc((t.fromLocation||'')+(t.toLocation?' → '+t.toLocation:''))+'</td><td>'+esc(t.reference||t.vendor||t.incident||t.lot||'')+'</td></tr>').join(''):'<tr><td colspan="6" class="report-empty">No transactions recorded during this month.</td></tr>';
+ const txRows=txs.length?txs.map(t=>'<tr><td>'+esc(formatDisplayDate(t.date||t.timestamp)||'')+'</td><td>'+esc(t.typeLabel||t.type||t.action||'')+'</td><td>'+esc(t.medication||'')+'</td><td>'+esc(t.quantity||'')+'</td><td>'+esc((t.fromLocation||'')+(t.toLocation?' → '+t.toLocation:''))+'</td><td>'+esc(t.reference||t.vendor||t.incident||t.lot||'')+'</td></tr>').join(''):'<tr><td colspan="6" class="report-empty">No transactions recorded during this month.</td></tr>';
  const sigCard=(loc)=>{
    const x=r.signatures?.[loc]||{};
    const explicit=r.isTest;
@@ -1210,7 +1216,7 @@ function reportHtml(r){
  '<div class="report-toolbar"><button id="closeReport">Close</button><button id="previewPdfReport">Generate PDF Preview</button><button id="shareReport">Share PDF</button><button id="printReport" class="primary">Print / Save PDF</button></div>'+
  ((r.isTest||!r.legacyRecordNumber)?newReportFrontMatterHtml(r):'')+
  '<header class="report-top"><img src="'+logo+'" alt="Gladstone Fire Department patch"><div><div class="report-kicker">FINALIZED MONTHLY RECORD</div><h1>Gladstone Fire Department Narcotic<br>Inventory / Audit Form</h1></div></header>'+
- '<div class="report-meta-grid"><div><b>Audit month:</b> '+esc(r.month||'')+'</div><div><b>Created:</b> '+esc(r.createdDisplay||fmtDate(r.createdAt)||'')+'</div><div><b>Email:</b> '+esc(r.email||'travisw@gladstone.mo.us')+'</div><div></div><div><b>Date of audit:</b> '+esc(r.auditDate||'')+'</div><div></div><div class="wide"><b>Audit period:</b> '+esc(r.dateRangeStart||'—')+' through '+esc(r.dateRangeEnd||'—')+' (both dates included)</div></div>'+
+ '<div class="report-meta-grid"><div><b>Audit month:</b> '+esc(r.month||'')+'</div><div><b>Created:</b> '+esc(formatDisplayDate(r.createdDisplay||r.createdAt)||'')+'</div><div><b>Email:</b> '+esc(r.email||'travisw@gladstone.mo.us')+'</div><div></div><div><b>Date of audit:</b> '+esc(formatDisplayDate(r.auditDate)||'')+'</div><div></div><div class="wide"><b>Audit period:</b> '+esc(formatDisplayDate(r.dateRangeStart)||'—')+' through '+esc(formatDisplayDate(r.dateRangeEnd)||'—')+' (both dates included)</div></div>'+
  '<hr class="report-blue-rule">'+
  ((r.isTest||!r.legacyRecordNumber)?newReportSummaryHtml(r):'')+
  (amendment?'<section class="report-amendment"><h2>Amended inventory record — correction history</h2><p>The table below includes these corrections. Signatures were recorded before these amendments and certify the original record, not the corrected entries.</p>'+amendment+'</section>':'')+
