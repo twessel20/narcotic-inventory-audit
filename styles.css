@@ -2192,3 +2192,20 @@ body.report-open{overflow:hidden}
   break-inside:avoid !important;
   page-break-inside:avoid !important;
 }
+
+
+/* Hard-stop certification cards from splitting in generated PDFs */
+.pdf-render-stage .report-signature-section-grid{
+  display:block !important;
+}
+.pdf-render-stage .report-signature-section .report-cert{
+  display:block !important;
+  width:100% !important;
+  margin:0 0 10px !important;
+  break-inside:avoid-page !important;
+  page-break-inside:avoid !important;
+}
+.pdf-render-stage .report-signature-section .report-cert.pdf-break-before{
+  break-before:page !important;
+  page-break-before:always !important;
+}
