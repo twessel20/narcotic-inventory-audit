@@ -806,3 +806,79 @@ body.report-open{overflow:hidden}
     gap:8px;
   }
 }
+
+
+/* Mobile containment fixes for audit form */
+.audit-workspace-shell,
+.audit-workspace-shell *{
+  box-sizing:border-box;
+}
+.compact-unit,
+.unit-compact-grid,
+.unit-compact-panel,
+.unit-med-list,
+.unit-med-row,
+.tag-entry-fields,
+.signature-person-grid{
+  min-width:0;
+  max-width:100%;
+}
+.compact-unit input,
+.compact-unit textarea,
+.compact-unit select{
+  max-width:100%;
+  min-width:0;
+}
+@media(max-width:650px){
+  .compact-unit .seal-panel .tag-entry-fields.seal-pair{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr);
+  }
+  .compact-unit .seal-panel .tag-entry-fields input{
+    width:100%;
+    min-width:0;
+  }
+  .unit-med-row.compact{
+    grid-template-columns:minmax(0,1fr) 44px minmax(76px,84px);
+    gap:6px;
+    width:100%;
+  }
+  .unit-med-name{
+    overflow-wrap:anywhere;
+  }
+  .unit-prior{
+    min-width:0;
+  }
+  .unit-current{
+    min-width:0;
+  }
+  .unit-current input{
+    width:100%;
+    min-width:0;
+    padding:6px;
+  }
+}
+@media(max-width:420px){
+  .compact-head,
+  .unit-compact-panel{
+    padding-left:8px;
+    padding-right:8px;
+  }
+  .compact-unit .seal-panel .tag-entry-fields.seal-pair{
+    gap:6px;
+  }
+  .compact-unit .seal-panel .tag-entry-fields label{
+    font-size:.72rem;
+  }
+  .unit-med-row.compact{
+    grid-template-columns:minmax(0,1fr) 40px minmax(70px,78px);
+    padding:6px;
+    gap:5px;
+  }
+  .unit-med-name{
+    font-size:.82rem;
+  }
+  .unit-prior span,
+  .unit-current{
+    font-size:.66rem;
+  }
+}
