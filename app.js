@@ -668,7 +668,8 @@ async function saveAuditFromUI(id,finalize){
 
 async function renderReports(){let rows=await getAll('reports');rows.sort((a,b)=>(b.finalizedAt||'').localeCompare(a.finalizedAt||''));document.getElementById('reportsList').innerHTML=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month)+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+'</div><div class="button-row"><button data-report="'+r.id+'">View / print</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>'}
 async function showReport(id){
- const r=await getOne('reports',id);if(!r)return;
+ const r=await getOne('reports',id);
+ if(!r){alert('This finalized report could not be loaded. Refresh Reports and try again.');return;}
  const d=document.getElementById('reportDialog'),preview=document.getElementById('reportPreview');
  if(d.open)d.close();
  preview.innerHTML='<div class="report-loading">Opening finalized audit…</div>';
@@ -688,7 +689,7 @@ async function showReport(id){
  }
  d.onclose=()=>{document.body.classList.remove('report-open');preview.innerHTML='';setTimeout(refreshAll,0)};
 }
-async function reportHtml(r){
+function reportHtml(r){
  const logo='https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg';
  const recordNo=r.legacyRecordNumber||String(r.auditId||r.id||'').match(/\d+/)?.[0]||'';
  const activeTotal=m=>['Medic 1','Medic 2','Medic 3','Safe'].reduce((n,l)=>n+Number(r.counts?.[l]?.[m]||0),0);
@@ -837,12 +838,13 @@ function bind(){
    document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('active',x===b));
    document.querySelectorAll('.tab-panel').forEach(x=>x.classList.toggle('active',x.id===b.dataset.tab));
    if(b.dataset.tab==='audit'&&!activeAuditId)await renderAudits();
+   if(b.dataset.tab==='reports')await renderReports();
  });
  document.getElementById('newTxBtn').onclick=()=>document.getElementById('txDialog').showModal();
  document.getElementById('saveTxBtn').onclick=async e=>{e.preventDefault();try{await saveTransaction(new FormData(document.getElementById('txForm')));document.getElementById('txDialog').close();document.getElementById('txForm').reset()}catch(err){alert(err.message)}};
  document.getElementById('activitySearch').oninput=renderActivity;document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;
  document.getElementById('auditWorkspace').onclick=async e=>{const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open')editAudit(b.dataset.id);if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);renderAudits()}};
- document.getElementById('reportsList').onclick=e=>{const b=e.target.closest('[data-report]');if(b)showReport(b.dataset.report)};
+ document.getElementById('reportsList').onclick=async e=>{const b=e.target.closest('[data-report]');if(b)await showReport(b.dataset.report)};
  document.getElementById('exportBtn').onclick=exportBackup;document.getElementById('importBtn').onclick=()=>{if(requireCloudAuth())document.getElementById('importFile').click()};document.getElementById('importFile').onchange=async e=>{if(!e.target.files[0])return;try{await importBackup(e.target.files[0]);await flushPendingWrites()}catch(err){alert(err.message)}};
  const authDialog=document.getElementById('authDialog'),authForm=document.getElementById('authForm'),authMsg=document.getElementById('authMessage');
  document.getElementById('accountBtn').onclick=async()=>{if(cloudSession){if(confirm('Sign out of the live narcotic database?'))await sb.auth.signOut()}else authDialog.showModal()};
