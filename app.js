@@ -175,11 +175,12 @@ async function startAudit(){
  const previous=reports[0]||null;
  const counts={},priorCounts={};LOCS.forEach(l=>{counts[l]={};priorCounts[l]={};MEDS.forEach(m=>{counts[l][m]=b[l][m];priorCounts[l][m]=previous?.counts?.[l]?.[m]??null})});
  const localDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
- const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],signatures:{},attestationText:FINAL_ATTESTATION,attestationName:'',attestationAccepted:false};
+ const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],signatures:{},auditorName:'',auditorEmployeeNumber:'',attestationText:FINAL_ATTESTATION,attestationName:'',attestationEmployeeNumber:'',attestationAccepted:false};
  await put('audits',a);await put('meta',{id:'activeAudit',auditId:a.id,updatedAt:nowISO()});await editAudit(a.id)
 }
 function unitAuditSection(a,loc,index){
- const tag=a.breakawayTags?.[loc]||{},sig=a.signatures?.[loc]||{};
+ const tag=a.breakawayTags?.[loc]||{},savedSig=a.signatures?.[loc]||{};
+ const sig={...savedSig,signer:savedSig.signer||a.auditorName||'',employeeNumber:savedSig.employeeNumber||a.auditorEmployeeNumber||''};
  const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];return '<div class="unit-med-row compact"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current">Current<input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+Number(a.counts?.[loc]?.[m]||0)+'"></label></div>'}).join('');
  return '<section class="audit-card unit-audit-card compact-unit" data-unit-section="'+esc(loc)+'">'+
  '<div class="unit-audit-head compact-head"><div><span class="kicker">LOCATION '+(index+1)+' OF '+LOCS.length+'</span><h3>'+esc(loc)+'</h3></div><span class="unit-step-badge">'+esc(loc)+'</span></div>'+
@@ -447,11 +448,11 @@ async function editAudit(id){
  '<a href="#" data-step-target="'+(LOCS.length+2)+'" data-route-section="notes"><span class="route-label">Notes</span></a>'+
  '<a href="#" data-step-target="'+(LOCS.length+3)+'" data-route-section="final"><span class="route-label">Final</span></a>'+
  '</div>'+
- '<div class="audit-step-card active-step" data-audit-step="0" data-step-title="Audit details"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back to audits</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Status<input value="'+esc(a.status)+'" disabled></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div></div>'+
+ '<div class="audit-step-card active-step" data-audit-step="0" data-step-title="Audit details"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back to audits</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Status<input value="'+esc(a.status)+'" disabled></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label class="audit-primary-auditor">Auditor name<input id="auditAuditorName" placeholder="Full name" autocomplete="name" value="'+esc(a.auditorName||a.attestationName||'')+'"></label><label class="audit-primary-auditor">Employee number<input id="auditAuditorEmployeeNumber" placeholder="Employee #" inputmode="numeric" autocomplete="off" value="'+esc(a.auditorEmployeeNumber||a.attestationEmployeeNumber||'')+'"></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div></div>'+
  '<div class="audit-step-card" data-audit-step="1" data-step-title="Administration import">'+administrationImportSection(a)+'</div>'+
  LOCS.map((l,i)=>'<div class="audit-step-card" data-audit-step="'+(i+2)+'" data-step-title="'+esc(l)+'" id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+
  '<div class="audit-step-card" data-audit-step="'+(LOCS.length+2)+'" data-step-title="Audit notes"><div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div></div>'+
- '<div class="audit-step-card" data-audit-step="'+(LOCS.length+3)+'" data-step-title="Final certification"><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><div class="final-auditor-grid"><label class="final-signer-label">Final auditor name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||'')+'"></label><label class="final-signer-label">Employee number<input id="attestEmployeeNumber" placeholder="Employee #" inputmode="numeric" value="'+esc(a.attestationEmployeeNumber||'')+'"></label></div><div class="final-signature-block"><div class="signature-label-row"><div class="signature-label">Final auditor signature</div><button type="button" class="expand-signature" id="expandFinalSignature">Open larger</button></div><canvas id="finalSignatureCanvas" width="500" height="150"></canvas></div><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>'+
+ '<div class="audit-step-card" data-audit-step="'+(LOCS.length+3)+'" data-step-title="Final certification"><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><div class="final-auditor-grid"><label class="final-signer-label">Final auditor name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||a.auditorName||'')+'"></label><label class="final-signer-label">Employee number<input id="attestEmployeeNumber" placeholder="Employee #" inputmode="numeric" value="'+esc(a.attestationEmployeeNumber||a.auditorEmployeeNumber||'')+'"></label></div><div class="final-signature-block"><div class="signature-label-row"><div class="signature-label">Final auditor signature</div><button type="button" class="expand-signature" id="expandFinalSignature">Open larger</button></div><canvas id="finalSignatureCanvas" width="500" height="150"></canvas></div><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>'+
  '<div class="mobile-card-nav" aria-label="Audit section navigation"><button type="button" id="auditStepPrev">Sections</button><div class="mobile-card-progress"><strong id="auditStepTitle"></strong><span id="auditStepCount"></span></div><button type="button" class="primary" id="auditStepNext">Next section</button></div>'+
  '</div>';
  document.getElementById('backAudits').onclick=async()=>{await flushAuditAutosave();activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});renderAudits()};
@@ -460,6 +461,20 @@ async function editAudit(id){
  const adminUploadBtn=document.getElementById('uploadAdminPdf'),adminPdfFile=document.getElementById('adminPdfFile');
  if(adminUploadBtn&&adminPdfFile){adminUploadBtn.onclick=()=>adminPdfFile.click();adminPdfFile.onchange=async e=>{const file=e.target.files?.[0];if(file)await handleAdministrationPdf(a.id,file);e.target.value=''}};
  document.querySelectorAll('.signature-box').forEach(box=>setupSignature(box,a.signatures?.[box.dataset.sigLoc]||{},()=>scheduleAuditAutosave(a.id,true)));
+ const primaryAuditorName=document.getElementById('auditAuditorName');
+ const primaryAuditorEmployee=document.getElementById('auditAuditorEmployeeNumber');
+ const carryPrimaryAuditor=()=>{
+   const name=primaryAuditorName?.value.trim()||'';
+   const emp=primaryAuditorEmployee?.value.trim()||'';
+   document.querySelectorAll('[data-signer]').forEach(x=>x.value=name);
+   document.querySelectorAll('[data-employee-number]').forEach(x=>x.value=emp);
+   const finalName=document.getElementById('attestName'),finalEmp=document.getElementById('attestEmployeeNumber');
+   if(finalName)finalName.value=name;
+   if(finalEmp)finalEmp.value=emp;
+   updateAuditRouteProgress();
+ };
+ if(primaryAuditorName)primaryAuditorName.addEventListener('input',carryPrimaryAuditor);
+ if(primaryAuditorEmployee)primaryAuditorEmployee.addEventListener('input',carryPrimaryAuditor);
  const finalSigCanvas=document.getElementById('finalSignatureCanvas');
  if(finalSigCanvas){
    setupCanvas(finalSigCanvas,a.attestationSignature||'',()=>scheduleAuditAutosave(a.id,true));
@@ -578,6 +593,8 @@ function collectAuditFromUI(a){
  a.monthValue=monthPicker?.value||monthTextToValue(a.month);
  a.auditDate=document.getElementById('auditDate')?.value||a.auditDate||'';
  a.email=document.getElementById('auditEmail')?.value||a.email||'';
+ a.auditorName=document.getElementById('auditAuditorName')?.value.trim()||a.auditorName||'';
+ a.auditorEmployeeNumber=document.getElementById('auditAuditorEmployeeNumber')?.value.trim()||a.auditorEmployeeNumber||'';
  a.dateRangeStart=document.getElementById('auditStart').value;
  a.dateRangeEnd=document.getElementById('auditEnd').value;
  a.usageSummary=document.getElementById('usageSummary').value;
@@ -628,6 +645,8 @@ async function saveAuditFromUI(id,finalize){
      if(admin){admin.setAttribute('open','');const adminStep=admin.closest('[data-audit-step]');if(adminStep&&window.matchMedia('(max-width:700px)').matches){document.querySelectorAll('[data-audit-step]').forEach(s=>s.classList.remove('active-step'));adminStep.classList.add('active-step')}admin.scrollIntoView({behavior:'smooth',block:'start'})}
      return alert('Administration PDF import is required before finalizing this audit.');
    }
+   if(!a.auditorName?.trim())return alert('Auditor name is required in Audit Details.');
+   if(!a.auditorEmployeeNumber?.trim())return alert('Auditor employee number is required in Audit Details.');
    if(!a.attestationAccepted||!a.attestationName.trim())return alert('Final attestation and auditor name are required.');
    if(!a.attestationEmployeeNumber?.trim())return alert('Final auditor employee number is required.');
    if(!a.attestationSignature) return alert('Final auditor signature is required.');
