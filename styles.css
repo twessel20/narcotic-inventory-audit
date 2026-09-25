@@ -515,3 +515,12 @@ body.report-open{overflow:hidden}
   .admin-import-top{align-items:stretch;flex-direction:column}
   .compact-admin-import .admin-import-actions button{width:100%}
 }
+
+/* Improve administration import readability */
+.compact-admin-import .admin-summary-label textarea{
+  font-family:inherit;
+  font-size:.86rem;
+  line-height:1.5;
+  min-height:190px;
+  white-space:pre-wrap;
+}
