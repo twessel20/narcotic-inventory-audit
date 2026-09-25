@@ -879,12 +879,31 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
  });
  const signatureSection=clone.querySelector('.report-signature-section');
  if(signatureSection){
-   signatureSection.style.breakInside='avoid';
-   signatureSection.style.pageBreakInside='avoid';
+   signatureSection.style.breakInside='auto';
+   signatureSection.style.pageBreakInside='auto';
+   const grid=signatureSection.querySelector('.report-signature-section-grid');
+   if(grid){
+     grid.style.display='grid';
+     grid.style.gridTemplateColumns='1fr 1fr';
+     grid.style.gap='10px';
+     grid.style.breakInside='auto';
+     grid.style.pageBreakInside='auto';
+   }
  }
  clone.querySelectorAll('.report-signature-section .report-cert').forEach(el=>{
+   el.style.display='block';
    el.style.breakInside='avoid';
    el.style.pageBreakInside='avoid';
+   el.style.overflow='hidden';
+   el.style.minHeight='0';
+ });
+ clone.querySelectorAll('.report-signature-section .report-signature-box').forEach(el=>{
+   el.style.breakInside='avoid';
+   el.style.pageBreakInside='avoid';
+   el.style.minHeight='0';
+ });
+ clone.querySelectorAll('.report-signature-section .report-signature-box img').forEach(el=>{
+   el.style.maxHeight='42px';
  });
  clone.querySelectorAll('.report-table').forEach(el=>{el.style.minWidth='0';el.style.width='100%';});
  clone.querySelectorAll('.report-cert,.report-attestation,.report-notes,.report-vial-summary,.report-final-signature').forEach(el=>{
@@ -947,7 +966,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        image:{type:'jpeg',quality:0.98},
        html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
-       pagebreak:{mode:['css','legacy'],before:['.pdf-section-page','.pdf-break-before'],after:['.pdf-break-after'],avoid:['.report-cert','.report-attestation','.report-notes','.report-signature-box','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
+       pagebreak:{mode:['css','legacy'],before:['.pdf-section-page','.pdf-break-before'],after:['.pdf-break-after'],avoid:['.report-cert','.report-signature-box','.report-attestation','.report-notes','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
      })
      .from(clone)
      .toPdf();
