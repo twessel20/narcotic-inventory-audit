@@ -192,6 +192,18 @@ function unitAuditSection(a,loc,index){
 }
 function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="signature-person-grid"><div><label>Signer name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><div class="signature-label">Signer signature</div><canvas width="500" height="150" data-canvas></canvas></div><div><label>Witness name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><div class="signature-label">Witness signature</div><canvas width="500" height="150" data-witness-canvas></canvas></div></div><button type="button" class="clear-signatures" data-clear-sig>Clear signatures</button></div>'}
 
+function usageSummaryPreview(summary=''){
+ const lines=String(summary||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
+ const rows=[];
+ for(const line of lines){
+   const m=line.match(/^•?\s*(\d{4}-\d{2}-\d{2})\s*\|\s*Report\s+(GFD\d+)\s*\|\s*(.+?):\s*(\d+)\s+vials?\s*\|\s*(Medic\s+[123])\s*\|\s*By\s+(.+)$/i);
+   if(m)rows.push({date:m[1],report:m[2],medication:m[3],vials:m[4],unit:m[5],provider:m[6]});
+ }
+ if(!rows.length)return '';
+ return '<div class="usage-preview"><div class="usage-preview-head"><span>Date</span><span>Report</span><span>Medication</span><span>Vials</span><span>Unit</span><span>Provider</span></div>'+
+ rows.map(r=>'<div class="usage-preview-row"><span data-label="Date">'+esc(r.date)+'</span><span data-label="Report">'+esc(r.report)+'</span><span data-label="Medication">'+esc(r.medication)+'</span><span data-label="Vials">'+esc(r.vials)+'</span><span data-label="Unit">'+esc(r.unit)+'</span><span data-label="Provider">'+esc(r.provider)+'</span></div>').join('')+
+ '</div>';
+}
 function administrationImportSection(a){
  const docs=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
  const latest=docs.length?docs[docs.length-1]:null;
@@ -199,6 +211,7 @@ function administrationImportSection(a){
  '<div class="admin-import-top"><div><span class="kicker">ADMINISTRATION RECORDS</span><h3>Administration import</h3></div><div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">Import Administration PDF</button><input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div></div>'+
  '<div id="adminImportStatus" class="admin-import-status">'+(latest?'Loaded: '+esc(latest.name||'PDF')+(latest.uploadedAt?' · '+esc(fmtDate(latest.uploadedAt)):''):'No administration PDF imported yet.')+'</div>'+
  (latest?.transcript?'<details class="admin-transcript"><summary>View extracted transcription</summary><pre>'+esc(latest.transcript)+'</pre></details>':'')+
+ usageSummaryPreview(a.usageSummary||'')+
  '<label class="admin-summary-label">Administration import summary<textarea id="usageSummary" rows="8" placeholder="Imported administration summary will appear here.">'+esc(a.usageSummary||'')+'</textarea></label>'+
  '</div>';
 }
