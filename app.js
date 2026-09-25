@@ -167,14 +167,15 @@ async function startAudit(){
 }
 function unitAuditSection(a,loc,index){
  const tag=a.breakawayTags?.[loc]||{},sig=a.signatures?.[loc]||{};
- const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];return '<div class="unit-med-row"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last audit</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current">Current count<input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+Number(a.counts?.[loc]?.[m]||0)+'"></label></div>'}).join('');
- return '<section class="audit-card unit-audit-card" data-unit-section="'+esc(loc)+'"><div class="unit-audit-head"><div><span class="kicker">LOCATION '+(index+1)+' OF '+LOCS.length+'</span><h3>'+esc(loc)+'</h3><p class="meta">Work through this location in physical order before moving to the next.</p></div><span class="unit-step-badge">'+esc(loc)+'</span></div>'+
- '<div class="unit-subsection"><h4>1. Verify existing seal</h4><p class="meta">Confirm the seal is present and intact, then record the tag number before breaking it.</p><div class="tag-entry-fields single-tag-field"><label>Existing tag / seal number<input inputmode="numeric" autocomplete="off" placeholder="Enter existing tag #" data-tag-loc="'+loc+'" data-tag-kind="foundRemoved" aria-label="'+loc+' existing tag number" value="'+esc(tag.foundRemoved||'')+'"></label></div></div>'+
- '<div class="unit-subsection"><h4>2. Break the seal</h4><p class="meta">After the existing tag number is documented, break/remove the seal to access the controlled substances.</p></div>'+
- '<div class="unit-subsection"><h4>3. Count medications</h4><p class="meta">Physically count each medication and compare it with the previous finalized audit.</p><div class="unit-med-list">'+medRows+'</div></div>'+
- '<div class="unit-subsection"><h4>4. Reseal the container</h4><p class="meta">Install a new breakaway tag after the count is complete, then record that new tag number.</p><div class="tag-entry-fields single-tag-field"><label>New tag installed<input inputmode="numeric" autocomplete="off" placeholder="Enter new tag #" data-tag-loc="'+loc+'" data-tag-kind="newInstalled" aria-label="'+loc+' new tag installed" value="'+esc(tag.newInstalled||'')+'"></label></div></div>'+
- '<div class="unit-subsection"><h4>5. Sign and witness</h4><p class="meta">Signer certifies the completed count and seal change. Witness verifies the count and seal record.</p>'+sigBlock(loc,sig,true)+'</div>'+
- '</section>';
+ const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];return '<div class="unit-med-row compact"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current">Current<input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+Number(a.counts?.[loc]?.[m]||0)+'"></label></div>'}).join('');
+ return '<section class="audit-card unit-audit-card compact-unit" data-unit-section="'+esc(loc)+'">'+
+ '<div class="unit-audit-head compact-head"><div><span class="kicker">LOCATION '+(index+1)+' OF '+LOCS.length+'</span><h3>'+esc(loc)+'</h3></div><span class="unit-step-badge">'+esc(loc)+'</span></div>'+
+ '<div class="unit-compact-grid">'+
+ '<div class="unit-compact-panel"><h4>Seal</h4><div class="tag-entry-fields single-tag-field"><label>Tag found / removed<input inputmode="numeric" autocomplete="off" placeholder="Tag #" data-tag-loc="'+loc+'" data-tag-kind="foundRemoved" aria-label="'+loc+' tag found or removed" value="'+esc(tag.foundRemoved||'')+'"></label></div></div>'+
+ '<div class="unit-compact-panel inventory-panel"><h4>Physical inventory</h4><div class="unit-med-list">'+medRows+'</div></div>'+
+ '<div class="unit-compact-panel"><h4>New seal</h4><div class="tag-entry-fields single-tag-field"><label>New tag installed<input inputmode="numeric" autocomplete="off" placeholder="Tag #" data-tag-loc="'+loc+'" data-tag-kind="newInstalled" aria-label="'+loc+' new tag installed" value="'+esc(tag.newInstalled||'')+'"></label></div></div>'+
+ '<div class="unit-compact-panel certification-panel"><h4>Certification</h4>'+sigBlock(loc,sig,true)+'</div>'+
+ '</div></section>';
 }
 function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="signature-person-grid"><div><label>Signer name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><div class="signature-label">Signer signature</div><canvas width="500" height="150" data-canvas></canvas></div><div><label>Witness name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><div class="signature-label">Witness signature</div><canvas width="500" height="150" data-witness-canvas></canvas></div></div><button type="button" class="clear-signatures" data-clear-sig>Clear signatures</button></div>'}
 
@@ -183,7 +184,7 @@ function administrationImportSection(a){
  const latest=docs.length?docs[docs.length-1]:null;
  return '<div class="audit-card audit-section-card admin-import-card">'+
  '<span class="kicker">ADMINISTRATION RECORDS</span><h3>Import narcotic administration PDF</h3>'+
- '<p class="meta">Upload the administration PDF for this audit period. The app extracts the PDF text, stores the PDF as a private supporting document, and inserts the transcribed administration information into the summary below. This does not alter physical inventory counts.</p>'+
+ '<p class="meta">Upload the narcotic administration PDF for this audit period.</p>'+
  '<div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">Upload administration PDF</button><input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div>'+
  '<div id="adminImportStatus" class="notice">'+(latest?'Loaded: '+esc(latest.name||'PDF')+(latest.uploadedAt?' · '+esc(fmtDate(latest.uploadedAt)):''):'No administration PDF uploaded for this draft yet.')+'</div>'+
  (latest?.transcript?'<details class="admin-transcript"><summary>View extracted PDF transcription</summary><pre>'+esc(latest.transcript)+'</pre></details>':'')+
