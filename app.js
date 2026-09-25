@@ -916,9 +916,33 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      .replace(/\s+/g,' ')
      .trim()||'Narcotic Audit Report';
 
-   const pdfBlob=await window.html2pdf()
+   // Estimate which PDF pages begin a new report section. Pages between these
+   // starts are continuation pages and are labeled accordingly in the PDF header.
+   const printablePagePx=10*96;
+   const sectionStartPages=new Set([1]);
+   let estimatedPage=1,pageHasContent=false,forceNextPage=false;
+   for(const child of [...clone.children]){
+     if(child.classList.contains('report-toolbar'))continue;
+     const startsNewPage=child.classList.contains('pdf-section-page');
+     if(forceNextPage||(startsNewPage&&pageHasContent)){
+       estimatedPage++;
+       sectionStartPages.add(estimatedPage);
+       pageHasContent=false;
+       forceNextPage=false;
+     }
+     if(!pageHasContent){
+       sectionStartPages.add(estimatedPage);
+       pageHasContent=true;
+     }
+     const h=Math.max(0,child.getBoundingClientRect().height||0);
+     const span=Math.max(1,Math.ceil(h/printablePagePx));
+     if(span>1)estimatedPage+=span-1;
+     if(child.classList.contains('report-cover-page'))forceNextPage=true;
+   }
+
+   const worker=window.html2pdf()
      .set({
-       margin:[0.35,0.35,0.4,0.35],
+       margin:[0.55,0.35,0.45,0.35],
        filename:safeName+'.pdf',
        image:{type:'jpeg',quality:0.98},
        html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},
@@ -926,8 +950,38 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        pagebreak:{mode:['css','legacy'],before:['.pdf-section-page','.pdf-break-before'],after:['.pdf-break-after'],avoid:['.report-cert','.report-attestation','.report-notes','.report-signature-box','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
      })
      .from(clone)
-     .outputPdf('blob');
+     .toPdf();
 
+   const pdf=await worker.get('pdf');
+   const totalPages=pdf.internal.getNumberOfPages();
+   const isAnnual=/annual summary/i.test(title);
+   const isTest=/^TEST\b/i.test(title);
+   const headerTitle=(isTest?'TEST - ':'')+
+     (isAnnual
+       ?'Gladstone Fire Department - Narcotic Inventory / Audit Annual Summary'
+       :'Gladstone Fire Department - Narcotic Inventory / Audit Report');
+
+   for(let page=1;page<=totalPages;page++){
+     pdf.setPage(page);
+     pdf.setFont('helvetica','normal');
+     pdf.setTextColor(74,94,108);
+     pdf.setFontSize(7.5);
+     pdf.text(headerTitle,0.35,0.25);
+     pdf.text('Page '+page+' of '+totalPages,8.15,0.25,{align:'right'});
+
+     if(page>1&&!sectionStartPages.has(page)){
+       pdf.setFont('helvetica','bold');
+       pdf.setTextColor(31,96,142);
+       pdf.setFontSize(7);
+       pdf.text('CONTINUED',4.25,0.25,{align:'center'});
+     }
+
+     pdf.setDrawColor(217,227,234);
+     pdf.setLineWidth(0.006);
+     pdf.line(0.35,0.32,8.15,0.32);
+   }
+
+   const pdfBlob=pdf.output('blob');
    return {blob:pdfBlob,file:new File([pdfBlob],safeName+'.pdf',{type:'application/pdf'}),safeName};
  }finally{
    stage.remove();
