@@ -1258,3 +1258,50 @@ body.report-open{overflow:hidden}
   font-weight:900;
   color:#123a5a;
 }
+
+
+/* Test report: descriptive vial use */
+.report-vial-row-detailed{
+  align-items:flex-start;
+}
+.report-vial-provider{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  gap:3px;
+}
+.report-vial-provider > strong{
+  font-size:.88rem;
+  color:#172838;
+}
+.report-vial-provider > span{
+  font-size:.78rem;
+  line-height:1.35;
+  color:#5f7180;
+}
+.report-vial-count{
+  flex:0 0 auto;
+  white-space:nowrap;
+  font-weight:900;
+  color:#123a5a;
+}
+
+/* Test report: signature directly beneath final auditor signature label */
+.report-final-signature-explicit .report-final-signature-capture{
+  margin-top:8px;
+  min-height:120px;
+  border-bottom:1px solid #53606d;
+  display:flex;
+  align-items:center;
+}
+.report-final-signature-explicit .report-final-signature-capture img{
+  width:100%;
+  height:115px;
+  margin:0;
+  border-bottom:0;
+  object-fit:contain;
+  object-position:left center;
+}
+.report-final-signature-explicit .report-signature-name{
+  margin-top:0;
+}
