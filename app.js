@@ -1034,79 +1034,42 @@ function executiveSummaryHtml(r){
    const priorValues=activeLocs.map(l=>r.priorCounts?.[l]?.[m]);
    const priorKnown=priorValues.every(v=>v!==null&&v!==undefined&&v!=='');
    const prior=priorKnown?priorValues.reduce((n,v)=>n+Number(v||0),0):null;
-   const diff=priorKnown?current-prior:null;
-   const expiredCurrent=Number(r.counts?.Expired?.[m]||0);
-   const expiredPriorRaw=r.priorCounts?.Expired?.[m];
-   const expiredPrior=(expiredPriorRaw===null||expiredPriorRaw===undefined||expiredPriorRaw==='')?null:Number(expiredPriorRaw||0);
-   const expiredDiff=expiredPrior===null?null:expiredCurrent-expiredPrior;
-   return {m,current,prior,diff,expiredCurrent,expiredPrior,expiredDiff};
+   return {m,current,prior,diff:priorKnown?current-prior:null};
  });
 
  const changed=medRows.filter(x=>x.diff!==null&&x.diff!==0);
- const unchanged=medRows.filter(x=>x.diff===0);
- const unknown=medRows.filter(x=>x.diff===null);
  const adminRows=Array.isArray(r.administrationRows)?r.administrationRows:[];
- let vialData=null;
- try{vialData=adminRows.length?providerVialData(adminRows):null}catch(e){vialData=null}
- const docs=Array.isArray(r.supportingDocuments)?r.supportingDocuments:[];
+ let vialTotal=null;
+ try{vialTotal=adminRows.length?providerVialData(adminRows).total:null}catch(e){vialTotal=null}
  const amendmentCount=Array.isArray(r.amendments)?r.amendments.length:0;
-
- const cert=LOCS.map(loc=>{
+ const certComplete=LOCS.every(loc=>{
    const x=r.signatures?.[loc]||{};
-   return {
-     loc,
-     auditor:!!(x.signer&&x.employeeNumber),
-     witness:!!(x.witness&&x.witnessEmployeeNumber),
-     auditorSig:!!x.signature,
-     witnessSig:!!x.witnessSignature
-   };
+   return !!(x.signer&&x.employeeNumber&&x.witness&&x.witnessEmployeeNumber&&x.signature&&x.witnessSignature);
  });
- const fullyCertified=cert.filter(x=>x.auditor&&x.witness&&x.auditorSig&&x.witnessSig).length;
 
- const lines=[];
+ let inventoryText='No prior-audit comparison is available.';
  if(changed.length){
-   lines.push('<li><b>Active physical inventory changed in '+changed.length+' medication categor'+(changed.length===1?'y':'ies')+':</b> '+changed.map(x=>esc(x.m)+' '+(x.diff>0?'+':'')+x.diff+' ('+x.prior+' → '+x.current+')').join('; ')+'.</li>');
- }
- if(unchanged.length){
-   lines.push('<li><b>No active-count change:</b> '+unchanged.map(x=>esc(x.m)+' ('+x.current+')').join('; ')+'.</li>');
- }
- if(unknown.length){
-   lines.push('<li><b>Prior comparison unavailable:</b> '+unknown.map(x=>esc(x.m)+'; current active total '+x.current).join('; ')+'.</li>');
+   inventoryText='Inventory changed in '+changed.length+' medication categor'+(changed.length===1?'y':'ies')+'.';
+ }else if(medRows.every(x=>x.diff!==null)){
+   inventoryText='No net change was identified in active inventory totals.';
  }
 
- const expiredChanges=medRows.filter(x=>x.expiredDiff!==null&&x.expiredDiff!==0);
- if(expiredChanges.length){
-   lines.push('<li><b>Expired inventory changed:</b> '+expiredChanges.map(x=>esc(x.m)+' '+(x.expiredDiff>0?'+':'')+x.expiredDiff+' ('+x.expiredPrior+' → '+x.expiredCurrent+')').join('; ')+'.</li>');
- }else if(medRows.every(x=>x.expiredDiff!==null)){
-   lines.push('<li><b>Expired inventory:</b> no net change from the prior audit.</li>');
- }
-
+ let adminText='No administration data is attached to this report.';
  if(adminRows.length){
-   const providers=new Set(adminRows.map(x=>String(x.provider||'').trim()).filter(Boolean)).size;
-   const vialTotal=vialData?.total;
-   lines.push('<li><b>Imported administration activity:</b> '+adminRows.length+' source dose row'+(adminRows.length===1?'':'s')+' across '+providers+' provider'+(providers===1?'':'s')+(Number.isFinite(vialTotal)?', calculating to '+vialTotal+' vial'+(vialTotal===1?'':'s')+' under the department vial rules':'')+'.</li>');
- }else if(docs.length){
-   lines.push('<li><b>Administration source document:</b> supporting document present, but no administration rows are available in this report record for calculation.</li>');
- }else{
-   lines.push('<li><b>Administration activity:</b> no supporting administration data is attached to this report record.</li>');
+   adminText=adminRows.length+' administration record'+(adminRows.length===1?'':'s')+
+     (vialTotal!==null?' calculated to '+vialTotal+' vial'+(vialTotal===1?'':'s'):'')+'.';
  }
 
- lines.push('<li><b>Location certifications:</b> '+fullyCertified+' of '+LOCS.length+' audit sites contain both auditor and witness identification plus both signatures in the report record.</li>');
-
- if(amendmentCount){
-   lines.push('<li><b>Amendments:</b> '+amendmentCount+' correction'+(amendmentCount===1?'':'s')+' recorded after the original audit entry. See the amendment section for the exact field-level history.</li>');
- }else{
-   lines.push('<li><b>Amendments:</b> none recorded in this report record.</li>');
- }
-
- if(r.notes&&String(r.notes).trim()){
-   lines.push('<li><b>Audit notes:</b> '+esc(String(r.notes).trim())+'</li>');
- }
-
- return '<section class="report-executive-summary"><h2>Executive summary</h2>'+
- '<p>This summary is generated from the verified physical counts, prior-audit comparison values, imported administration data, certification records, amendments, and notes stored with this audit. It does not add or infer values that are not present in the audit record.</p>'+
- '<ul>'+lines.join('')+'</ul>'+
- '<div class="report-summary-current"><div class="report-summary-current-title">Current active inventory</div>'+
+ return '<section class="report-executive-summary simple-summary">'+
+ '<h2>Executive summary</h2>'+
+ '<div class="summary-lead">'+inventoryText+'</div>'+
+ '<div class="summary-grid">'+
+   '<div><span>Administrations</span><strong>'+esc(adminText)+'</strong></div>'+
+   '<div><span>Certifications</span><strong>'+(certComplete?'All audit sites complete':'One or more audit sites incomplete')+'</strong></div>'+
+   '<div><span>Amendments</span><strong>'+(amendmentCount?amendmentCount+' recorded':'None recorded')+'</strong></div>'+
+ '</div>'+
+ (changed.length?'<div class="summary-changes"><span>Notable inventory changes</span>'+changed.map(x=>'<div><strong>'+esc(x.m)+'</strong><span>'+(x.diff>0?'+':'')+x.diff+' ('+x.prior+' → '+x.current+')</span></div>').join('')+'</div>':'')+
+ '<div class="report-summary-current compact-current"><div class="report-summary-current-title">Current active inventory</div>'+
  medRows.map(x=>'<div><span>'+esc(x.m)+'</span><strong>'+x.current+'</strong></div>').join('')+
  '</div></section>';
 }
