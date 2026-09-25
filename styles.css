@@ -2048,3 +2048,41 @@ body.report-open{overflow:hidden}
     border-bottom:1px solid #d9e3ea;
   }
 }
+
+
+/* Revert cover auditor layout; center signature beneath auditor + employee number */
+.cover-auditor-pair{
+  display:none !important;
+}
+.cover-auditor-box,
+.cover-employee-box{
+  min-width:0;
+}
+.centered-cover-signature{
+  grid-column:1/-1;
+  width:min(360px,100%);
+  margin:6px auto 0;
+  padding-top:6px;
+  border-top:1px solid #e5ebef;
+  text-align:center;
+}
+.centered-cover-signature img{
+  display:block;
+  max-width:170px;
+  max-height:48px;
+  margin:0 auto 3px;
+  object-fit:contain;
+}
+.centered-cover-signature .report-signature-placeholder{
+  width:170px;
+  height:36px;
+  margin:0 auto 3px;
+  border-bottom:1px solid #aab9c4;
+}
+.centered-cover-signature small{
+  display:block;
+  font-size:.58rem;
+  color:#7a8b98;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
