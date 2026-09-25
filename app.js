@@ -699,12 +699,22 @@ function buildTestAuditReport(){
    counts:testCounts,
    priorCounts:testPrior,
    breakawayTags:testTags,
-   supportingDocuments:[{name:'TEST Administration Export.pdf',uploadedAt:'TEST',uploadedBy:'TEST USER'}],
+   supportingDocuments:[{name:'August 2026 Narcotic Administration Export.pdf',uploadedAt:'TEST PREVIEW',uploadedBy:'Imported source data'}],
    administrationRows:[
-     {date:'9/10/26',report:'TEST-001',provider:'TEST PROVIDER',medication:'Fentanyl',dose:50,unit:'M1'},
-     {date:'9/15/26',report:'TEST-002',provider:'TEST PROVIDER 2',medication:'Versed',dose:5,unit:'M2'}
+     {date:'8/31/26',report:'GFD202603409',provider:'SAM SMITH',medication:'Fentanyl',dose:50,unit:'M2'},
+     {date:'8/31/26',report:'GFD202603409',provider:'SAM SMITH',medication:'Fentanyl',dose:50,unit:'M2'},
+     {date:'8/30/26',report:'GFD202603382',provider:'Cheyenne Best',medication:'Fentanyl',dose:50,unit:'M2'},
+     {date:'8/27/26',report:'GFD202603345',provider:'Zach Mattox',medication:'Versed',dose:5,unit:'M2'},
+     {date:'8/27/26',report:'GFD202603339',provider:'Zach Mattox',medication:'Fentanyl',dose:25,unit:'M2'},
+     {date:'8/24/26',report:'GFD202603287',provider:'Zach Mattox',medication:'Fentanyl',dose:50,unit:'M2'},
+     {date:'8/24/26',report:'GFD202603287',provider:'Zach Mattox',medication:'Fentanyl',dose:50,unit:'M2'},
+     {date:'8/19/26',report:'GFD202603237',provider:'Corrina Sandoval Ceja',medication:'Fentanyl',dose:20,unit:'M2'},
+     {date:'8/15/26',report:'GFD202603175',provider:'Kelly Hoffman',medication:'Fentanyl',dose:50,unit:'M1'},
+     {date:'8/15/26',report:'GFD202603175',provider:'Kelly Hoffman',medication:'Fentanyl',dose:50,unit:'M1'},
+     {date:'8/13/26',report:'GFD202603144',provider:'Nick Estrada',medication:'Fentanyl',dose:50,unit:'M2'},
+     {date:'8/1/26',report:'GFD202602967',provider:'Samuel Rieger',medication:'Versed',dose:5,unit:'M1'}
    ],
-   usageSummary:'TEST DATA ONLY — synthetic administration summary for report-layout development.',
+   usageSummary:'Imported administration source data: 12 dose rows · calculated vial use: 9 vials · 7 providers.',
    notes:'TEST AUDIT ONLY. This record contains synthetic data and is not a controlled-substance audit.',
    signatures:testSigs,
    attestationText:FINAL_ATTESTATION,
@@ -785,7 +795,14 @@ function reportHtml(r){
  '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+esc(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
  '<section><h2>Breakaway tag record</h2><table class="report-table"><thead><tr><th>Location</th><th>Tag found / removed</th><th>New tag installed</th></tr></thead><tbody>'+tagRows+'</tbody></table></section>'+
  '<section><h2>Narcotic usage exports</h2><p>Reference documents only. Monthly inventory totals are the manually verified physical counts; usage exports do not calculate expected counts or variances.</p>'+(sourceDoc?'<p><u>'+esc(sourceDoc.name)+'</u> — uploaded '+esc(sourceDoc.uploadedAt||'')+(sourceDoc.uploadedBy?' by '+esc(sourceDoc.uploadedBy):'')+'</p>':'')+'<p class="report-note">Uploaded PDFs are separate supporting documents; open each attachment to print its contents.</p></section>'+
- '<section><h2>Transactions in the audit reporting period</h2><table class="report-table report-transactions"><thead><tr><th>Date</th><th>Action</th><th>Medication</th><th>Qty</th><th>Movement</th><th>Vendor / incident / lot</th></tr></thead><tbody>'+txRows+'</tbody></table></section>'+
+ (r.isTest&&Array.isArray(r.administrationRows)&&r.administrationRows.length?
+ '<section class="report-imported-admin"><h2>Imported narcotic administrations</h2><p class="report-note">Source doses are shown as imported. Vial use below is calculated from the department vial rules for reconciliation.</p>'+
+ '<table class="report-table"><thead><tr><th>Date</th><th>Report</th><th>Provider</th><th>Medication</th><th>Dose</th><th>Unit</th></tr></thead><tbody>'+
+ r.administrationRows.map(x=>'<tr><td>'+esc(formatAdminDate(x.date))+'</td><td>'+esc(x.report)+'</td><td>'+esc(x.provider)+'</td><td>'+esc(x.medication)+'</td><td><b>'+esc(x.dose)+' '+esc(adminDoseUnit(x.medication))+'</b></td><td>'+esc(String(x.unit||'').replace(/^M([123])$/,'Medic $1'))+'</td></tr>').join('')+
+ '</tbody></table>'+
+ '<div class="report-usage-summary"><b>Calculated vial use by provider</b><br>'+
+ providerVialData(r.administrationRows).providers.map(([provider,items])=>esc(provider)+': '+items.reduce((n,x)=>n+x.vials,0)+' vial'+(items.reduce((n,x)=>n+x.vials,0)===1?'':'s')).join('<br>')+
+ '<br><b>Total calculated vials: '+providerVialData(r.administrationRows).total+'</b></div></section>':'')+'<section><h2>Transactions in the audit reporting period</h2><table class="report-table report-transactions"><thead><tr><th>Date</th><th>Action</th><th>Medication</th><th>Qty</th><th>Movement</th><th>Vendor / incident / lot</th></tr></thead><tbody>'+txRows+'</tbody></table></section>'+
  sigCard('Medic 1')+sigCard('Medic 2')+sigCard('Medic 3')+sigCard('Safe')+sigCard('Expired')+
  '<section class="report-attestation"><h2>Final overall controlled-substance audit attestation</h2><p>'+esc(r.attestationText||FINAL_ATTESTATION).replace(/\n/g,'<br>')+'</p><div class="report-final-signature"><div class="report-signature-label">FINAL CERTIFYING AUDITOR SIGNATURE</div>'+(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'')+'<div class="report-signature-name">'+esc(r.attestationName||'')+(r.attestationEmployeeNumber?' · Employee #'+esc(r.attestationEmployeeNumber):'')+'</div></div></section>'+
  '<section class="report-notes"><h2>Audit notes</h2><p class="audit-notes-text">'+esc(r.notes||'').replace(/\n/g,'<br>')+'</p>'+(r.usageSummary?'<div class="report-usage-summary">'+esc(r.usageSummary||'').replace(/\n/g,'<br>')+'</div>':'')+'</section>'+
