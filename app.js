@@ -406,7 +406,7 @@ async function editAudit(id){
  }
  activeAuditId=id;
  await put('meta',{id:'activeAudit',auditId:id,updatedAt:nowISO()});
- document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-shell"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back to audits</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Status<input value="'+esc(a.status)+'" disabled></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div>'+administrationImportSection(a)+'<div class="audit-route"><div class="audit-route-title">Audit route</div>'+LOCS.map((l,i)=>'<a href="#unit-'+i+'" data-jump-unit="'+i+'">'+(i+1)+'. '+l+'</a>').join('')+'</div>'+LOCS.map((l,i)=>'<div id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+'<div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><label class="final-signer-label">Final signer name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||'')+'"></label><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>';
+ document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-shell"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back to audits</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Status<input value="'+esc(a.status)+'" disabled></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div>'+administrationImportSection(a)+'<div class="audit-route"><div class="audit-route-title">Audit route</div>'+LOCS.map((l,i)=>'<a href="#unit-'+i+'" data-jump-unit="'+i+'" data-route-loc="'+esc(l)+'"><span class="route-status-mark"></span><span class="route-label">'+(i+1)+'. '+esc(l)+'</span></a>').join('')+'</div>'+LOCS.map((l,i)=>'<div id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+'<div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><label class="final-signer-label">Final signer name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||'')+'"></label><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>';
  document.getElementById('backAudits').onclick=async()=>{await flushAuditAutosave();activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});renderAudits()};
  const adminOuter=document.querySelector('.mobile-collapsible-admin');
  if(adminOuter&&window.matchMedia('(max-width:650px)').matches)adminOuter.removeAttribute('open');
@@ -419,14 +419,62 @@ async function editAudit(id){
  if(monthPicker)monthPicker.addEventListener('change',()=>{const hidden=document.getElementById('auditMonth');if(hidden)hidden.value=monthValueToText(monthPicker.value)});
  document.querySelectorAll('#auditWorkspace input,#auditWorkspace textarea,#auditWorkspace select').forEach(el=>{
    if(el.disabled)return;
-   el.addEventListener('input',()=>scheduleAuditAutosave(a.id));
-   el.addEventListener('change',()=>scheduleAuditAutosave(a.id,true));
-   el.addEventListener('blur',()=>scheduleAuditAutosave(a.id,true));
+   el.addEventListener('input',()=>{updateAuditRouteProgress();scheduleAuditAutosave(a.id)});
+   el.addEventListener('change',()=>{updateAuditRouteProgress();scheduleAuditAutosave(a.id,true)});
+   el.addEventListener('blur',()=>{updateAuditRouteProgress();scheduleAuditAutosave(a.id,true)});
  });
+ updateAuditRouteProgress();
  setAutosaveStatus('Saved '+fmtDate(a.updatedAt));
 }
-function setupCanvas(canvas,data,onChange){const ctx=canvas.getContext('2d');ctx.lineWidth=2;ctx.lineCap='round';if(data){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=data}let down=false,last=null,changed=false;const pos=e=>{const r=canvas.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*canvas.width/r.width,y:(p.clientY-r.top)*canvas.height/r.height}};const start=e=>{down=true;changed=false;last=pos(e);e.preventDefault()};const move=e=>{if(!down)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;changed=true;e.preventDefault()};const end=()=>{if(down&&changed&&onChange)onChange();down=false;last=null;changed=false};canvas.addEventListener('mousedown',start);canvas.addEventListener('mousemove',move);window.addEventListener('mouseup',end);canvas.addEventListener('touchstart',start,{passive:false});canvas.addEventListener('touchmove',move,{passive:false});canvas.addEventListener('touchend',end)}
-function setupSignature(box,s,onChange){const c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');setupCanvas(c,s.signature||'',onChange);setupCanvas(w,s.witnessSignature||'',onChange);box.querySelector('[data-clear-sig]').onclick=()=>{[c,w].forEach(x=>x.getContext('2d').clearRect(0,0,x.width,x.height));if(onChange)onChange()}}
+function setupCanvas(canvas,data,onChange){
+ const ctx=canvas.getContext('2d');
+ ctx.lineWidth=2;ctx.lineCap='round';
+ canvas.dataset.hasSignature=data?'true':'false';
+ if(data){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=data}
+ let down=false,last=null,changed=false;
+ const pos=e=>{const r=canvas.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*canvas.width/r.width,y:(p.clientY-r.top)*canvas.height/r.height}};
+ const start=e=>{down=true;changed=false;last=pos(e);e.preventDefault()};
+ const move=e=>{if(!down)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;changed=true;e.preventDefault()};
+ const end=()=>{if(down&&changed){canvas.dataset.hasSignature='true';if(onChange)onChange()}down=false;last=null;changed=false};
+ canvas.addEventListener('mousedown',start);canvas.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
+ canvas.addEventListener('touchstart',start,{passive:false});canvas.addEventListener('touchmove',move,{passive:false});canvas.addEventListener('touchend',end);
+}
+function setupSignature(box,s,onChange){
+ const c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');
+ const changed=()=>{updateAuditRouteProgress();if(onChange)onChange()};
+ setupCanvas(c,s.signature||'',changed);
+ setupCanvas(w,s.witnessSignature||'',changed);
+ box.querySelector('[data-clear-sig]').onclick=()=>{
+   [c,w].forEach(x=>{x.getContext('2d').clearRect(0,0,x.width,x.height);x.dataset.hasSignature='false'});
+   updateAuditRouteProgress();
+   if(onChange)onChange();
+ };
+}
+function unitIsComplete(loc){
+ const section=document.querySelector('[data-unit-section="'+CSS.escape(loc)+'"]');
+ if(!section)return false;
+ const tags=[...section.querySelectorAll('[data-tag-loc]')];
+ const counts=[...section.querySelectorAll('[data-count-loc]')];
+ const signer=section.querySelector('[data-signer]');
+ const witness=section.querySelector('[data-witness]');
+ const signerCanvas=section.querySelector('[data-canvas]');
+ const witnessCanvas=section.querySelector('[data-witness-canvas]');
+ const tagsDone=tags.length>=2&&tags.every(x=>String(x.value||'').trim()!=='');
+ const countsDone=counts.length===MEDS.length&&counts.every(x=>String(x.value??'').trim()!=='');
+ const namesDone=Boolean(signer?.value.trim()&&witness?.value.trim());
+ const signaturesDone=signerCanvas?.dataset.hasSignature==='true'&&witnessCanvas?.dataset.hasSignature==='true';
+ return tagsDone&&countsDone&&namesDone&&signaturesDone;
+}
+function updateAuditRouteProgress(){
+ document.querySelectorAll('.audit-route [data-route-loc]').forEach(link=>{
+   const loc=link.dataset.routeLoc;
+   const complete=unitIsComplete(loc);
+   link.classList.toggle('complete',complete);
+   const mark=link.querySelector('.route-status-mark');
+   if(mark)mark.textContent=complete?'✓':'';
+   link.setAttribute('aria-label',loc+(complete?' complete':' incomplete'));
+ });
+}
 function setAutosaveStatus(msg){const el=document.getElementById('autosaveStatus');if(el)el.textContent=msg}
 function collectAuditFromUI(a){
  if(!document.getElementById('auditMonth'))return a;
