@@ -121,3 +121,47 @@
 .auth-form>label{display:grid;gap:6px;font-size:.84rem;font-weight:750;color:#344c66}
 .auth-form h2{margin:.2rem 0}
 @media(max-width:650px){.header-actions{align-items:flex-end;flex-direction:column}.account-btn{max-width:150px}}
+
+
+/* Audit comparison + breakaway tag workflow */
+.audit-grid-head small{display:block;font-size:.66rem;font-weight:600;color:#778898;margin-top:2px}
+.audit-count-cell{display:flex;align-items:center;gap:6px}
+.audit-count-cell .prior-count{min-width:22px;text-align:right;color:#6f7f8e;font-weight:700}
+.audit-count-cell .count-sep{color:#9aa9b6}
+.audit-count-cell input{flex:1;min-width:58px}
+.tag-entry-grid{display:grid;grid-template-columns:minmax(120px,.8fr) minmax(150px,1.2fr) minmax(150px,1.2fr);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.tag-entry-grid>*{padding:10px;border-right:1px solid #e5ecf2;border-bottom:1px solid #e5ecf2}
+.tag-entry-grid>*:nth-child(3n){border-right:0}
+.tag-entry-grid>*:nth-last-child(-n+3){border-bottom:0}
+.tag-entry-head{background:#f6f9fb;font-size:.78rem;font-weight:850;color:#29445f}
+.tag-location{background:#fbfcfd;font-weight:800;color:#29445f;display:flex;align-items:center}
+.tag-entry-grid input{border:0;border-radius:0;min-width:0;width:100%;font-weight:750;background:#fff}
+.report-usage-summary{margin-top:18px;line-height:1.42}
+.audit-notes-text{margin-bottom:16px!important}
+@media(max-width:600px){
+ .tag-entry-grid{grid-template-columns:105px minmax(145px,1fr) minmax(145px,1fr);overflow-x:auto}
+}
+
+/* Print fidelity to the original finalized GFD audit record */
+@media print{
+ .report-finalized{font-size:10.6pt;line-height:1.35}
+ .report-top{margin-bottom:12px}
+ .report-top img{width:98px;height:98px}
+ .report-kicker{font-size:10pt;letter-spacing:.18em}
+ .report-top h1{font-size:21pt;line-height:1.08}
+ .report-meta-grid{font-size:10.4pt}
+ .report-blue-rule{margin:12px 0 16px}
+ .report-amendment{padding:12px 14px}
+ .report-table{font-size:9.5pt}
+ .report-table th,.report-table td{padding:6px 7px}
+ .report-cert{margin-top:17px}
+ .report-cert h2{margin-bottom:5px}
+ .report-cert p{margin:0 0 7px}
+ .report-signature-grid{gap:18px}
+ .report-signature-box{padding:11px 13px}
+ .report-signature-box img{height:72px}
+ .report-final-signature img{height:88px}
+ .report-attestation p{line-height:1.45}
+ .report-notes{padding:13px 15px}
+ .report-footer{margin-top:24px}
+}
