@@ -177,6 +177,86 @@ function unitAuditSection(a,loc,index){
  '</section>';
 }
 function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="signature-person-grid"><div><label>Signer name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><div class="signature-label">Signer signature</div><canvas width="500" height="150" data-canvas></canvas></div><div><label>Witness name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><div class="signature-label">Witness signature</div><canvas width="500" height="150" data-witness-canvas></canvas></div></div><button type="button" class="clear-signatures" data-clear-sig>Clear signatures</button></div>'}
+
+function administrationImportSection(a){
+ const docs=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
+ const latest=docs.length?docs[docs.length-1]:null;
+ return '<div class="audit-card audit-section-card admin-import-card">'+
+ '<span class="kicker">ADMINISTRATION RECORDS</span><h3>Import narcotic administration PDF</h3>'+
+ '<p class="meta">Upload the administration PDF for this audit period. The app extracts the PDF text, stores the PDF as a private supporting document, and inserts the transcribed administration information into the summary below. This does not alter physical inventory counts.</p>'+
+ '<div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">Upload administration PDF</button><input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div>'+
+ '<div id="adminImportStatus" class="notice">'+(latest?'Loaded: '+esc(latest.name||'PDF')+(latest.uploadedAt?' · '+esc(fmtDate(latest.uploadedAt)):''):'No administration PDF uploaded for this draft yet.')+'</div>'+
+ (latest?.transcript?'<details class="admin-transcript"><summary>View extracted PDF transcription</summary><pre>'+esc(latest.transcript)+'</pre></details>':'')+
+ '<label class="admin-summary-label">Administration import summary<textarea id="usageSummary" rows="10" placeholder="Upload an administration PDF to populate this summary.">'+esc(a.usageSummary||'')+'</textarea></label>'+
+ '</div>';
+}
+async function sha256Buffer(buf){const hash=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+function safeStorageName(name='document.pdf'){return String(name).replace(/[^a-zA-Z0-9._-]+/g,'_').slice(-120)||'document.pdf'}
+async function extractPdfTranscript(file){
+ if(!window.pdfjsLib)throw new Error('PDF reader is still loading. Refresh the app and try again.');
+ const buf=await file.arrayBuffer();
+ const pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
+ const pages=[];
+ for(let p=1;p<=pdf.numPages;p++){
+   const page=await pdf.getPage(p),content=await page.getTextContent();
+   const rows=[];
+   for(const item of content.items||[]){
+     const y=Math.round((item.transform?.[5]||0)*2)/2,x=item.transform?.[4]||0,s=String(item.str||'').trim();
+     if(!s)continue;
+     let row=rows.find(r=>Math.abs(r.y-y)<=1.5);
+     if(!row){row={y,items:[]};rows.push(row)}
+     row.items.push({x,s});
+   }
+   rows.sort((a,b)=>b.y-a.y);
+   const lines=rows.map(r=>r.items.sort((a,b)=>a.x-b.x).map(i=>i.s).join(' ').replace(/\s+/g,' ').trim()).filter(Boolean);
+   pages.push(lines.join('\n'));
+ }
+ return {text:pages.map((t,i)=>'--- Page '+(i+1)+' ---\n'+t).join('\n\n'),arrayBuffer:buf,pageCount:pdf.numPages};
+}
+function buildAdministrationSummary(transcript,fileName){
+ const lines=String(transcript||'').split(/\r?\n/).map(x=>x.replace(/\s+/g,' ').trim()).filter(x=>x&&!/^--- Page \d+ ---$/.test(x));
+ const relevant=/fentanyl|versed|midazolam|ketamine|morphine|report\b|incident\b|medic\s*[123]|administer|dose|waste|patient|provider|personnel|treatment date|date\/time/i;
+ const dateish=/\b20\d{2}[-\/]\d{1,2}[-\/]\d{1,2}\b|\b\d{1,2}[-\/]\d{1,2}[-\/]20\d{2}\b|\bGFD\d{5,}\b/i;
+ const selected=[];
+ lines.forEach((line,i)=>{
+   if(relevant.test(line)||dateish.test(line)){
+     for(let j=Math.max(0,i-1);j<=Math.min(lines.length-1,i+1);j++)if(!selected.includes(lines[j]))selected.push(lines[j]);
+   }
+ });
+ const body=(selected.length>=2?selected:lines).join('\n');
+ return 'Narcotic administration summary — '+fileName+'\n'+body+'\n\nReference only; manual inventory counts unchanged.';
+}
+async function handleAdministrationPdf(auditId,file){
+ if(!file)return;
+ if(!requireCloudAuth())return;
+ if(file.type!=='application/pdf'&&!/\.pdf$/i.test(file.name))return alert('Choose a PDF file.');
+ const status=document.getElementById('adminImportStatus');
+ if(status)status.textContent='Reading and transcribing PDF…';
+ try{
+   const extracted=await extractPdfTranscript(file);
+   const cleanText=extracted.text.trim();
+   if(!cleanText||cleanText.replace(/--- Page \d+ ---/g,'').trim().length<20)throw new Error('This PDF does not contain enough extractable text. Use the text-based administration export rather than a scanned image PDF.');
+   if(status)status.textContent='Uploading private supporting PDF…';
+   const audit=await getOne('audits',auditId);if(!audit)throw new Error('Audit draft was not found.');
+   const digest=await sha256Buffer(extracted.arrayBuffer);
+   const path=String(auditId)+'/'+Date.now()+'-'+safeStorageName(file.name);
+   const {error:uploadError}=await sb.storage.from('audit-supporting-docs').upload(path,file,{contentType:'application/pdf',upsert:false});
+   if(uploadError)throw uploadError;
+   const summary=buildAdministrationSummary(cleanText,file.name);
+   audit.supportingDocuments=Array.isArray(audit.supportingDocuments)?audit.supportingDocuments:[];
+   audit.supportingDocuments.push({name:file.name,storageBucket:'audit-supporting-docs',storagePath:path,mimeType:'application/pdf',size:file.size,pageCount:extracted.pageCount,sha256:digest,uploadedAt:nowISO(),uploadedBy:cloudSession?.user?.email||'',transcript:cleanText});
+   audit.usageSummary=summary;
+   audit.updatedAt=nowISO();
+   await put('audits',audit);
+   const ta=document.getElementById('usageSummary');if(ta)ta.value=summary;
+   if(status)status.textContent='PDF transcribed and saved live · '+file.name+' · '+extracted.pageCount+' page'+(extracted.pageCount===1?'':'s');
+   setAutosaveStatus('Saved live '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'}));
+   await editAudit(auditId);
+ }catch(err){
+   if(status)status.textContent='Import failed: '+(err?.message||String(err));
+ }
+}
+
 async function editAudit(id){
  const a=await getOne('audits',id);if(!a)return;
  if(String(a.status||'').toLowerCase()!=='draft'){
@@ -188,8 +268,10 @@ async function editAudit(id){
  }
  activeAuditId=id;
  await put('meta',{id:'activeAudit',auditId:id,updatedAt:nowISO()});
- document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-shell"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back to audits</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonth" value="'+esc(a.month||'')+'"></label><label>Status<input value="'+esc(a.status)+'" disabled></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div><div class="audit-route"><div class="audit-route-title">Audit route</div>'+LOCS.map((l,i)=>'<a href="#unit-'+i+'" data-jump-unit="'+i+'">'+(i+1)+'. '+l+'</a>').join('')+'</div>'+LOCS.map((l,i)=>'<div id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+'<div class="audit-card audit-section-card"><span class="kicker">REFERENCE DATA</span><h3>Administration import summary</h3><p class="meta">Supporting usage data only. These entries do not subtract from the manually verified physical inventory.</p><textarea id="usageSummary" rows="7">'+esc(a.usageSummary||'')+'</textarea></div><div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><label class="final-signer-label">Final signer name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||'')+'"></label><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>';
+ document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-shell"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</div></div><button id="backAudits">Back to audits</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonth" value="'+esc(a.month||'')+'"></label><label>Status<input value="'+esc(a.status)+'" disabled></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div>'+administrationImportSection(a)+'<div class="audit-route"><div class="audit-route-title">Audit route</div>'+LOCS.map((l,i)=>'<a href="#unit-'+i+'" data-jump-unit="'+i+'">'+(i+1)+'. '+l+'</a>').join('')+'</div>'+LOCS.map((l,i)=>'<div id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+'<div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><label class="final-signer-label">Final signer name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||'')+'"></label><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>';
  document.getElementById('backAudits').onclick=async()=>{await flushAuditAutosave();activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});renderAudits()};
+ const adminUploadBtn=document.getElementById('uploadAdminPdf'),adminPdfFile=document.getElementById('adminPdfFile');
+ if(adminUploadBtn&&adminPdfFile){adminUploadBtn.onclick=()=>adminPdfFile.click();adminPdfFile.onchange=async e=>{const file=e.target.files?.[0];if(file)await handleAdministrationPdf(a.id,file);e.target.value=''}};
  document.querySelectorAll('.signature-box').forEach(box=>setupSignature(box,a.signatures?.[box.dataset.sigLoc]||{},()=>scheduleAuditAutosave(a.id,true)));
  document.getElementById('saveAudit').onclick=()=>saveAuditFromUI(a.id,false);
  document.getElementById('finalizeAudit').onclick=()=>saveAuditFromUI(a.id,true);
