@@ -882,3 +882,48 @@ body.report-open{overflow:hidden}
     font-size:.66rem;
   }
 }
+
+
+/* Collapsible administration import on mobile */
+.mobile-collapsible-admin{padding:0;overflow:hidden}
+.admin-import-summarybar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  padding:11px 14px;
+  cursor:pointer;
+  list-style:none;
+}
+.admin-import-summarybar::-webkit-details-marker{display:none}
+.admin-import-summarybar h3{margin:.1rem 0 0}
+.admin-collapse-label{
+  font-size:.72rem;
+  font-weight:850;
+  color:#5f7487;
+  white-space:nowrap;
+}
+.mobile-collapsible-admin[open] .admin-import-summarybar{
+  border-bottom:1px solid #dfe7ed;
+}
+.admin-import-body{padding:10px 14px 12px}
+@media(max-width:650px){
+  .mobile-collapsible-admin{
+    margin:0;
+  }
+  .admin-import-summarybar{
+    padding:10px 12px;
+  }
+  .admin-import-summarybar h3{
+    font-size:1rem;
+  }
+  .admin-import-body{
+    padding:9px 12px 11px;
+  }
+  .mobile-collapsible-admin:not([open]) .admin-collapse-label::after{
+    content:' +';
+  }
+  .mobile-collapsible-admin[open] .admin-collapse-label::after{
+    content:' –';
+  }
+}
