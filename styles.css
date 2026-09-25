@@ -1948,3 +1948,37 @@ body.report-open{overflow:hidden}
   font-size:.78rem;
   color:#253746;
 }
+
+
+/* Compact cover auditor signature inside auditor information box */
+.cover-auditor-box{
+  min-width:0;
+}
+.cover-auditor-signature{
+  margin-top:6px;
+  padding-top:5px;
+  border-top:1px solid #e2e9ee;
+}
+.cover-auditor-signature img{
+  display:block;
+  max-width:180px;
+  max-height:48px;
+  object-fit:contain;
+  margin:0 0 2px;
+}
+.cover-auditor-signature .report-signature-placeholder{
+  width:170px;
+  height:36px;
+  border-bottom:1px solid #aab9c4;
+  margin:0 0 2px;
+}
+.cover-auditor-signature small{
+  display:block;
+  font-size:.58rem;
+  color:#7a8b98;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.report-cover-signature{
+  display:none !important;
+}
