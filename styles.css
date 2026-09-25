@@ -985,3 +985,34 @@ body.report-open{overflow:hidden}
     gap:6px;
   }
 }
+
+
+/* Larger signature capture for phones */
+.signature-label-row{
+  display:flex;align-items:center;justify-content:space-between;gap:8px;margin:6px 0 4px
+}
+.signature-label-row .signature-label{margin:0}
+.expand-signature{padding:5px 8px;font-size:.7rem;font-weight:800}
+.signature-capture-dialog{
+  width:min(980px,96vw);max-width:980px;padding:0;border:0;border-radius:14px;overflow:hidden
+}
+.signature-capture-dialog::backdrop{background:rgba(16,31,44,.62)}
+.signature-capture-shell{padding:14px;background:#fff}
+.signature-capture-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.signature-capture-head h2{margin:.15rem 0}
+.signature-capture-hint{margin:8px 0 10px;font-size:.78rem;color:#687b8a}
+#signatureCaptureCanvas{
+  display:block;width:100%;height:min(46vh,360px);border:2px solid #b8c8d6;border-radius:10px;background:#fff;touch-action:none
+}
+.signature-capture-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:10px}
+@media(max-width:650px){
+  .signature-capture-dialog{width:100vw;max-width:none;height:100dvh;max-height:100dvh;border-radius:0}
+  .signature-capture-shell{height:100%;display:flex;flex-direction:column;padding:10px}
+  .signature-capture-hint{margin:4px 0 8px}
+  #signatureCaptureCanvas{flex:1;height:auto;min-height:260px}
+}
+@media(max-width:900px) and (orientation:landscape){
+  .signature-capture-dialog{width:100vw;height:100dvh;max-width:none;max-height:100dvh;border-radius:0}
+  .signature-capture-shell{height:100%;display:grid;grid-template-rows:auto auto 1fr auto;padding:8px 10px}
+  #signatureCaptureCanvas{height:100%;min-height:0}
+}
