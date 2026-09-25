@@ -753,30 +753,73 @@ function reportShareDate(v){
 async function shareRenderedReport(preview,title='Narcotic Inventory Audit Report'){
  const sheet=preview?.querySelector('.report-sheet');
  if(!sheet)return alert('Report preview is not ready yet.');
+ const shareBtn=document.getElementById('shareReport');
+ const originalLabel=shareBtn?.textContent||'Share';
  try{
-   let cssText='';
-   try{
-     const cssUrl=document.querySelector('link[rel="stylesheet"]')?.href;
-     if(cssUrl)cssText=await fetch(cssUrl,{cache:'no-store'}).then(r=>r.text());
-   }catch(e){}
+   if(!window.html2pdf)throw new Error('PDF generator is not available.');
+   if(shareBtn){shareBtn.disabled=true;shareBtn.textContent='Generating PDF…';}
+
    const clone=sheet.cloneNode(true);
    clone.querySelector('.report-toolbar')?.remove();
-   const html='<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+esc(title)+'</title><style>'+cssText+'</style></head><body><div style="max-width:1000px;margin:0 auto">'+clone.outerHTML+'</div></body></html>';
-   const safeName=String(title||'Narcotic Audit Report').replace(/[^a-z0-9]+/gi,'-').replace(/^-|-$/g,'')||'Narcotic-Audit-Report';
-   const file=new File([html],safeName+'.html',{type:'text/html'});
+   clone.style.width='7.6in';
+   clone.style.maxWidth='7.6in';
+   clone.style.margin='0';
+   clone.style.overflow='visible';
+   clone.querySelectorAll('.report-imported-admin, section').forEach(el=>{el.style.overflow='visible';});
+   clone.querySelectorAll('.report-table').forEach(el=>{el.style.minWidth='0';el.style.width='100%';});
+
+   const stage=document.createElement('div');
+   stage.className='pdf-render-stage';
+   stage.style.position='fixed';
+   stage.style.left='-10000px';
+   stage.style.top='0';
+   stage.style.width='8.5in';
+   stage.style.padding='0.35in';
+   stage.style.background='#fff';
+   stage.style.zIndex='-1';
+   stage.appendChild(clone);
+   document.body.appendChild(stage);
+
+   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+
+   const safeName=String(title||'Narcotic Audit Report')
+     .replace(/[\\/:*?"<>|]+/g,'-')
+     .replace(/\s+/g,' ')
+     .trim()||'Narcotic Audit Report';
+
+   const pdfBlob=await window.html2pdf()
+     .set({
+       margin:[0.35,0.35,0.4,0.35],
+       filename:safeName+'.pdf',
+       image:{type:'jpeg',quality:0.98},
+       html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},
+       jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
+       pagebreak:{mode:['css','legacy'],avoid:['.report-cert','.report-attestation','.report-notes','.report-signature-box','.report-vial-row']}
+     })
+     .from(clone)
+     .outputPdf('blob');
+
+   stage.remove();
+
+   const file=new File([pdfBlob],safeName+'.pdf',{type:'application/pdf'});
+   const shareData={title,text:title,files:[file]};
    if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
-     await navigator.share({title,text:title,files:[file]});
+     await navigator.share(shareData);
      return;
    }
-   const url=URL.createObjectURL(file);
+
+   const url=URL.createObjectURL(pdfBlob);
    const a=document.createElement('a');
    a.href=url;a.download=file.name;document.body.appendChild(a);a.click();a.remove();
-   setTimeout(()=>URL.revokeObjectURL(url),1000);
-   alert('Direct sharing is not supported by this browser, so the report was saved as a file instead.');
+   setTimeout(()=>URL.revokeObjectURL(url),1500);
+   alert('This browser cannot open the native share sheet for files, so the PDF was saved instead.');
  }catch(err){
+   document.querySelector('.pdf-render-stage')?.remove();
    if(err?.name==='AbortError')return;
-   alert('Unable to share this report from this browser.');
+   alert('Unable to generate the PDF for sharing. Please try again.');
    console.error(err);
+ }finally{
+   if(shareBtn){shareBtn.disabled=false;shareBtn.textContent=originalLabel;}
  }
 }
 
