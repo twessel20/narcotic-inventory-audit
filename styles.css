@@ -1222,3 +1222,39 @@ body.report-open{overflow:hidden}
     padding:8px 10px;
   }
 }
+
+
+/* Test report: make signature-to-site association explicit */
+.report-cert-explicit{
+  border:1px solid #cfdce5;
+  border-radius:10px;
+  padding:12px;
+  margin-top:14px;
+}
+.report-cert-site{
+  display:flex;
+  align-items:baseline;
+  gap:8px;
+  margin:2px 0 6px;
+}
+.report-cert-site span{
+  font-size:.68rem;
+  font-weight:900;
+  letter-spacing:.08em;
+  color:#687b8a;
+}
+.report-cert-site strong{
+  font-size:1rem;
+  color:#123a5a;
+}
+.report-cert-statement{
+  margin:0 0 10px;
+}
+.report-signature-site{
+  margin-bottom:6px;
+  padding-bottom:5px;
+  border-bottom:1px solid #e2e9ee;
+  font-size:.75rem;
+  font-weight:900;
+  color:#123a5a;
+}
