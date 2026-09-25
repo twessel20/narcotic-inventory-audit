@@ -750,6 +750,17 @@ function reportShareDate(v){
  if(dt&&!Number.isNaN(dt.getTime()))return String(dt.getMonth()+1).padStart(2,'0')+'/'+String(dt.getDate()).padStart(2,'0')+'/'+dt.getFullYear();
  return '';
 }
+async function sharePdfFile(file,title){
+ if(!(file instanceof File)||file.type!=='application/pdf'||!file.name.toLowerCase().endsWith('.pdf')){
+   throw new Error('Only PDF files may be shared from this app.');
+ }
+ if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
+   await navigator.share({title,text:title,files:[file]});
+   return true;
+ }
+ return false;
+}
+
 async function shareRenderedReport(preview,title='Narcotic Inventory Audit Report'){
  const sheet=preview?.querySelector('.report-sheet');
  if(!sheet)return alert('Report preview is not ready yet.');
@@ -802,11 +813,7 @@ async function shareRenderedReport(preview,title='Narcotic Inventory Audit Repor
    stage.remove();
 
    const file=new File([pdfBlob],safeName+'.pdf',{type:'application/pdf'});
-   const shareData={title,text:title,files:[file]};
-   if(navigator.share&&(!navigator.canShare||navigator.canShare({files:[file]}))){
-     await navigator.share(shareData);
-     return;
-   }
+   if(await sharePdfFile(file,title))return;
 
    const url=URL.createObjectURL(pdfBlob);
    const a=document.createElement('a');
@@ -887,7 +894,7 @@ function reportHtml(r){
  };
  const sourceDoc=(r.supportingDocuments||[])[0];
  return '<div class="report-sheet report-finalized">'+
- '<div class="report-toolbar"><button id="closeReport">Close</button><button id="shareReport">Share</button><button id="printReport" class="primary">Print / Save PDF</button></div>'+
+ '<div class="report-toolbar"><button id="closeReport">Close</button><button id="shareReport">Share PDF</button><button id="printReport" class="primary">Print / Save PDF</button></div>'+
  '<header class="report-top"><img src="'+logo+'" alt="Gladstone Fire Department patch"><div><div class="report-kicker">FINALIZED MONTHLY RECORD</div><h1>Gladstone Fire Department Narcotic<br>Inventory / Audit Form</h1></div></header>'+
  '<div class="report-meta-grid"><div><b>Audit month:</b> '+esc(r.month||'')+'</div><div><b>Created:</b> '+esc(r.createdDisplay||fmtDate(r.createdAt)||'')+'</div><div><b>Email:</b> '+esc(r.email||'travisw@gladstone.mo.us')+'</div><div></div><div><b>Date of audit:</b> '+esc(r.auditDate||'')+'</div><div></div><div class="wide"><b>Audit period:</b> '+esc(r.dateRangeStart||'—')+' through '+esc(r.dateRangeEnd||'—')+' (both dates included)</div></div>'+
  '<hr class="report-blue-rule">'+
