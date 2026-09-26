@@ -2301,3 +2301,32 @@ body.report-open{overflow:hidden}
 .pdf-render-stage .report-cover-page + *{
   margin-top:0 !important;
 }
+
+
+/* Compact inventory comparison in generated PDF so it stays on one page */
+.pdf-render-stage .report-inventory{
+  font-size:.76rem !important;
+}
+.pdf-render-stage .report-inventory th,
+.pdf-render-stage .report-inventory td{
+  padding:5px 6px !important;
+  line-height:1.12 !important;
+}
+.pdf-render-stage .report-inventory th small{
+  font-size:.58rem !important;
+  line-height:1.05 !important;
+  margin-top:1px !important;
+}
+.pdf-render-stage .report-inventory td:first-child,
+.pdf-render-stage .report-inventory th:first-child{
+  width:18% !important;
+}
+.pdf-render-stage .pdf-keep-together:has(.report-inventory){
+  padding:9px 11px !important;
+  margin:9px 0 !important;
+}
+.pdf-render-stage .pdf-keep-together:has(.report-inventory) > h2{
+  margin:-9px -11px 7px !important;
+  padding:6px 10px !important;
+  font-size:.96rem !important;
+}
