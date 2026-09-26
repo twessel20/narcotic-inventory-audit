@@ -1569,14 +1569,49 @@ async function previewRenderedReportPdf(preview,title){
  try{
    if(btn){btn.disabled=true;btn.textContent='Generating Preview…';}
    const result=await generateRenderedReportPdf(preview,title);
-   url=URL.createObjectURL(result.blob);
    const d=document.getElementById('pdfPreviewDialog');
    const frame=document.getElementById('pdfPreviewFrame');
+   const pages=document.getElementById('pdfPreviewPages');
    const name=document.getElementById('pdfPreviewTitle');
-   if(!d||!frame)throw new Error('PDF preview window is unavailable.');
+   if(!d||!frame||!pages)throw new Error('PDF preview window is unavailable.');
    if(name)name.textContent=result.safeName+'.pdf';
-   frame.src=url;
-   d.dataset.objectUrl=url;
+
+   const mobile=window.matchMedia('(max-width:700px)').matches;
+   pages.innerHTML='';
+   if(mobile&&window.pdfjsLib){
+     frame.hidden=true;
+     frame.removeAttribute('src');
+     pages.hidden=false;
+     pages.innerHTML='<div class="pdf-preview-loading">Rendering PDF pages…</div>';
+     const bytes=new Uint8Array(await result.blob.arrayBuffer());
+     const pdf=await window.pdfjsLib.getDocument({data:bytes}).promise;
+     pages.innerHTML='';
+     const targetWidth=Math.max(280,Math.min(window.innerWidth-16,760));
+     for(let pageNum=1;pageNum<=pdf.numPages;pageNum++){
+       const page=await pdf.getPage(pageNum);
+       const base=page.getViewport({scale:1});
+       const scale=targetWidth/base.width;
+       const viewport=page.getViewport({scale});
+       const wrap=document.createElement('div');
+       wrap.className='pdf-preview-page';
+       const canvas=document.createElement('canvas');
+       const ratio=Math.min(window.devicePixelRatio||1,2);
+       canvas.width=Math.floor(viewport.width*ratio);
+       canvas.height=Math.floor(viewport.height*ratio);
+       canvas.style.width=viewport.width+'px';
+       canvas.style.height=viewport.height+'px';
+       wrap.appendChild(canvas);
+       pages.appendChild(wrap);
+       await page.render({canvasContext:canvas.getContext('2d'),viewport,transform:ratio!==1?[ratio,0,0,ratio,0,0]:null}).promise;
+     }
+     pages.scrollTop=0;
+   }else{
+     pages.hidden=true;
+     frame.hidden=false;
+     url=URL.createObjectURL(result.blob);
+     frame.src=url;
+     d.dataset.objectUrl=url;
+   }
    d.showModal();
  }catch(err){
    if(url)URL.revokeObjectURL(url);
