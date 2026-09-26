@@ -7016,3 +7016,31 @@ body.report-open{overflow:hidden}
     width:100%!important;
   }
 }
+
+
+/* v217 consistent clear-signature controls */
+.clear-signature-btn,
+#clearTxRecordedSignature,
+#clearTxWitnessSignature,
+#clearFinalSignature,
+#signatureCaptureClear{
+  background:#fff1f0!important;
+  border-color:#c96a63!important;
+  color:#8f2f2a!important;
+  font-weight:700!important;
+}
+
+.clear-signature-btn:hover,
+.clear-signature-btn:focus-visible,
+#clearTxRecordedSignature:hover,
+#clearTxRecordedSignature:focus-visible,
+#clearTxWitnessSignature:hover,
+#clearTxWitnessSignature:focus-visible,
+#clearFinalSignature:hover,
+#clearFinalSignature:focus-visible,
+#signatureCaptureClear:hover,
+#signatureCaptureClear:focus-visible{
+  background:#ffe6e3!important;
+  border-color:#b85a54!important;
+  color:#7b2723!important;
+}
