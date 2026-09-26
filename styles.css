@@ -3483,3 +3483,81 @@ body.report-open{overflow:hidden}
 .pdf-clean-stage .report-vial-row{
   background:#fff !important;
 }
+
+
+/* =====================================================================
+   PDF DESCRIPTORS v112 - explicit Audit Summary-style shading
+   ===================================================================== */
+.pdf-clean-stage .pdf-meta-empty{
+  display:none !important;
+}
+.pdf-clean-stage .pdf-descriptor-row{
+  display:flex !important;
+  align-items:center !important;
+  gap:7px !important;
+  min-height:36px !important;
+  padding:5px 7px !important;
+  border:1px solid #dbe6ed !important;
+  border-radius:7px !important;
+  background:#f8fbfd !important;
+}
+.pdf-clean-stage .pdf-descriptor-label{
+  display:inline-block !important;
+  flex:0 0 auto !important;
+  margin:0 !important;
+  padding:4px 7px !important;
+  border:1px solid #cbdbe6 !important;
+  border-radius:5px !important;
+  background:#eaf3f8 !important;
+  color:#123a5a !important;
+  font-weight:900 !important;
+  line-height:1.1 !important;
+}
+.pdf-clean-stage .report-meta-grid .wide.pdf-descriptor-row{
+  grid-column:1/-1 !important;
+}
+
+/* Summary-like explanation blocks */
+.pdf-clean-stage .pdf-descriptor-callout{
+  display:block !important;
+  margin:6px 0 !important;
+  padding:8px 10px !important;
+  border:1px solid #d8e4eb !important;
+  border-left:4px solid #1f608e !important;
+  border-radius:7px !important;
+  background:#f4f8fb !important;
+  color:#536b7a !important;
+  line-height:1.34 !important;
+}
+
+/* Small descriptor chips within certification/signature areas */
+.pdf-clean-stage .pdf-descriptor-chip{
+  display:block !important;
+  width:max-content !important;
+  max-width:100% !important;
+  margin:2px 0 4px !important;
+  padding:3px 6px !important;
+  border:1px solid #d3e1e9 !important;
+  border-radius:5px !important;
+  background:#edf5f9 !important;
+  color:#123a5a !important;
+  font-weight:800 !important;
+}
+
+/* Imported ESO source descriptor label */
+.pdf-clean-stage .report-eso-source p b{
+  display:inline-block !important;
+  margin-right:5px !important;
+  padding:3px 6px !important;
+  border:1px solid #cbdbe6 !important;
+  border-radius:5px !important;
+  background:#eaf3f8 !important;
+  color:#123a5a !important;
+}
+
+/* Use the same visual language for table descriptors */
+.pdf-clean-stage .report-table th{
+  background:#eaf3f8 !important;
+  color:#123a5a !important;
+  border-color:#cbdbe6 !important;
+}
