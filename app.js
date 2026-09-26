@@ -184,7 +184,10 @@ async function saveTransaction(fd,finalSubmit=true){
  const memoDescription=type==='incident'?String(fd.get('memoDescription')||'').trim():'';
  const meds=fd.getAll('txMedication');
  const qtys=fd.getAll('txQuantity');
- const items=meds.map((med,i)=>({medication:String(med||''),quantity:Number(qtys[i]||0)})).filter(x=>x.medication&&x.quantity>0);
+ const rawItems=meds.map((med,i)=>({medication:String(med||''),quantity:Number(qtys[i]||0)})).filter(x=>x.medication&&x.quantity>0);
+ const itemTotals=new Map();
+ rawItems.forEach(x=>itemTotals.set(x.medication,(itemTotals.get(x.medication)||0)+x.quantity));
+ const items=[...itemTotals.entries()].map(([medication,quantity])=>({medication,quantity}));
  if(!items.length)throw new Error('Add at least one medication with a quantity greater than zero.');
 
  const recordedBy=String(fd.get('recordedBy')||'').trim();
@@ -193,12 +196,15 @@ async function saveTransaction(fd,finalSubmit=true){
  const witnessEmployeeNumber=String(fd.get('witnessEmployeeNumber')||'').trim();
  const recordedCanvas=document.getElementById('txRecordedSignature');
  const witnessCanvas=document.getElementById('txWitnessSignature');
- if(!recordedBy)throw new Error('Enter the employee recording the transaction.');
- if(!recordedByEmployeeNumber)throw new Error('Enter the recorded-by employee number.');
- if(!witness)throw new Error('Enter the witness.');
- if(!witnessEmployeeNumber)throw new Error('Enter the witness employee number.');
- if(recordedCanvas?.dataset.hasSignature!=='true')throw new Error('Recorded-by signature is required.');
- if(witnessCanvas?.dataset.hasSignature!=='true')throw new Error('Witness signature is required.');
+ const requireCompletedSignatures=type!=='incident'||finalSubmit;
+ if(requireCompletedSignatures){
+   if(!recordedBy)throw new Error('Enter the employee recording the transaction.');
+   if(!recordedByEmployeeNumber)throw new Error('Enter the recorded-by employee number.');
+   if(!witness)throw new Error('Enter the witness.');
+   if(!witnessEmployeeNumber)throw new Error('Enter the witness employee number.');
+   if(recordedCanvas?.dataset.hasSignature!=='true')throw new Error('Recorded-by signature is required.');
+   if(witnessCanvas?.dataset.hasSignature!=='true')throw new Error('Witness signature is required.');
+ }
 
  const supportFile=fd.get('supportingPdf');
  const uploadedFile=(supportFile instanceof File&&supportFile.size)?supportFile:null;
@@ -330,8 +336,8 @@ async function saveTransaction(fd,finalSubmit=true){
    recordedByEmployeeNumber,
    witness,
    witnessEmployeeNumber,
-   recordedBySignature:recordedCanvas.toDataURL(),
-   witnessSignature:witnessCanvas.toDataURL(),
+   recordedBySignature:recordedCanvas?.dataset.hasSignature==='true'?recordedCanvas.toDataURL():'',
+   witnessSignature:witnessCanvas?.dataset.hasSignature==='true'?witnessCanvas.toDataURL():'',
    supportingDocument,
    destructionReceipt:type==='destroyed'?destructionReceipt:null
  };
@@ -966,12 +972,12 @@ function collectAuditFromUI(a){
  a.breakawayTags??={};document.querySelectorAll('[data-tag-loc]').forEach(i=>{a.breakawayTags[i.dataset.tagLoc]??={};a.breakawayTags[i.dataset.tagLoc][i.dataset.tagKind]=i.value.trim()});
  a.attestationText=a.attestationText||FINAL_ATTESTATION;
  a.signatures={};
- document.querySelectorAll('.signature-box').forEach(box=>{const loc=box.dataset.sigLoc,c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');a.signatures[loc]={signer:box.querySelector('[data-signer]').value,employeeNumber:box.querySelector('[data-employee-number]')?.value.trim()||'',witness:box.querySelector('[data-witness]').value,witnessEmployeeNumber:box.querySelector('[data-witness-employee-number]')?.value.trim()||'',signature:c.toDataURL(),witnessSignature:w.toDataURL()}});
+ document.querySelectorAll('.signature-box').forEach(box=>{const loc=box.dataset.sigLoc,c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');a.signatures[loc]={signer:box.querySelector('[data-signer]').value,employeeNumber:box.querySelector('[data-employee-number]')?.value.trim()||'',witness:box.querySelector('[data-witness]').value,witnessEmployeeNumber:box.querySelector('[data-witness-employee-number]')?.value.trim()||'',signature:c?.dataset.hasSignature==='true'?c.toDataURL():'',witnessSignature:w?.dataset.hasSignature==='true'?w.toDataURL():''}});
  a.attestationAccepted=document.getElementById('attestCheck').checked;
  a.attestationName=document.getElementById('attestName').value;
  a.attestationEmployeeNumber=document.getElementById('attestEmployeeNumber')?.value.trim()||'';
  const finalSig=document.getElementById('finalSignatureCanvas');
- a.attestationSignature=finalSig?.dataset.hasSignature==='true'?finalSig.toDataURL():(a.attestationSignature||'');
+ a.attestationSignature=finalSig?.dataset.hasSignature==='true'?finalSig.toDataURL():'';
  return a;
 }
 function scheduleAuditAutosave(id,immediate=false){
@@ -1011,6 +1017,8 @@ async function saveAuditFromUI(id,finalize){
    const auditIncidents=Array.isArray(a.incidents)?a.incidents:[];
    const incompleteIncident=auditIncidents.find(x=>x.status!=='submitted'||!x.supportingDocument?.storagePath);
    if(incompleteIncident)return alert('All audit discrepancies / incidents must be submitted with an attached memo before the audit can be finalized.');
+   if(!a.dateRangeStart||!a.dateRangeEnd)return alert('Audit period start and end dates are required before finalizing.');
+   if(a.dateRangeStart>a.dateRangeEnd)return alert('Audit period start date cannot be after the end date.');
    if(!a.auditorName?.trim())return alert('Auditor name is required in Audit Details.');
    if(!a.auditorEmployeeNumber?.trim())return alert('Auditor employee number is required in Audit Details.');
    if(!a.attestationAccepted||!a.attestationName.trim())return alert('Final attestation and auditor name are required.');
@@ -1021,6 +1029,8 @@ async function saveAuditFromUI(id,finalize){
      if(!a.signatures[loc]?.employeeNumber?.trim())return alert('Auditor employee number is required for '+loc+'.');
      if(!a.signatures[loc]?.witness?.trim())return alert('Witness name is required for '+loc+'.');
      if(!a.signatures[loc]?.witnessEmployeeNumber?.trim())return alert('Witness employee number is required for '+loc+'.');
+     if(!a.signatures[loc]?.signature)return alert('Auditor signature is required for '+loc+'.');
+     if(!a.signatures[loc]?.witnessSignature)return alert('Witness signature is required for '+loc+'.');
    }
    a.status='finalized';a.finalizedAt=nowISO();
    for(const loc of LOCS){
