@@ -4663,3 +4663,18 @@ body.report-open{overflow:hidden}
   break-after:avoid !important;
   page-break-after:avoid !important;
 }
+
+
+/* v163 keep compact monthly audit summary together */
+.pdf-clean-stage .pdf-monthly-summary-page .report-executive-summary{
+  break-inside:avoid !important;
+  page-break-inside:avoid !important;
+  overflow:visible !important;
+  font-size:.82rem !important;
+  line-height:1.38 !important;
+}
+.pdf-clean-stage .pdf-monthly-summary-page .report-executive-summary p{
+  margin:.25rem 0 0 !important;
+  font-size:.82rem !important;
+  line-height:1.38 !important;
+}
