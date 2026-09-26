@@ -3561,3 +3561,55 @@ body.report-open{overflow:hidden}
   color:#123a5a !important;
   border-color:#cbdbe6 !important;
 }
+
+
+/* Signed multi-medication transaction workflow */
+.tx-items-card{
+  border:1px solid #d9e3ea;
+  border-radius:10px;
+  padding:10px;
+  background:#f8fbfd;
+}
+.tx-items-head{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:8px;
+}
+.tx-items-head small{
+  display:block;
+  color:#687b8a;
+  margin-top:2px;
+}
+.tx-med-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 130px auto;
+  gap:8px;
+  align-items:end;
+  margin-top:7px;
+}
+.tx-signatures{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:12px;
+}
+.tx-signature-person{
+  border:1px solid #d9e3ea;
+  border-radius:10px;
+  padding:10px;
+  background:#fff;
+}
+.tx-signature-person canvas{
+  width:100%;
+  height:110px;
+  border:1px solid #cbd9e2;
+  border-radius:8px;
+  background:#fff;
+  touch-action:none;
+}
+@media(max-width:700px){
+  .tx-med-row{grid-template-columns:1fr 95px;}
+  .tx-med-row .remove-tx-med{grid-column:1/-1;}
+  .tx-signatures{grid-template-columns:1fr;}
+}
