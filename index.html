@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/jpeg" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
   <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
-  <link rel="stylesheet" href="styles.css?v=20260925-129">
+  <link rel="stylesheet" href="styles.css?v=20260925-130">
 </head>
 <body>
   <header class="app-header">
@@ -125,12 +125,12 @@
         <div class="wide tx-signatures">
           <div class="tx-signature-person">
             <div class="auditor-id-grid"><label>Recorded by<input name="recordedBy" id="txRecordedBy" required></label><label>Employee number<input name="recordedByEmployeeNumber" id="txRecordedByEmployeeNumber" inputmode="numeric" autocomplete="off" required></label></div>
-            <div class="signature-label-row"><div class="signature-label">Recorded-by signature</div><button type="button" id="expandTxRecordedSignature">Open larger</button></div>
+            <div class="signature-label-row"><div class="signature-label">Recorded-by signature</div><div class="button-row"><button type="button" id="clearTxRecordedSignature">Clear</button><button type="button" id="expandTxRecordedSignature">Open larger</button></div></div>
             <canvas id="txRecordedSignature" width="500" height="150"></canvas>
           </div>
           <div class="tx-signature-person">
             <div class="auditor-id-grid"><label>Witness<input name="witness" id="txWitness" required></label><label>Employee number<input name="witnessEmployeeNumber" id="txWitnessEmployeeNumber" inputmode="numeric" autocomplete="off" required></label></div>
-            <div class="signature-label-row"><div class="signature-label">Witness signature</div><button type="button" id="expandTxWitnessSignature">Open larger</button></div>
+            <div class="signature-label-row"><div class="signature-label">Witness signature</div><div class="button-row"><button type="button" id="clearTxWitnessSignature">Clear</button><button type="button" id="expandTxWitnessSignature">Open larger</button></div></div>
             <canvas id="txWitnessSignature" width="500" height="150"></canvas>
           </div>
         </div></div>
@@ -169,6 +169,6 @@
   <script>if(window.pdfjsLib)window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';</script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
-  <script src="app.js?v=20260925-129"></script>
+  <script src="app.js?v=20260925-130"></script>
 </body>
 </html>
