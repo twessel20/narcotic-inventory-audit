@@ -3925,3 +3925,25 @@ body.report-open{overflow:hidden}
 #signatureCaptureSave:hover{
   background:#dceef9;
 }
+
+
+#txDestructionReceiptLabel.tx-pdf-required{
+  border:2px solid currentColor;
+  border-radius:12px;
+  padding:12px;
+  background:rgba(0,0,0,.035);
+}
+#txDestructionReceiptLabel.tx-pdf-required > span:first-child{
+  font-weight:800;
+  font-size:15px;
+}
+#txDestructionReceiptLabel.tx-pdf-required small{
+  display:block;
+  font-weight:800;
+  margin-top:8px;
+}
+#txDestructionReceiptLabel.tx-pdf-required input[type=file]{
+  border:2px dashed currentColor;
+  padding:12px;
+  background:#fff;
+}
