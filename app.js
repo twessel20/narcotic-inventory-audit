@@ -9,6 +9,8 @@ let db, sb, cloudSession=null, realtimeChannel=null;
 let activeAuditId=null;
 let auditAutosaveTimer=null;
 let auditSaveInFlight=false;
+let auditFinalizeInFlight=false;
+let transactionSaveInFlight=false;
 let lastCloudWrite='local';
 
 function uid(prefix='id'){return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8)}
@@ -56,12 +58,22 @@ async function flushPendingWrites(){
  localStorage.setItem('narcoticPendingWrites',JSON.stringify(keep));
  if(!keep.length)lastCloudWrite='live';
 }
+function recordVersion(v){return String(v?.updatedAt||v?.finalizedAt||v?.createdAt||'')}
+function localRecordIsNewer(local,remote){
+ const lv=recordVersion(local),rv=recordVersion(remote);
+ return Boolean(local&&lv&&rv&&lv>rv);
+}
 async function pullCloudRecords(){
  if(!sb||!cloudSession)return;
  const {data,error}=await sb.from('app_records').select('store,id,data,updated_at');
  if(error)throw error;
  for(const r of data||[]){
    if(!CLOUD_STORES.has(r.store)||!r.data)continue;
+   const local=await getOne(r.store,r.id);
+   if(localRecordIsNewer(local,r.data)){
+     queueCloudWrite('upsert',r.store,r.id,local);
+     continue;
+   }
    await putLocal(r.store,r.data);
  }
 }
@@ -72,7 +84,12 @@ async function subscribeRealtime(){
    .on('postgres_changes',{event:'*',schema:'public',table:'app_records'},async payload=>{
      const row=payload.new&&payload.new.store?payload.new:payload.old;
      if(!row||!CLOUD_STORES.has(row.store))return;
-     if(payload.eventType==='DELETE')await delLocal(row.store,row.id);else if(payload.new?.data)await putLocal(payload.new.store,payload.new.data);
+     if(payload.eventType==='DELETE'){
+       await delLocal(row.store,row.id);
+     }else if(payload.new?.data){
+       const local=await getOne(payload.new.store,payload.new.id);
+       if(!localRecordIsNewer(local,payload.new.data))await putLocal(payload.new.store,payload.new.data);
+     }
      if(document.getElementById('reportDialog')?.open)return;
 
      const auditEditorOpen=!!(activeAuditId&&document.getElementById('auditMonth'));
@@ -97,12 +114,12 @@ async function initCloud(){
  sb.auth.onAuthStateChange(async(_event,session)=>{
    cloudSession=session||null;updateAccountUI();
    if(cloudSession){
-     await pullCloudRecords();await flushPendingWrites();await subscribeRealtime();
+     await flushPendingWrites();await pullCloudRecords();await flushPendingWrites();await subscribeRealtime();
      if(activeAuditId&&document.getElementById('auditMonth'))await Promise.all([renderInventory(),renderActivity(),renderReports(),renderStats()]);
      else await refreshAll();
    }
  });
- if(cloudSession){await pullCloudRecords();await flushPendingWrites();await subscribeRealtime()}
+ if(cloudSession){await flushPendingWrites();await pullCloudRecords();await flushPendingWrites();await subscribeRealtime()}
 }
 function requireCloudAuth(){
  if(cloudSession)return true;
@@ -177,7 +194,10 @@ async function renderActivity(){
 }
 
 async function saveTransaction(fd,finalSubmit=true){
+ if(transactionSaveInFlight)throw new Error('This transaction is already being saved.');
  if(!requireCloudAuth())throw new Error('Sign in is required for live inventory changes.');
+ transactionSaveInFlight=true;
+ try{
 
  const type=fd.get('type');
  const auditContextId=String(fd.get('auditContextId')||'').trim();
@@ -387,6 +407,9 @@ async function saveTransaction(fd,finalSubmit=true){
  }
  await refreshAll();
  return txRecord;
+ }finally{
+   transactionSaveInFlight=false;
+ }
 }
 
 function auditSkeleton(a){
@@ -1071,8 +1094,23 @@ async function flushAuditAutosave(){
 }
 
 async function saveAuditFromUI(id,finalize){
- const a=await getOne('audits',id);collectAuditFromUI(a);a.updatedAt=nowISO();
+ if(finalize&&auditFinalizeInFlight)return;
+ const a=await getOne('audits',id);
+ if(!a)return alert('Audit draft was not found.');
+ if(String(a.status||'draft').toLowerCase()==='finalized')return alert('This audit is already finalized.');
+ collectAuditFromUI(a);a.updatedAt=nowISO();
  if(finalize){
+   if(!cloudSession)return alert('Sign in is required before finalizing an audit.');
+   if(!navigator.onLine)return alert('A live connection is required to finalize. Save the draft and finalize when the device is online.');
+   auditFinalizeInFlight=true;
+   const finalizeBtn=document.getElementById('finalizeAudit');
+   const saveBtn=document.getElementById('saveAudit');
+   if(finalizeBtn){finalizeBtn.disabled=true;finalizeBtn.textContent='Finalizing…'}
+   if(saveBtn)saveBtn.disabled=true;
+   try{
+     await flushPendingWrites();
+     if(pendingWrites().length)throw new Error('Pending offline changes must finish syncing before finalization.');
+
    const docs=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
    const hasAdminImport=docs.some(d=>String(d.mimeType||'').toLowerCase()==='application/pdf'&&d.storagePath&&Array.isArray(d.administrationRows)&&d.administrationRows.length);
    if(!hasAdminImport){
@@ -1127,6 +1165,18 @@ async function saveAuditFromUI(id,finalize){
    await put('reports',{...a,id:'report_'+a.id,auditId:a.id});
  }
  await put('audits',a);if(finalize){activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});}await refreshAll();if(finalize)showReport('report_'+a.id);else editAudit(a.id)
+   }catch(err){
+     alert(err?.message||String(err));
+   }finally{
+     auditFinalizeInFlight=false;
+     const finalizeBtn=document.getElementById('finalizeAudit');
+     const saveBtn=document.getElementById('saveAudit');
+     if(finalizeBtn){finalizeBtn.disabled=false;finalizeBtn.textContent='Finalize audit'}
+     if(saveBtn)saveBtn.disabled=false;
+   }
+   return;
+ }
+ await put('audits',a);await refreshAll();editAudit(a.id);
 }
 
 function buildTestAuditReport(){
