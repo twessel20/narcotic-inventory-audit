@@ -253,6 +253,10 @@ async function saveTransaction(fd,finalSubmit=true){
      const before=Number(b.Expired?.[item.medication]||0);
      return {location:'Expired',medication:item.medication,before,change:-item.quantity,after:before-item.quantity};
    }
+   if(type==='incident'&&shouldAdjustIncident){
+     const before=Number(b[from]?.[item.medication]||0);
+     return {location:from,medication:item.medication,before,change:-item.quantity,after:before-item.quantity};
+   }
    return null;
  }).filter(Boolean);
  let supportingDocument=existingSupport;
@@ -2024,7 +2028,7 @@ function reportHtml(r){
  const txRows=txs.length?txs.map(t=>{
    const docs=[t.supportingDocument?.name,t.destructionReceipt?.name].filter(Boolean).join(' · ');
    const impact=Array.isArray(t.inventoryImpact)?t.inventoryImpact.map(x=>x.location+' '+x.medication+': '+x.before+' → '+x.after).join(' · '):'';
-   const detail=t.destructionCompany||t.sourcePharmacy||t.reference||t.vendor||t.incident||t.lot||'';
+   const detail=t.destructionCompany||t.sourcePharmacy||t.notes||t.reference||t.vendor||t.incident||t.lot||'';
    return '<tr><td>'+esc(formatDisplayDate(t.date||t.timestamp)||'')+'</td><td>'+esc(t.typeLabel||t.type||t.action||'')+'</td><td>'+esc(t.medication||'')+'</td><td>'+esc(t.quantity||'')+'</td><td>'+esc((t.fromLocation||'')+(t.toLocation?' → '+t.toLocation:''))+(impact?'<br><small>'+esc(impact)+'</small>':'')+'</td><td>'+esc(detail)+(docs?'<br><small>'+esc(docs)+'</small>':'')+'</td></tr>';
  }).join(''):'<tr><td colspan="6" class="report-empty">No transactions recorded during this month.</td></tr>';
  const sigCard=(loc)=>{
