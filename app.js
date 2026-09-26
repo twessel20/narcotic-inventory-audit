@@ -1528,16 +1528,25 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        if(medic3)wrap.appendChild(medic3);
        if(safe)wrap.appendChild(safe);
 
+       const medic3SafePage=document.createElement('section');
+       medic3SafePage.className='pdf-packet-page pdf-certifications-page pdf-medic3-safe-page';
+       medic3SafePage.style.setProperty('break-inside','avoid','important');
+       medic3SafePage.style.setProperty('page-break-inside','avoid','important');
+
        const medic3SafeContent=document.createElement('div');
        medic3SafeContent.className='pdf-medic3-safe-content';
+       medic3SafeContent.style.setProperty('break-inside','avoid','important');
+       medic3SafeContent.style.setProperty('page-break-inside','avoid','important');
+
+       const medic3SafeTitle=document.createElement('h2');
+       medic3SafeTitle.className='pdf-packet-title';
+       medic3SafeTitle.textContent='Medic 3 / Safe Audit Site Certifications';
+
+       medic3SafeContent.appendChild(medic3SafeTitle);
        medic3SafeContent.appendChild(medic3Intro);
        medic3SafeContent.appendChild(wrap);
-
-       pages.push(makePage(
-         'Medic 3 / Safe Audit Site Certifications',
-         'pdf-certifications-page pdf-medic3-safe-page',
-         [medic3SafeContent]
-       ));
+       medic3SafePage.appendChild(medic3SafeContent);
+       pages.push(medic3SafePage);
      }
 
      const expiredIntro=document.createElement('p');
