@@ -4628,3 +4628,38 @@ body.report-open{overflow:hidden}
   #pdfPreviewFrame[hidden]{display:none!important;}
   .pdf-preview-pages[hidden]{display:none!important;}
 }
+
+
+/* v161 monthly PDF summary pagination */
+.pdf-clean-stage .pdf-monthly-summary-page .report-executive-summary,
+.pdf-clean-stage .pdf-monthly-summary-page .simple-summary,
+.pdf-clean-stage .pdf-monthly-summary-page .paragraph-summary{
+  break-inside:auto !important;
+  page-break-inside:auto !important;
+  overflow:visible !important;
+}
+
+.pdf-clean-stage .pdf-monthly-summary-page .summary-grid{
+  break-inside:auto !important;
+  page-break-inside:auto !important;
+}
+
+.pdf-clean-stage .pdf-monthly-summary-page .summary-grid > div,
+.pdf-clean-stage .pdf-monthly-summary-page .summary-changes > div,
+.pdf-clean-stage .pdf-monthly-summary-page .report-summary-current > div,
+.pdf-clean-stage .pdf-monthly-summary-page .report-executive-summary li,
+.pdf-clean-stage .pdf-monthly-summary-page .summary-lead{
+  break-inside:avoid !important;
+  page-break-inside:avoid !important;
+}
+
+.pdf-clean-stage .pdf-monthly-summary-page .report-summary-current{
+  break-inside:auto !important;
+  page-break-inside:auto !important;
+}
+
+.pdf-clean-stage .pdf-monthly-summary-page .report-executive-summary > h2,
+.pdf-clean-stage .pdf-monthly-summary-page .report-summary-current-title{
+  break-after:avoid !important;
+  page-break-after:avoid !important;
+}
