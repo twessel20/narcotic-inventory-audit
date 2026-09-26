@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/jpeg" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
   <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
-  <link rel="stylesheet" href="styles.css?v=20260925-148">
+  <link rel="stylesheet" href="styles.css?v=20260925-149">
 </head>
 <body>
   <header class="app-header">
@@ -144,6 +144,36 @@
     </form>
   </dialog>
 
+  <dialog id="auditFindingDialog" class="audit-finding-dialog">
+    <form method="dialog" id="auditFindingForm" class="dialog-form">
+      <input type="hidden" id="auditFindingLoc">
+      <input type="hidden" id="auditFindingMed">
+      <div class="dialog-head"><h2>Audit finding</h2><button type="button" id="closeAuditFinding" class="icon-btn" aria-label="Close audit finding">×</button></div>
+      <div class="form-grid">
+        <label class="wide">Finding type
+          <select id="auditFindingType" required>
+            <option value="expired">Expired medication found</option>
+            <option value="damaged">Damaged vial found</option>
+          </select>
+        </label>
+        <label>Quantity
+          <input id="auditFindingQty" type="number" min="1" step="1" inputmode="numeric" value="1" required>
+        </label>
+        <label id="auditFindingRetainedLabel" hidden>Physical vial retained?
+          <select id="auditFindingRetained">
+            <option value="yes">Yes — place in Expired inventory</option>
+            <option value="no">No — cannot physically store vial</option>
+          </select>
+        </label>
+        <label class="wide" id="auditFindingNoteLabel" hidden>Damage / disposition explanation
+          <textarea id="auditFindingNote" rows="4" placeholder="Describe the damage. If the vial cannot be retained, explain why and what happened to it."></textarea>
+        </label>
+        <div class="wide notice" id="auditFindingImpact"></div>
+      </div>
+      <div class="dialog-actions"><button type="button" id="cancelAuditFinding">Cancel</button><button type="button" class="primary" id="saveAuditFinding">Record finding</button></div>
+    </form>
+  </dialog>
+
   <dialog id="reportDialog"><div id="reportPreview"></div></dialog>
 
   <dialog id="pdfPreviewDialog" class="pdf-preview-dialog">
@@ -176,6 +206,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script src="app.js?v=20260925-148"></script>
+  <script src="app.js?v=20260925-149"></script>
 </body>
 </html>
