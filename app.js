@@ -1733,12 +1733,20 @@ function bind(){
  const txPdfHint=document.getElementById('txSupportingPdfHint');
  const txFromLocationLabel=document.getElementById('txFromLocationLabel');
  const txPharmacySourceLabel=document.getElementById('txPharmacySourceLabel');
+ const txFromLocationSelect=document.querySelector('#txForm select[name=fromLocation]');
  const txToLocationText=document.getElementById('txToLocationText');
  const txSourcePharmacy=document.getElementById('txSourcePharmacy');
  const syncTxPdfRequirement=()=>{
    const received=txTypeSelect?.value==='received';
    const required=received||txTypeSelect?.value==='destroyed';
-   if(txFromLocationLabel)txFromLocationLabel.hidden=received;
+   if(txFromLocationLabel){
+     txFromLocationLabel.hidden=received;
+     txFromLocationLabel.style.display=received?'none':'';
+   }
+   if(txFromLocationSelect){
+     txFromLocationSelect.disabled=received;
+     if(received)txFromLocationSelect.value='';
+   }
    if(txPharmacySourceLabel)txPharmacySourceLabel.hidden=!received;
    if(txToLocationText)txToLocationText.textContent=received?'Receiving location':'To';
    if(txSourcePharmacy){
