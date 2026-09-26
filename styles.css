@@ -2596,3 +2596,67 @@ body.report-open{overflow:hidden}
   break-before:page !important;
   page-break-before:always !important;
 }
+
+
+/* Hard-fit Medic 3 / Safe / Expired certifications onto one PDF page */
+.pdf-render-stage .pdf-certifications-secondary{
+  height:9.35in !important;
+  max-height:9.35in !important;
+  overflow:hidden !important;
+  display:grid !important;
+  grid-template-rows:auto repeat(3,1fr) !important;
+  gap:4px !important;
+  padding:7px 9px !important;
+  box-sizing:border-box !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .pdf-packet-title{
+  margin:-7px -9px 4px !important;
+  padding:6px 8px 5px !important;
+  font-size:.86rem !important;
+  line-height:1.05 !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-cert{
+  height:auto !important;
+  min-height:0 !important;
+  margin:0 !important;
+  padding:4px 6px !important;
+  overflow:hidden !important;
+  break-inside:avoid-page !important;
+  page-break-inside:avoid !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-cert h2{
+  margin:0 0 2px !important;
+  font-size:.74rem !important;
+  line-height:1 !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-cert-site,
+.pdf-render-stage .pdf-certifications-secondary .report-cert-statement,
+.pdf-render-stage .pdf-certifications-secondary .report-signature-site{
+  font-size:.56rem !important;
+  line-height:1.02 !important;
+  margin:1px 0 !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-grid{
+  gap:4px !important;
+  margin-top:2px !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-box{
+  padding:3px 5px 2px !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-label{
+  font-size:.52rem !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-box img{
+  height:20px !important;
+  max-height:20px !important;
+  margin:1px 0 0 !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-placeholder{
+  height:20px !important;
+  margin:1px 0 0 !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-name{
+  padding-top:1px !important;
+  font-size:.56rem !important;
+  line-height:1 !important;
+}
