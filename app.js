@@ -1977,7 +1977,7 @@ function reportHtml(r){
  '<table class="report-table"><thead><tr><th>Date</th><th>Report</th><th>Provider</th><th>Medication</th><th>Dose</th><th>Unit</th></tr></thead><tbody>'+
  r.administrationRows.map(x=>'<tr><td>'+esc(formatAdminDate(x.date))+'</td><td>'+esc(x.report)+'</td><td>'+esc(x.provider)+'</td><td>'+esc(x.medication)+'</td><td><b>'+esc(x.dose)+' '+esc(adminDoseUnit(x.medication))+'</b></td><td>'+esc(String(x.unit||'').replace(/^M([123])$/,'Medic $1'))+'</td></tr>').join('')+
  '</tbody></table>'+
- '<div class="report-usage-summary report-vial-summary pdf-vial-section"><div class="report-vial-summary-title">Calculated Vial Use</div><p class="report-vial-explainer">Calculated vial use converts the imported ESO administration doses into estimated whole-vial usage using the department vial-size rules. This is a reconciliation reference only and does not change the manually verified physical inventory count.</p>'+
+ '<div class="report-usage-summary report-vial-summary pdf-vial-section"><div class="report-vial-summary-title">Calculated Vial Use</div><p class="report-vial-explainer">Calculated vial use converts the imported ESO administration doses into whole-vial usage using the department vial-size rules. This reconciliation reference does not change the manually verified physical inventory count.</p>'+
  providerVialData(r.administrationRows).providers.map(([provider,items])=>{
    const total=items.reduce((n,x)=>n+x.vials,0);
    const breakdown=new Map();
