@@ -408,7 +408,7 @@ async function startAudit(){
 function unitAuditSection(a,loc,index){
  const tag=a.breakawayTags?.[loc]||{},savedSig=a.signatures?.[loc]||{};
  const sig={...savedSig,signer:savedSig.signer||a.auditorName||'',employeeNumber:savedSig.employeeNumber||a.auditorEmployeeNumber||''};
- const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];const findingBtn=loc==='Expired'?'':'<button type="button" class="audit-finding-btn" data-audit-finding data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Expired / damaged</button>';return '<div class="unit-med-row compact"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current"><span>Current</span><input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+Number(a.counts?.[loc]?.[m]||0)+'"></label><div class="unit-med-actions">'+findingBtn+'<button type="button" class="audit-incident-btn" data-audit-incident data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Discrepancy / incident</button></div></div>'}).join('');
+ const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];const findingBtn=loc==='Expired'?'':'<button type="button" class="audit-finding-btn" data-audit-finding data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Record audit finding</button>';return '<div class="unit-med-row compact"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current"><span>Current</span><input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+Number(a.counts?.[loc]?.[m]||0)+'"></label><div class="unit-med-actions">'+findingBtn+'<button type="button" class="audit-incident-btn" data-audit-incident data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Discrepancy / incident</button></div></div>'}).join('');
  return '<section class="audit-card unit-audit-card compact-unit" data-unit-section="'+esc(loc)+'">'+
  '<div class="unit-audit-head compact-head"><div><span class="kicker">LOCATION '+(index+1)+' OF '+LOCS.length+'</span><h3>'+esc(loc)+'</h3></div><span class="unit-step-badge">'+esc(loc)+'</span></div>'+
  '<div class="unit-compact-grid">'+
@@ -719,6 +719,8 @@ async function editAudit(id){
  const findingNote=document.getElementById('auditFindingNote');
  const findingQty=document.getElementById('auditFindingQty');
  const findingImpact=document.getElementById('auditFindingImpact');
+ const findingContext=document.getElementById('auditFindingContext');
+ const findingChoices=[...document.querySelectorAll('[data-finding-choice]')];
 
  const updateFindingDialog=()=>{
    const kind=findingType?.value||'expired';
@@ -726,13 +728,35 @@ async function editAudit(id){
    if(findingRetainedLabel)findingRetainedLabel.hidden=kind!=='damaged';
    if(findingNoteLabel)findingNoteLabel.hidden=kind!=='damaged';
    if(findingNote)findingNote.required=kind==='damaged'&&!retained;
+   findingChoices.forEach(btn=>btn.classList.toggle('selected',btn.dataset.findingChoice===kind));
+
    const loc=document.getElementById('auditFindingLoc')?.value||'';
    const med=document.getElementById('auditFindingMed')?.value||'';
-   const qty=Number(findingQty?.value||1);
-   if(findingImpact)findingImpact.textContent=kind==='expired'||retained
-     ?loc+' −'+qty+' '+med+'; Expired +'+qty+'.'
-     :loc+' −'+qty+' '+med+'; Expired unchanged because no physical vial remains.';
+   const qty=Math.max(1,Number(findingQty?.value||1));
+   const sourceInput=loc&&med?document.querySelector('[data-count-loc="'+CSS.escape(loc)+'"][data-count-med="'+CSS.escape(med)+'"]'):null;
+   const expiredInput=med?document.querySelector('[data-count-loc="Expired"][data-count-med="'+CSS.escape(med)+'"]'):null;
+   const sourceBefore=Number(sourceInput?.value||0);
+   const expiredBefore=Number(expiredInput?.value||0);
+   const sourceAfter=Math.max(0,sourceBefore-qty);
+   const expiredAfter=expiredBefore+(retained?qty:0);
+
+   if(findingContext)findingContext.innerHTML='<strong>'+esc(loc)+' · '+esc(med)+'</strong><span>Current audit count: '+sourceBefore+' vial'+(sourceBefore===1?'':'s')+'</span>';
+   if(findingImpact){
+     findingImpact.innerHTML=
+       '<div><span>'+esc(loc)+'</span><strong>'+sourceBefore+' → '+sourceAfter+'</strong></div>'+
+       '<div><span>Expired inventory</span><strong>'+expiredBefore+' → '+expiredAfter+'</strong></div>'+
+       '<p>'+(kind==='expired'
+         ?'Expired vial(s) are physically moved into Expired inventory.'
+         :(retained
+           ?'Damaged vial(s) remain physically present and are moved into Expired inventory.'
+           :'No physical vial remains, so Expired inventory does not increase. The disposition explanation is required.'))+'</p>';
+   }
  };
+ findingChoices.forEach(btn=>btn.addEventListener('click',()=>{
+   if(findingType)findingType.value=btn.dataset.findingChoice||'expired';
+   if(findingType?.value==='expired'&&findingRetained)findingRetained.value='yes';
+   updateFindingDialog();
+ }));
  if(findingType)findingType.onchange=updateFindingDialog;
  if(findingRetained)findingRetained.onchange=updateFindingDialog;
  if(findingQty)findingQty.oninput=updateFindingDialog;
