@@ -176,10 +176,11 @@ async function saveTransaction(fd,finalSubmit=true){
  const existingTx=existingTransactionId?await getOne('transactions',existingTransactionId):null;
  const auditLinkedIncident=type==='incident'&&Boolean(auditContextId);
  const incidentDraft=type==='incident'&&!finalSubmit;
- const from=type==='destroyed'?'Safe':fd.get('fromLocation');
+ const from=type==='destroyed'?'Expired':fd.get('fromLocation');
  const to=type==='destroyed'?'':fd.get('toLocation');
  const destination=type==='received'?'Safe':to;
  const sourcePharmacy=String(fd.get('sourcePharmacy')||'').trim();
+ const destructionCompany=type==='destroyed'?String(fd.get('destructionCompany')||'').trim():'';
  const memoDescription=type==='incident'?String(fd.get('memoDescription')||'').trim():'';
  const meds=fd.getAll('txMedication');
  const qtys=fd.getAll('txQuantity');
@@ -209,6 +210,7 @@ async function saveTransaction(fd,finalSubmit=true){
  if(uploadedFile&&uploadedFile.type!=='application/pdf'&&!/\.pdf$/i.test(uploadedFile.name))throw new Error('Supporting documents must be PDF files.');
 
  if(type==='received'&&!sourcePharmacy)throw new Error('Enter the source pharmacy.');
+ if(type==='destroyed'&&!destructionCompany)throw new Error('Enter the destruction company.');
  if((type==='destroyed'||type==='incident')&&!from)throw new Error('Choose the source location.');
  if(type==='incident'&&!String(fd.get('notes')||'').trim())throw new Error('Enter an incident / discrepancy explanation.');
 
@@ -247,11 +249,6 @@ async function saveTransaction(fd,finalSubmit=true){
    if(type==='received'&&!existingTx?.inventoryAdjusted){
      await setBalance(destination,med,Number(b[destination]?.[med]||0)+qty);
      b[destination][med]=Number(b[destination]?.[med]||0)+qty;
-   }else if(type==='expired'&&!existingTx?.inventoryAdjusted){
-     await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
-     await setBalance('Expired',med,Number(b.Expired?.[med]||0)+qty);
-     b[from][med]=Number(b[from]?.[med]||0)-qty;
-     b.Expired[med]=Number(b.Expired?.[med]||0)+qty;
    }else if(type==='destroyed'&&!existingTx?.inventoryAdjusted){
      await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
      b[from][med]=Number(b[from]?.[med]||0)-qty;
@@ -264,7 +261,9 @@ async function saveTransaction(fd,finalSubmit=true){
  const labels={received:'Received / restock',destroyed:'Destroyed / transferred out',incident:'Discrepancy / incident'};
  const transactionSummary=type==='received'
    ?'Received from '+sourcePharmacy+' into Safe: '+items.map(x=>x.medication+' × '+x.quantity).join(', ')+'.'
-   :'';
+   :(type==='destroyed'
+     ?'Released from Expired inventory to '+destructionCompany+' for destruction: '+items.map(x=>x.medication+' × '+x.quantity).join(', ')+'.'
+     :'');
  const txRecord={
    ...(existingTx||{}),
    id:txId,
@@ -284,8 +283,9 @@ async function saveTransaction(fd,finalSubmit=true){
    status:type==='incident'?(finalSubmit?'submitted':'draft'):'submitted',
    externalSource:type==='received'?sourcePharmacy:'',
    sourcePharmacy:type==='received'?sourcePharmacy:'',
+   destructionCompany:type==='destroyed'?destructionCompany:'',
    toLocation:(type==='incident'||type==='destroyed')?'':destination,
-   notes:type==='received'?'':(fd.get('notes')||''),
+   notes:(type==='received'||type==='destroyed')?'':(fd.get('notes')||''),
    summary:transactionSummary,
    memoDescription:type==='incident'?memoDescription:'',
    recordedBy,
@@ -1902,6 +1902,8 @@ function bind(){
  const txToLocationLabel=document.getElementById('txToLocationLabel');
  const txToLocationSelect=document.querySelector('#txForm select[name=toLocation]');
  const txSourcePharmacy=document.getElementById('txSourcePharmacy');
+ const txDestructionCompanyLabel=document.getElementById('txDestructionCompanyLabel');
+ const txDestructionCompany=document.getElementById('txDestructionCompany');
  const syncTxPdfRequirement=()=>{
    const selectedType=txTypeSelect?.value||'';
    const received=selectedType==='received';
@@ -1917,7 +1919,7 @@ function bind(){
    if(txFromLocationSelect){
      txFromLocationSelect.disabled=received||destroyed;
      if(received)txFromLocationSelect.value='';
-     if(destroyed)txFromLocationSelect.value='Safe';
+     if(destroyed)txFromLocationSelect.value='Expired';
    }
    if(txPharmacySourceLabel){
      txPharmacySourceLabel.hidden=!received;
@@ -1936,7 +1938,16 @@ function bind(){
      if(received&&!txSourcePharmacy.value.trim())txSourcePharmacy.value='NKCH Pharmacy';
      if(!received)txSourcePharmacy.value='';
    }
-   if(txNotesField)txNotesField.hidden=received;
+   if(txDestructionCompanyLabel){
+     txDestructionCompanyLabel.hidden=!destroyed;
+     txDestructionCompanyLabel.style.display=destroyed?'':'none';
+   }
+   if(txDestructionCompany){
+     txDestructionCompany.required=destroyed;
+     txDestructionCompany.disabled=!destroyed;
+     if(!destroyed)txDestructionCompany.value='';
+   }
+   if(txNotesField)txNotesField.hidden=received||destroyed;
    if(txNotesLabel)txNotesLabel.textContent=incident?'Incident / discrepancy explanation':'Reason / notes';
    if(txMemoDescriptionLabel){
      txMemoDescriptionLabel.hidden=!incident;
