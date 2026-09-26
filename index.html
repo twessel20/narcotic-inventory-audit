@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/jpeg" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
   <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
-  <link rel="stylesheet" href="styles.css?v=20260925-113">
+  <link rel="stylesheet" href="styles.css?v=20260925-114">
 </head>
 <body>
   <header class="app-header">
@@ -114,7 +114,7 @@
         <label class="wide">Reason / notes<textarea name="notes" rows="3"></textarea></label>
         <label class="wide">Supporting PDF
           <input name="supportingPdf" id="txSupportingPdf" type="file" accept="application/pdf,.pdf">
-          <small id="txSupportingPdfHint">Required for Received / restock and Destroyed / transferred out transactions.</small>
+          <small id="txSupportingPdfHint">DEA Form 222 is required for Received / restock and Destroyed / transferred out transactions. Internal redistribution between department inventory sites does not require a DEA Form 222.</small>
         </label>
         <label>Recorded by<input name="recordedBy"></label>
         <label>Witness<input name="witness"></label>
@@ -154,6 +154,6 @@
   <script>if(window.pdfjsLib)window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';</script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
-  <script src="app.js?v=20260925-113"></script>
+  <script src="app.js?v=20260925-114"></script>
 </body>
 </html>
