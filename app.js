@@ -1267,6 +1267,73 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
  clearPdfBreaks(clone);
 
+ // On phones, force the PDF clone to the same geometry used by the working desktop output.
+ // Inline !important styles intentionally bypass responsive media-query rules during capture.
+ if(window.matchMedia('(max-width:700px)').matches){
+   const imp=(el,prop,val)=>el&&el.style.setProperty(prop,val,'important');
+   imp(clone,'width','7.55in');
+   imp(clone,'min-width','7.55in');
+   imp(clone,'max-width','7.55in');
+   imp(clone,'margin','0');
+   imp(clone,'padding','0');
+   imp(clone,'overflow','visible');
+
+   const top=clone.querySelector('.report-top');
+   if(top){
+     imp(top,'display','flex');
+     imp(top,'align-items','center');
+     imp(top,'gap','18px');
+     imp(top,'width','100%');
+     const logo=top.querySelector('img');
+     if(logo){imp(logo,'width','88px');imp(logo,'height','88px');imp(logo,'flex','0 0 88px');}
+     const h1=top.querySelector('h1');
+     if(h1){imp(h1,'font-size','1.55rem');imp(h1,'line-height','1.12');}
+   }
+
+   const meta=clone.querySelector('.report-meta-grid');
+   if(meta){
+     imp(meta,'display','grid');
+     imp(meta,'grid-template-columns','1fr 1fr');
+     imp(meta,'column-gap','28px');
+     imp(meta,'row-gap','4px');
+     meta.querySelectorAll('.wide').forEach(el=>imp(el,'grid-column','1 / -1'));
+   }
+
+   clone.querySelectorAll('.report-cover-meta').forEach(el=>{
+     imp(el,'display','grid');
+     imp(el,'grid-template-columns','1fr 1fr');
+   });
+
+   clone.querySelectorAll('.report-table').forEach(el=>{
+     imp(el,'width','100%');
+     imp(el,'min-width','0');
+     imp(el,'max-width','100%');
+   });
+   clone.querySelectorAll('.report-inventory,.report-transactions,.report-imported-admin .report-table').forEach(el=>imp(el,'min-width','0'));
+
+   clone.querySelectorAll('.report-signature-grid').forEach(el=>{
+     imp(el,'display','grid');
+     imp(el,'grid-template-columns','1fr 1fr');
+     imp(el,'gap','8px');
+   });
+
+   clone.querySelectorAll('.pdf-medic1-medic2-wrap,.pdf-medic3-safe-wrap').forEach(el=>{
+     imp(el,'display','flex');
+     imp(el,'flex-direction','row');
+     imp(el,'flex-wrap','nowrap');
+     imp(el,'gap','7px');
+     imp(el,'width','100%');
+     imp(el,'align-items','stretch');
+     [...el.children].forEach(card=>{
+       imp(card,'flex','1 1 0');
+       imp(card,'width','calc(50% - 3.5px)');
+       imp(card,'max-width','calc(50% - 3.5px)');
+       imp(card,'min-width','0');
+       imp(card,'margin','0');
+     });
+   });
+ }
+
  // Explicit descriptor hooks for PDF styling.
  clone.querySelectorAll('.report-meta-grid > div').forEach(el=>{
    if(!el.textContent.trim()){ el.classList.add('pdf-meta-empty'); return; }
@@ -1520,9 +1587,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
          backgroundColor:'#ffffff',
          logging:false,
          scrollX:0,
-         scrollY:0,
-         windowWidth:1200,
-         windowHeight:1600
+         scrollY:0
        },
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
        pagebreak:{
