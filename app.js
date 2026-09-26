@@ -1733,12 +1733,14 @@ function bind(){
  const txPdfHint=document.getElementById('txSupportingPdfHint');
  const txFromLocationLabel=document.getElementById('txFromLocationLabel');
  const txPharmacySourceLabel=document.getElementById('txPharmacySourceLabel');
+ const txToLocationText=document.getElementById('txToLocationText');
  const txSourcePharmacy=document.getElementById('txSourcePharmacy');
  const syncTxPdfRequirement=()=>{
    const received=txTypeSelect?.value==='received';
    const required=received||txTypeSelect?.value==='destroyed';
    if(txFromLocationLabel)txFromLocationLabel.hidden=received;
    if(txPharmacySourceLabel)txPharmacySourceLabel.hidden=!received;
+   if(txToLocationText)txToLocationText.textContent=received?'Receiving location':'To';
    if(txSourcePharmacy){
      txSourcePharmacy.required=received;
      if(received&&!txSourcePharmacy.value.trim())txSourcePharmacy.value='NKCH Pharmacy';
