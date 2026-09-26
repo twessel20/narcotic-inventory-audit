@@ -5748,3 +5748,18 @@ body.report-open{overflow:hidden}
   break-after:auto!important;
   page-break-after:auto!important;
 }
+
+
+/* v192 stop Safe witness from being pushed by signature-box pagination rules */
+.pdf-clean-stage .pdf-safe-cert{
+  break-inside:auto!important;
+  page-break-inside:auto!important;
+}
+.pdf-clean-stage .pdf-safe-cert .report-signature-grid{
+  break-inside:auto!important;
+  page-break-inside:auto!important;
+}
+.pdf-clean-stage .pdf-safe-cert .report-signature-box{
+  break-inside:auto!important;
+  page-break-inside:auto!important;
+}
