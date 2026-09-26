@@ -195,7 +195,6 @@ async function saveTransaction(fd){
    if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('DEA Form 222 must be attached as a PDF.');
  }
 
- if(type==='adjustment'&&!to)throw new Error('Choose the location being counted.');
  if(type==='received'){
    if(!to)throw new Error('Choose the receiving location.');
    if(!sourcePharmacy)throw new Error('Enter the source pharmacy.');
@@ -234,9 +233,7 @@ async function saveTransaction(fd){
  // Apply inventory changes only after the full transaction validates.
  for(const item of items){
    const med=item.medication,qty=item.quantity;
-   if(type==='adjustment'){
-     await setBalance(to,med,qty);
-   }else if(type==='received'){
+   if(type==='received'){
      await setBalance(to,med,Number(b[to]?.[med]||0)+qty);
      b[to][med]=Number(b[to]?.[med]||0)+qty;
    }else if(type==='expired'){
@@ -251,7 +248,6 @@ async function saveTransaction(fd){
  }
 
  const labels={
-   adjustment:'Physical count / adjustment',
    received:'Received / restock',
    expired:'Moved to expired',
    destroyed:'Destroyed / transferred out'
