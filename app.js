@@ -191,7 +191,16 @@ async function saveTransaction(fd){
 
  const supportFile=fd.get('supportingPdf');
  const requires222=type==='received'||type==='destroyed';
+ const requiresIncidentMemo=type==='incident';
  if(requires222){
+   if(!(supportFile instanceof File)||!supportFile.size)throw new Error('Attach the required DEA Form 222 PDF before saving this transaction.');
+   if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('DEA Form 222 must be attached as a PDF.');
+ }
+ if(requiresIncidentMemo){
+   if(!(supportFile instanceof File)||!supportFile.size)throw new Error('Attach the discrepancy / incident memo PDF before saving this transaction.');
+   if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('The discrepancy / incident memo must be attached as a PDF.');
+ }
+ if(false){
    if(!(supportFile instanceof File)||!supportFile.size)throw new Error('Attach the required DEA Form 222 PDF before saving this transaction.');
    if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('DEA Form 222 must be attached as a PDF.');
  }
@@ -199,10 +208,11 @@ async function saveTransaction(fd){
  if(type==='received'){
    if(!sourcePharmacy)throw new Error('Enter the source pharmacy.');
  }
- if((type==='expired'||type==='destroyed')&&!from)throw new Error('Choose the source location.');
+ if((type==='expired'||type==='destroyed'||type==='incident')&&!from)throw new Error('Choose the source location.');
+ if(type==='incident'&&!String(fd.get('notes')||'').trim())throw new Error('Enter an incident / discrepancy explanation.');
 
  const b=await balances();
- if(type==='expired'||type==='destroyed'){
+ if(type==='expired'||type==='destroyed'||type==='incident'){
    for(const item of items){
      if(Number(b[from]?.[item.medication]||0)<item.quantity)throw new Error(item.medication+' quantity exceeds the current '+from+' balance.');
    }
@@ -218,7 +228,7 @@ async function saveTransaction(fd){
    const {error:uploadError}=await sb.storage.from('audit-supporting-docs').upload(path,supportFile,{contentType:'application/pdf',upsert:false});
    if(uploadError)throw uploadError;
    supportingDocument={
-     documentType:requires222?'DEA Form 222':'Supporting transaction PDF',
+     documentType:requires222?'DEA Form 222':(requiresIncidentMemo?'Discrepancy / incident memo':'Supporting transaction PDF'),
      name:supportFile.name,
      storageBucket:'audit-supporting-docs',
      storagePath:path,
@@ -241,7 +251,7 @@ async function saveTransaction(fd){
      await setBalance('Expired',med,Number(b.Expired?.[med]||0)+qty);
      b[from][med]=Number(b[from]?.[med]||0)-qty;
      b.Expired[med]=Number(b.Expired?.[med]||0)+qty;
-   }else if(type==='destroyed'){
+   }else if(type==='destroyed'||type==='incident'){
      await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
      b[from][med]=Number(b[from]?.[med]||0)-qty;
    }
@@ -250,7 +260,8 @@ async function saveTransaction(fd){
  const labels={
    received:'Received / restock',
    expired:'Moved to expired',
-   destroyed:'Destroyed / transferred out'
+   destroyed:'Destroyed / transferred out',
+   incident:'Discrepancy / incident'
  };
 
  await put('transactions',{
@@ -265,7 +276,7 @@ async function saveTransaction(fd){
    fromLocation:type==='received'?'':from,
    externalSource:type==='received'?sourcePharmacy:'',
    sourcePharmacy:type==='received'?sourcePharmacy:'',
-   toLocation:type==='expired'?'Expired':destination,
+   toLocation:type==='expired'?'Expired':(type==='incident'?'':destination),
    notes:fd.get('notes')||'',
    recordedBy,
    witness,
@@ -1730,6 +1741,8 @@ function bind(){
  const txTypeSelect=document.querySelector('#txForm select[name=type]');
  const txPdfInput=document.getElementById('txSupportingPdf');
  const txPdfHint=document.getElementById('txSupportingPdfHint');
+ const txNotesLabel=document.getElementById('txNotesLabel');
+ const txNotes=document.getElementById('txNotes');
  const txPdfLabel=document.getElementById('txSupportingPdfLabel');
  const txFromLocationLabel=document.getElementById('txFromLocationLabel');
  const txPharmacySourceLabel=document.getElementById('txPharmacySourceLabel');
@@ -1740,7 +1753,8 @@ function bind(){
  const txSourcePharmacy=document.getElementById('txSourcePharmacy');
  const syncTxPdfRequirement=()=>{
    const received=txTypeSelect?.value==='received';
-   const required=received||txTypeSelect?.value==='destroyed';
+   const incident=txTypeSelect?.value==='incident';
+   const required=received||txTypeSelect?.value==='destroyed'||incident;
    if(txFromLocationLabel){
      txFromLocationLabel.hidden=received;
      txFromLocationLabel.style.display=received?'none':'';
@@ -1751,21 +1765,28 @@ function bind(){
    }
    if(txPharmacySourceLabel)txPharmacySourceLabel.hidden=!received;
    if(txToLocationText)txToLocationText.textContent='To';
-   if(txToLocationLabel)txToLocationLabel.hidden=received;
+   if(txToLocationLabel)txToLocationLabel.hidden=received||incident;
    if(txToLocationSelect&&received)txToLocationSelect.value='Safe';
    if(txSourcePharmacy){
      txSourcePharmacy.required=received;
      if(received&&!txSourcePharmacy.value.trim())txSourcePharmacy.value='NKCH Pharmacy';
    }
    const expired=txTypeSelect?.value==='expired';
+   if(txNotesLabel)txNotesLabel.textContent=incident?'Incident / discrepancy explanation':'Reason / notes';
+   if(txNotes){
+     txNotes.required=incident;
+     txNotes.placeholder=incident?'Describe what happened, including broken/damaged vial details and circumstances.':'';
+   }
    if(txPdfLabel)txPdfLabel.hidden=expired;
    if(txPdfInput){
      txPdfInput.required=required;
      if(expired)txPdfInput.value='';
    }
-   if(txPdfHint)txPdfHint.textContent=required
-     ?'DEA Form 222 PDF required for this transaction.'
-     :'No DEA Form 222 required for internal redistribution between department inventory sites, including movement into Expired inventory.';
+   if(txPdfHint)txPdfHint.textContent=incident
+     ?'Attach the discrepancy / incident memo PDF. A DEA Form 222 is not required for this incident entry.'
+     :(required
+       ?'DEA Form 222 PDF required for this transaction.'
+       :'No DEA Form 222 required for internal redistribution between department inventory sites, including movement into Expired inventory.');
  };
  if(txTypeSelect){txTypeSelect.addEventListener('change',syncTxPdfRequirement);syncTxPdfRequirement();}
  document.getElementById('newTxBtn').onclick=()=>{syncTxPdfRequirement();document.getElementById('txDialog').showModal();};
