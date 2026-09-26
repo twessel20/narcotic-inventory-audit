@@ -5968,3 +5968,21 @@ body.report-open{overflow:hidden}
   overflow:hidden!important;
   text-overflow:ellipsis!important;
 }
+
+/* v198 trim Medic 3 / Safe descriptor copy footprint in generated PDF */
+.pdf-clean-stage .pdf-medic3-safe-page .report-cert-statement,
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-note{
+  font-size:.42rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .report-cert-statement{
+  margin:0 0 2px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-note{
+  margin:0 0 2px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .report-cert-site{
+  font-size:.44rem!important;
+  line-height:1!important;
+  margin:0 0 1px!important;
+}
