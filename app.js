@@ -163,7 +163,7 @@ async function renderActivity(){
  document.getElementById('activityList').innerHTML=rows.length?rows.map(r=>{
    const items=Array.isArray(r.items)&&r.items.length?r.items:[{medication:r.medication,quantity:r.quantity}];
    const itemText=items.map(x=>esc(x.medication)+' × '+esc(x.quantity)).join(' · ');
-   return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+(r.status==='draft'?' · DRAFT':'')+'</strong><div>'+itemText+'</div><div>'+esc(r.sourcePharmacy||r.externalSource||r.incidentSourceLocation||r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy)+(r.recordedByEmployeeNumber?' #'+esc(r.recordedByEmployeeNumber):''):'')+(r.witness?' · Witness '+esc(r.witness)+(r.witnessEmployeeNumber?' #'+esc(r.witnessEmployeeNumber):''):'')+'</div>'+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.memoDescription?'<div class="meta"><b>Memo description:</b> '+esc(r.memoDescription)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+(r.type==='incident'&&r.status==='draft'?'<div class="button-row"><button type="button" data-resume-incident="'+esc(r.id)+'">Resume incident</button></div>':'')+'</div>';
+   return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+(r.status==='draft'?' · DRAFT':'')+'</strong><div>'+itemText+'</div><div>'+esc(r.sourcePharmacy||r.externalSource||r.incidentSourceLocation||r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy)+(r.recordedByEmployeeNumber?' #'+esc(r.recordedByEmployeeNumber):''):'')+(r.witness?' · Witness '+esc(r.witness)+(r.witnessEmployeeNumber?' #'+esc(r.witnessEmployeeNumber):''):'')+'</div>'+(r.summary?'<div>'+esc(r.summary)+'</div>':'')+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.memoDescription?'<div class="meta"><b>Memo description:</b> '+esc(r.memoDescription)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+(r.type==='incident'&&r.status==='draft'?'<div class="button-row"><button type="button" data-resume-incident="'+esc(r.id)+'">Resume incident</button></div>':'')+'</div>';
  }).join(''):'<div class="empty">No activity recorded yet.</div>';
 }
 
@@ -262,6 +262,9 @@ async function saveTransaction(fd,finalSubmit=true){
  }
 
  const labels={received:'Received / restock',destroyed:'Destroyed / transferred out',incident:'Discrepancy / incident'};
+ const transactionSummary=type==='received'
+   ?'Received from '+sourcePharmacy+' into Safe: '+items.map(x=>x.medication+' × '+x.quantity).join(', ')+'.'
+   :'';
  const txRecord={
    ...(existingTx||{}),
    id:txId,
@@ -282,7 +285,8 @@ async function saveTransaction(fd,finalSubmit=true){
    externalSource:type==='received'?sourcePharmacy:'',
    sourcePharmacy:type==='received'?sourcePharmacy:'',
    toLocation:type==='incident'?'':destination,
-   notes:fd.get('notes')||'',
+   notes:type==='received'?'':(fd.get('notes')||''),
+   summary:transactionSummary,
    memoDescription:type==='incident'?memoDescription:'',
    recordedBy,
    recordedByEmployeeNumber,
@@ -1885,6 +1889,7 @@ function bind(){
  const txDraftBtn=document.getElementById('saveTxDraftBtn');
  const txSubmitBtn=document.getElementById('saveTxBtn');
  const txNotesLabel=document.getElementById('txNotesLabel');
+ const txNotesField=document.getElementById('txNotesField');
  const txNotes=document.getElementById('txNotes');
  const txPdfLabel=document.getElementById('txSupportingPdfLabel');
  const txFromLocationLabel=document.getElementById('txFromLocationLabel');
@@ -1923,6 +1928,7 @@ function bind(){
      if(received&&!txSourcePharmacy.value.trim())txSourcePharmacy.value='NKCH Pharmacy';
      if(!received)txSourcePharmacy.value='';
    }
+   if(txNotesField)txNotesField.hidden=received;
    if(txNotesLabel)txNotesLabel.textContent=incident?'Incident / discrepancy explanation':'Reason / notes';
    if(txMemoDescriptionLabel)txMemoDescriptionLabel.hidden=!incident;
    if(txMemoDescription)txMemoDescription.required=false;
