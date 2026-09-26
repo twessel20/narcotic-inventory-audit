@@ -858,210 +858,188 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
  const clone=sheet.cloneNode(true);
  clone.querySelector('.report-toolbar')?.remove();
  clone.querySelector('.test-report-banner')?.remove();
- clone.style.width='7.6in';
- clone.style.maxWidth='7.6in';
+ clone.classList.add('pdf-clean-report');
+ clone.style.width='7.55in';
+ clone.style.maxWidth='7.55in';
  clone.style.margin='0';
+ clone.style.padding='0';
  clone.style.overflow='visible';
- clone.querySelectorAll('.report-imported-admin, section').forEach(el=>{el.style.overflow='visible';});
- clone.querySelectorAll('section').forEach(el=>{
-   if(el.classList.contains('report-cert'))return;
 
-   el.classList.remove('pdf-section-page','pdf-keep-together');
-   el.classList.add('pdf-report-section');
+ const clearPdfBreaks=node=>{
+   if(!node)return;
+   [node,...node.querySelectorAll('*')].forEach(el=>{
+     el.classList?.remove(
+       'pdf-section-page','pdf-break-before','pdf-break-after','pdf-keep-together',
+       'pdf-standalone-section','pdf-report-section'
+     );
+     if(el.style){
+       el.style.breakBefore='auto';
+       el.style.pageBreakBefore='auto';
+       el.style.breakAfter='auto';
+       el.style.pageBreakAfter='auto';
+       el.style.breakInside='auto';
+       el.style.pageBreakInside='auto';
+     }
+   });
+ };
 
-   // Cover is already page 1. Other sections are assigned page starts below.
-   if(!el.classList.contains('report-cover-page')){
-     el.classList.add('pdf-section-page');
-     el.style.breakBefore='page';
-     el.style.pageBreakBefore='always';
-   }else{
-     el.style.breakBefore='auto';
-     el.style.pageBreakBefore='auto';
-   }
-   el.style.breakAfter='auto';
-   el.style.pageBreakAfter='auto';
-
-   const estimatedHeight=el.scrollHeight||0;
-   if(estimatedHeight && estimatedHeight<900){
-     el.style.breakInside='avoid';
-     el.style.pageBreakInside='avoid';
-   }else{
-     el.style.breakInside='auto';
-     el.style.pageBreakInside='auto';
-   }
+ clearPdfBreaks(clone);
+ clone.querySelectorAll('.report-table').forEach(table=>{
+   table.style.width='100%';
+   table.style.minWidth='0';
  });
- const signatureSection=clone.querySelector('.report-signature-section');
- if(signatureSection){
-   signatureSection.style.breakInside='auto';
-   signatureSection.style.pageBreakInside='auto';
-   const grid=signatureSection.querySelector('.report-signature-section-grid');
-   if(grid){
-     // PDF-only: use a simple vertical flow so page-break rules are reliable.
-     grid.style.display='block';
-     grid.style.breakInside='auto';
-     grid.style.pageBreakInside='auto';
-   }
- }
- clone.querySelectorAll('.report-signature-section .report-cert').forEach(el=>{
-   el.style.display='block';
-   el.style.width='100%';
-   el.style.margin='0 0 10px';
-   el.style.breakInside='avoid';
-   el.style.pageBreakInside='avoid';
-   el.style.overflow='hidden';
-   el.style.minHeight='0';
- });
- clone.querySelectorAll('.report-signature-section .report-signature-box').forEach(el=>{
-   el.style.breakInside='avoid';
-   el.style.pageBreakInside='avoid';
-   el.style.minHeight='0';
- });
- clone.querySelectorAll('.report-signature-section .report-signature-box img').forEach(el=>{
-   el.style.maxHeight='42px';
- });
- clone.querySelectorAll('.report-table').forEach(el=>{el.style.minWidth='0';el.style.width='100%';});
- const vialSection=clone.querySelector('.pdf-vial-section');
- if(vialSection){
-   vialSection.classList.remove('pdf-break-before','pdf-standalone-section');
-   vialSection.style.breakBefore='auto';
-   vialSection.style.pageBreakBefore='auto';
-   vialSection.style.breakInside='avoid';
-   vialSection.style.pageBreakInside='avoid';
- }
- clone.querySelectorAll('.report-cert,.report-attestation,.report-notes,.report-vial-summary,.report-final-signature').forEach(el=>{
-   el.style.breakInside='avoid';
-   el.style.pageBreakInside='avoid';
- });
- clone.querySelectorAll('.report-table thead').forEach(el=>{el.style.display='table-header-group';});
+ clone.querySelectorAll('.report-table thead').forEach(el=>el.style.display='table-header-group');
  clone.querySelectorAll('.report-table tr').forEach(el=>{
    el.style.breakInside='avoid';
    el.style.pageBreakInside='avoid';
  });
 
- // Build the PDF packet from clean top-level page groups so old section
- // page-break rules cannot leak into the new layout.
  const cover=clone.querySelector('.report-cover-page');
- if(cover){
-   const findSection=title=>[...clone.querySelectorAll('section')].find(s=>
-     (s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase()===title.toLowerCase()
+ const reportTop=clone.querySelector('.report-top');
+ const metaGrid=clone.querySelector('.report-meta-grid');
+ const blueRule=clone.querySelector('.report-blue-rule');
+ const executive=clone.querySelector('.report-executive-summary');
+
+ const isMonthlyPacket=!!(cover&&reportTop&&metaGrid&&executive);
+
+ if(isMonthlyPacket){
+   const findSection=label=>[...clone.querySelectorAll('section')].find(s=>
+     (s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase()===label.toLowerCase()
    );
-
-   const reportTop=clone.querySelector('.report-top');
-   const metaGrid=clone.querySelector('.report-meta-grid');
-   const blueRule=clone.querySelector('.report-blue-rule');
-   const executive=clone.querySelector('.report-executive-summary');
-   const amendment=clone.querySelector('.report-amendment');
-   const inventorySection=findSection('Inventory comparison');
-   const tagSection=findSection('Breakaway tag record');
-   const esoSource=clone.querySelector('.report-eso-source');
-   const importedAdmin=clone.querySelector('.report-imported-admin');
-   const txSection=[...clone.querySelectorAll('section')].find(s=>
-     (s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase().startsWith('transactions in the audit reporting period')
-   );
-   const signatureSection=clone.querySelector('.report-signature-section');
-   const attestationSection=clone.querySelector('.report-attestation');
-   const notesSection=clone.querySelector('.report-notes');
-   const reportFooter=clone.querySelector('.report-footer');
-
-   const clearBreaks=node=>{
-     if(!node)return;
-     [node,...node.querySelectorAll('*')].forEach(el=>{
-       el.classList?.remove('pdf-section-page','pdf-break-before','pdf-break-after','pdf-keep-together','pdf-standalone-section');
-       if(el.style){
-         el.style.breakBefore='auto';
-         el.style.pageBreakBefore='auto';
-         el.style.breakAfter='auto';
-         el.style.pageBreakAfter='auto';
-       }
-     });
-   };
-
-   const makePage=(title,className,nodes)=>{
+   const makePage=(pageTitle,className,nodes=[])=>{
      const page=document.createElement('section');
      page.className='pdf-packet-page '+className;
-     page.innerHTML='<h2 class="pdf-packet-title">'+title+'</h2>';
+     page.innerHTML='<h2 class="pdf-packet-title">'+pageTitle+'</h2>';
      nodes.filter(Boolean).forEach(node=>{
-       clearBreaks(node);
+       clearPdfBreaks(node);
        page.appendChild(node);
      });
      return page;
    };
+   const removeOwnHeading=node=>{
+     const h=node?.querySelector(':scope > h2');
+     if(h)h.remove();
+   };
 
-   clearBreaks(cover);
+   const amendment=clone.querySelector('.report-amendment');
+   const inventory=findSection('Inventory comparison');
+   const tags=findSection('Breakaway tag record');
+   const esoSource=clone.querySelector('.report-eso-source');
+   const importedAdmin=clone.querySelector('.report-imported-admin');
+   const transactions=clone.querySelector('.report-transactions-section') ||
+     [...clone.querySelectorAll('section')].find(s=>
+       (s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase().startsWith('transactions in the audit reporting period')
+     );
+   const signatures=clone.querySelector('.report-signature-section');
+   const attestation=clone.querySelector('.report-attestation');
+   const notes=clone.querySelector('.report-notes');
+   const finalRecordFooter=clone.querySelector('.report-footer');
+
+   clearPdfBreaks(cover);
    cover.classList.add('pdf-packet-cover');
 
-   const monthlyPage=makePage(
+   const pages=[cover];
+
+   pages.push(makePage(
      'Finalized Monthly Record / Executive Summary',
      'pdf-monthly-summary-page',
      [reportTop,metaGrid,blueRule,executive]
-   );
+   ));
 
-   const inventoryPage=makePage(
+   if(amendment){
+     removeOwnHeading(amendment);
+     pages.push(makePage(
+       'Amended Inventory Record / Correction History',
+       'pdf-amendment-page',
+       [amendment]
+     ));
+   }
+
+   pages.push(makePage(
      'Inventory Comparison / Breakaway Tag Record',
      'pdf-inventory-tags-page',
-     [inventorySection,tagSection]
-   );
+     [inventory,tags]
+   ));
 
-   if(esoSource){
-     const duplicateEsoTitle=esoSource.querySelector(':scope > h2');
-     if(duplicateEsoTitle)duplicateEsoTitle.remove();
+   if(esoSource||importedAdmin){
+     removeOwnHeading(esoSource);
+     pages.push(makePage(
+       'ESO Narcotic Administration Record',
+       'pdf-eso-record-page',
+       [esoSource,importedAdmin]
+     ));
    }
-   const esoPage=makePage(
-     'ESO Narcotic Administration Record',
-     'pdf-eso-record-page',
-     [esoSource,importedAdmin]
-   );
 
-   const pages=[cover,monthlyPage];
-   if(amendment){
-     pages.push(makePage('Amended Inventory Record / Correction History','pdf-amendment-page',[amendment]));
+   if(transactions){
+     removeOwnHeading(transactions);
+     pages.push(makePage(
+       'Transactions in the Audit Reporting Period',
+       'pdf-transactions-page',
+       [transactions]
+     ));
    }
-   pages.push(inventoryPage,esoPage);
-   if(txSection){
-     const duplicateTxTitle=txSection.querySelector(':scope > h2');
-     if(duplicateTxTitle)duplicateTxTitle.remove();
-     pages.push(makePage('Transactions in the Audit Reporting Period','pdf-transactions-page',[txSection]));
+
+   if(signatures){
+     const cards=[...signatures.querySelectorAll('.report-cert')];
+     const byTitle=t=>cards.find(card=>
+       (card.querySelector('h2')?.textContent||'').trim().toLowerCase()===t.toLowerCase()
+     );
+
+     const pageA=makePage(
+       'Audit Site Certifications - Medic 1 / Medic 2',
+       'pdf-certifications-page pdf-certifications-primary',
+       [byTitle('Medic 1 Certification'),byTitle('Medic 2 Certification')]
+     );
+     pages.push(pageA);
+
+     const pageB=makePage(
+       'Audit Site Certifications - Medic 3 / Safe / Expired',
+       'pdf-certifications-page pdf-certifications-secondary',
+       []
+     );
+     const wrap=document.createElement('div');
+     wrap.className='pdf-certifications-secondary-wrap';
+     [byTitle('Medic 3 Certification'),byTitle('Safe Certification'),byTitle('Expired Certification')]
+       .filter(Boolean)
+       .forEach(card=>{
+         clearPdfBreaks(card);
+         wrap.appendChild(card);
+       });
+     pageB.appendChild(wrap);
+     pages.push(pageB);
    }
-   if(signatureSection){
-     const certCards=[...signatureSection.querySelectorAll('.report-cert')];
-     const certByTitle=title=>certCards.find(card=>(card.querySelector('h2')?.textContent||'').trim().toLowerCase()===title.toLowerCase());
 
-     const certPageA=document.createElement('section');
-     certPageA.className='pdf-packet-page pdf-certifications-page pdf-certifications-primary';
-     certPageA.innerHTML='<h2 class="pdf-packet-title">Audit Site Certifications — Medic 1 / Medic 2</h2>';
-     [certByTitle('Medic 1 Certification'),certByTitle('Medic 2 Certification')].filter(Boolean).forEach(card=>{
-       clearBreaks(card);
-       certPageA.appendChild(card);
-     });
-
-     const certPageB=document.createElement('section');
-     certPageB.className='pdf-packet-page pdf-certifications-page pdf-certifications-secondary';
-     certPageB.innerHTML='<h2 class="pdf-packet-title">Audit Site Certifications — Medic 3 / Safe / Expired</h2>';
-     const secondaryWrap=document.createElement('div');
-     secondaryWrap.className='pdf-certifications-secondary-wrap';
-     [certByTitle('Medic 3 Certification'),certByTitle('Safe Certification'),certByTitle('Expired Certification')].filter(Boolean).forEach(card=>{
-       clearBreaks(card);
-       card.style.breakInside='auto';
-       card.style.pageBreakInside='auto';
-       secondaryWrap.appendChild(card);
-     });
-     certPageB.appendChild(secondaryWrap);
-
-     if(certPageA.childElementCount>1)pages.push(certPageA);
-     if(secondaryWrap.children.length)pages.push(certPageB);
+   if(attestation){
+     removeOwnHeading(attestation);
+     pages.push(makePage(
+       'Final Controlled-Substance Audit Attestation',
+       'pdf-attestation-page',
+       [attestation]
+     ));
    }
-   if(attestationSection){
-     const duplicateAttestationTitle=attestationSection.querySelector(':scope > h2');
-     if(duplicateAttestationTitle)duplicateAttestationTitle.remove();
-     pages.push(makePage('Final Controlled-Substance Audit Attestation','pdf-attestation-page',[attestationSection]));
-   }
-   if(notesSection||reportFooter)pages.push(makePage('Audit Notes / Final Record','pdf-notes-page',[notesSection,reportFooter]));
 
-   clone.replaceChildren(...pages.filter(p=>p && (p===cover || p.childElementCount>1)));
+   if(notes||finalRecordFooter){
+     removeOwnHeading(notes);
+     pages.push(makePage(
+       'Audit Notes / Final Record',
+       'pdf-notes-page',
+       [notes,finalRecordFooter]
+     ));
+   }
+
+   clone.replaceChildren(...pages.filter(Boolean));
+ }else{
+   // Annual/legacy output: keep report content intact, but use one clean break system.
+   const sections=[...clone.querySelectorAll(':scope > section')];
+   sections.forEach((section,index)=>{
+     clearPdfBreaks(section);
+     section.classList.add('pdf-generic-section');
+     if(index>0)section.classList.add('pdf-page-start');
+   });
  }
 
  const stage=document.createElement('div');
- stage.className='pdf-render-stage';
+ stage.className='pdf-render-stage pdf-clean-stage';
  stage.style.position='fixed';
  stage.style.left='-10000px';
  stage.style.top='0';
@@ -1075,55 +1053,54 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
  try{
    await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
 
-   // Pre-paginate Certification cards. The Certification section starts on a fresh
-   // PDF page, so move any whole card that will not fit to the next page.
-   // Certification cards are already grouped into dedicated packet pages.
-   clone.querySelectorAll('.pdf-certifications-page .report-cert').forEach(card=>{
-     card.classList.remove('pdf-break-before');
-     card.style.breakBefore='auto';
-     card.style.pageBreakBefore='auto';
-     const grouped=!!card.closest('.pdf-certifications-secondary-wrap');
-     card.style.breakInside=grouped?'auto':'avoid';
-     card.style.pageBreakInside=grouped?'auto':'avoid';
-   });
-
    const safeName=String(title||'Narcotic Audit Report')
      .replace(/[\\/:*?"<>|]+/g,'-')
      .replace(/\s+/g,' ')
      .trim()||'Narcotic Audit Report';
 
-   // Estimate which PDF pages begin a new report section. Pages between these
-   // starts are continuation pages and are labeled accordingly in the PDF header.
-   const printablePagePx=10*96;
+   const pageCapacityPx=9.72*96;
    const sectionStartPages=new Set([1]);
-   let estimatedPage=1,pageHasContent=false,forceNextPage=false;
-   for(const child of [...clone.children]){
-     if(child.classList.contains('report-toolbar'))continue;
-     const startsNewPage=child.classList.contains('pdf-packet-page')||child.classList.contains('pdf-break-before')||child.classList.contains('pdf-packet-cover');
-     if(forceNextPage||(startsNewPage&&pageHasContent)){
-       estimatedPage++;
-       sectionStartPages.add(estimatedPage);
-       pageHasContent=false;
-       forceNextPage=false;
-     }
-     if(!pageHasContent){
-       sectionStartPages.add(estimatedPage);
-       pageHasContent=true;
-     }
-     const h=Math.max(0,child.getBoundingClientRect().height||0);
-     const span=Math.max(1,Math.ceil(h/printablePagePx));
-     if(span>1)estimatedPage+=span-1;
-     if(child.classList.contains('report-cover-page'))forceNextPage=true;
+   if(isMonthlyPacket){
+     let startPage=1;
+     const packet=[...clone.children];
+     packet.forEach((pageEl,index)=>{
+       if(index===0){
+         sectionStartPages.add(1);
+         startPage=1+Math.max(1,Math.ceil((pageEl.getBoundingClientRect().height||pageCapacityPx)/pageCapacityPx));
+         return;
+       }
+       sectionStartPages.add(startPage);
+       const span=Math.max(1,Math.ceil((pageEl.getBoundingClientRect().height||1)/pageCapacityPx));
+       startPage+=span;
+     });
    }
 
    const worker=window.html2pdf()
      .set({
-       margin:[0.55,0.35,0.45,0.35],
+       margin:[0.35,0.35,0.52,0.35],
        filename:safeName+'.pdf',
        image:{type:'jpeg',quality:0.98},
-       html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},
+       html2canvas:{
+         scale:1.6,
+         useCORS:true,
+         backgroundColor:'#ffffff',
+         logging:false,
+         scrollX:0,
+         scrollY:0
+       },
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
-       pagebreak:{mode:['css','legacy'],before:['.pdf-break-before'],avoid:['.pdf-certifications-secondary-wrap','.report-signature-box','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
+       pagebreak:{
+         mode:['css','legacy'],
+         before:['.pdf-packet-page','.pdf-page-start'],
+         avoid:[
+           '.pdf-certifications-secondary-wrap',
+           '.report-signature-box',
+           '.report-final-signature',
+           '.report-vial-row',
+           '.report-meta-grid',
+           '.report-top'
+         ]
+       }
      })
      .from(clone)
      .toPdf();
@@ -1132,18 +1109,16 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    const totalPages=pdf.internal.getNumberOfPages();
    const isAnnual=/annual summary/i.test(title);
    const isTest=/^TEST\b/i.test(title);
-   const headerTitle=(isTest?'TEST - ':'')+
+   const footerTitle=(isTest?'TEST - ':'')+
      (isAnnual
        ?'Gladstone Fire Department - Narcotic Inventory / Audit Annual Summary'
        :'Gladstone Fire Department - Narcotic Inventory / Audit Report');
 
    for(let page=1;page<=totalPages;page++){
      pdf.setPage(page);
+     if(page===1&&isMonthlyPacket)continue;
 
-     // Cover page intentionally has no repeating footer.
-     if(page===1)continue;
-
-     const footerY=10.78;
+     const y=10.78;
      pdf.setDrawColor(217,227,234);
      pdf.setLineWidth(0.006);
      pdf.line(0.35,10.62,8.15,10.62);
@@ -1151,19 +1126,23 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      pdf.setFont('helvetica','normal');
      pdf.setTextColor(74,94,108);
      pdf.setFontSize(7.2);
-     pdf.text(headerTitle,0.35,footerY);
-     pdf.text('Page '+page+' of '+totalPages,8.15,footerY,{align:'right'});
+     pdf.text(footerTitle,0.35,y);
+     pdf.text('Page '+page+' of '+totalPages,8.15,y,{align:'right'});
 
-     if(!sectionStartPages.has(page)){
+     if(isMonthlyPacket&&page>1&&!sectionStartPages.has(page)){
        pdf.setFont('helvetica','bold');
        pdf.setTextColor(31,96,142);
        pdf.setFontSize(7);
-       pdf.text('CONTINUED',4.25,footerY,{align:'center'});
+       pdf.text('CONTINUED',4.25,y,{align:'center'});
      }
    }
 
-   const pdfBlob=pdf.output('blob');
-   return {blob:pdfBlob,file:new File([pdfBlob],safeName+'.pdf',{type:'application/pdf'}),safeName};
+   const blob=pdf.output('blob');
+   return {
+     blob,
+     file:new File([blob],safeName+'.pdf',{type:'application/pdf'}),
+     safeName
+   };
  }finally{
    stage.remove();
  }
