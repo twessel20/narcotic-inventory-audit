@@ -5986,3 +5986,65 @@ body.report-open{overflow:hidden}
   line-height:1!important;
   margin:0 0 1px!important;
 }
+
+/* v199 final vertical trim for Medic 3 / Safe generated PDF page */
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-packet-title{
+  margin:-7px -9px 4px!important;
+  padding:5px 8px!important;
+  font-size:.82rem!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-note{
+  font-size:.40rem!important;
+  line-height:1!important;
+  margin:0 0 2px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap > .report-cert{
+  margin:0 0 4px!important;
+  padding:3px 4px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-cert h2{
+  margin:0 0 1px!important;
+  font-size:.64rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-cert-site{
+  margin:0 0 1px!important;
+  font-size:.40rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-cert-statement{
+  margin:0 0 2px!important;
+  font-size:.39rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-grid{
+  gap:5px!important;
+  margin-top:1px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-box{
+  height:54px!important;
+  min-height:54px!important;
+  max-height:54px!important;
+  padding:2px 3px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-site{
+  margin:0 0 1px!important;
+  font-size:.42rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-label{
+  font-size:.40rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-box img,
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-placeholder{
+  height:18px!important;
+  min-height:18px!important;
+  max-height:18px!important;
+  margin:1px 0 0!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-name{
+  padding-top:1px!important;
+  font-size:.44rem!important;
+  line-height:1!important;
+}
