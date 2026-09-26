@@ -938,64 +938,87 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    el.style.pageBreakInside='avoid';
  });
 
- // Build formal compound pages for the PDF packet.
+ // Build the PDF packet from clean top-level page groups so old section
+ // page-break rules cannot leak into the new layout.
  const cover=clone.querySelector('.report-cover-page');
+ if(cover){
+   const findSection=title=>[...clone.querySelectorAll('section')].find(s=>
+     (s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase()===title.toLowerCase()
+   );
 
- // Finalized monthly record + Executive Summary on one page.
- const reportTop=clone.querySelector('.report-top');
- const metaGrid=clone.querySelector('.report-meta-grid');
- const blueRule=clone.querySelector('.report-blue-rule');
- const executive=clone.querySelector('.report-executive-summary');
- if(reportTop&&executive){
-   const monthlyPage=document.createElement('section');
-   monthlyPage.className='pdf-report-section pdf-section-page pdf-monthly-summary-page';
-   monthlyPage.innerHTML='<h2>Finalized Monthly Record / Executive Summary</h2>';
-   [reportTop,metaGrid,blueRule,executive].filter(Boolean).forEach(n=>{
-     n.classList.remove?.('pdf-section-page','pdf-report-section');
-     n.style.breakBefore='auto';n.style.pageBreakBefore='auto';
-     monthlyPage.appendChild(n);
-   });
-   if(cover?.nextSibling)cover.parentNode.insertBefore(monthlyPage,cover.nextSibling);
-   else clone.appendChild(monthlyPage);
- }
+   const reportTop=clone.querySelector('.report-top');
+   const metaGrid=clone.querySelector('.report-meta-grid');
+   const blueRule=clone.querySelector('.report-blue-rule');
+   const executive=clone.querySelector('.report-executive-summary');
+   const amendment=clone.querySelector('.report-amendment');
+   const inventorySection=findSection('Inventory comparison');
+   const tagSection=findSection('Breakaway tag record');
+   const esoSource=clone.querySelector('.report-eso-source');
+   const importedAdmin=clone.querySelector('.report-imported-admin');
+   const txSection=[...clone.querySelectorAll('section')].find(s=>
+     (s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase().startsWith('transactions in the audit reporting period')
+   );
+   const signatureSection=clone.querySelector('.report-signature-section');
+   const attestationSection=clone.querySelector('.report-attestation');
+   const notesSection=clone.querySelector('.report-notes');
+   const reportFooter=clone.querySelector('.report-footer');
 
- // Inventory comparison + Breakaway tag record on one page.
- const inventorySection=[...clone.querySelectorAll('section')].find(s=>(s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase()==='inventory comparison');
- const tagSection=[...clone.querySelectorAll('section')].find(s=>(s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase()==='breakaway tag record');
- if(inventorySection&&tagSection){
-   const inventoryPage=document.createElement('section');
-   inventoryPage.className='pdf-report-section pdf-section-page pdf-inventory-tags-page';
-   inventoryPage.innerHTML='<h2>Inventory Comparison / Breakaway Tag Record</h2>';
-   [inventorySection,tagSection].forEach(n=>{
-     n.classList.remove('pdf-section-page','pdf-report-section');
-     n.style.breakBefore='auto';n.style.pageBreakBefore='auto';
-     inventoryPage.appendChild(n);
-   });
-   const anchor=monthlyPage?.nextSibling||inventorySection;
-   if(anchor)clone.insertBefore(inventoryPage,anchor); else clone.appendChild(inventoryPage);
- }
+   const clearBreaks=node=>{
+     if(!node)return;
+     [node,...node.querySelectorAll('*')].forEach(el=>{
+       el.classList?.remove('pdf-section-page','pdf-break-before','pdf-break-after','pdf-keep-together','pdf-standalone-section');
+       if(el.style){
+         el.style.breakBefore='auto';
+         el.style.pageBreakBefore='auto';
+         el.style.breakAfter='auto';
+         el.style.pageBreakAfter='auto';
+       }
+     });
+   };
 
- // Treat the imported/exported ESO PDF record as one complete supporting-record section.
- const esoSource=clone.querySelector('.report-eso-source');
- const importedAdmin=clone.querySelector('.report-imported-admin');
- const calculatedVials=clone.querySelector('.pdf-vial-section');
- if(esoSource){
-   const esoPage=document.createElement('section');
-   esoPage.className='pdf-report-section pdf-section-page pdf-eso-record-page';
-   esoPage.innerHTML='<h2>ESO Narcotic Administration Record</h2>';
-   [esoSource,importedAdmin].filter(Boolean).forEach(n=>{
-     n.classList.remove('pdf-section-page','pdf-report-section','pdf-break-before');
-     n.style.breakBefore='auto';n.style.pageBreakBefore='auto';
-     esoPage.appendChild(n);
-   });
-   if(calculatedVials){
-     calculatedVials.classList.remove('pdf-break-before','pdf-standalone-section');
-     calculatedVials.style.breakBefore='auto';calculatedVials.style.pageBreakBefore='auto';
-     esoPage.appendChild(calculatedVials);
+   const makePage=(title,className,nodes)=>{
+     const page=document.createElement('section');
+     page.className='pdf-packet-page '+className;
+     page.innerHTML='<h2 class="pdf-packet-title">'+title+'</h2>';
+     nodes.filter(Boolean).forEach(node=>{
+       clearBreaks(node);
+       page.appendChild(node);
+     });
+     return page;
+   };
+
+   clearBreaks(cover);
+   cover.classList.add('pdf-packet-cover');
+
+   const monthlyPage=makePage(
+     'Finalized Monthly Record / Executive Summary',
+     'pdf-monthly-summary-page',
+     [reportTop,metaGrid,blueRule,executive]
+   );
+
+   const inventoryPage=makePage(
+     'Inventory Comparison / Breakaway Tag Record',
+     'pdf-inventory-tags-page',
+     [inventorySection,tagSection]
+   );
+
+   const esoPage=makePage(
+     'ESO Narcotic Administration Record',
+     'pdf-eso-record-page',
+     [esoSource,importedAdmin]
+   );
+
+   const pages=[cover,monthlyPage];
+   if(amendment){
+     pages.push(makePage('Amended Inventory Record / Correction History','pdf-amendment-page',[amendment]));
    }
-   // Place before transactions when possible.
-   const tx=[...clone.querySelectorAll('section')].find(s=>(s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase().startsWith('transactions in the audit reporting period'));
-   if(tx)clone.insertBefore(esoPage,tx); else clone.appendChild(esoPage);
+   pages.push(inventoryPage,esoPage);
+   if(txSection)pages.push(makePage('Transactions in the Audit Reporting Period','pdf-transactions-page',[txSection]));
+   if(signatureSection)pages.push(makePage('Audit Site Certifications','pdf-certifications-page',[signatureSection]));
+   if(attestationSection)pages.push(makePage('Final Controlled-Substance Audit Attestation','pdf-attestation-page',[attestationSection]));
+   if(notesSection||reportFooter)pages.push(makePage('Audit Notes / Final Record','pdf-notes-page',[notesSection,reportFooter]));
+
+   clone.replaceChildren(...pages.filter(p=>p && (p===cover || p.childElementCount>1)));
  }
 
  const stage=document.createElement('div');
@@ -1047,7 +1070,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    let estimatedPage=1,pageHasContent=false,forceNextPage=false;
    for(const child of [...clone.children]){
      if(child.classList.contains('report-toolbar'))continue;
-     const startsNewPage=child.classList.contains('pdf-section-page')||child.classList.contains('pdf-break-before')||child.classList.contains('report-cover-page');
+     const startsNewPage=child.classList.contains('pdf-packet-page')||child.classList.contains('pdf-break-before')||child.classList.contains('pdf-packet-cover');
      if(forceNextPage||(startsNewPage&&pageHasContent)){
        estimatedPage++;
        sectionStartPages.add(estimatedPage);
@@ -1071,7 +1094,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        image:{type:'jpeg',quality:0.98},
        html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
-       pagebreak:{mode:['css','legacy'],before:['.pdf-section-page','.pdf-break-before'],after:['.pdf-break-after'],avoid:['.report-cert','.report-signature-box','.report-attestation','.report-notes','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
+       pagebreak:{mode:['css','legacy'],before:['.pdf-packet-page:not(.pdf-packet-cover)','.pdf-break-before'],avoid:['.report-cert','.report-signature-box','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
      })
      .from(clone)
      .toPdf();
