@@ -1731,13 +1731,13 @@ function bind(){
  const txTypeSelect=document.querySelector('#txForm select[name=type]');
  const txPdfInput=document.getElementById('txSupportingPdf');
  const txPdfHint=document.getElementById('txSupportingPdfHint');
+ const txPdfLabel=document.getElementById('txSupportingPdfLabel');
  const txFromLocationLabel=document.getElementById('txFromLocationLabel');
  const txPharmacySourceLabel=document.getElementById('txPharmacySourceLabel');
  const txFromLocationSelect=document.querySelector('#txForm select[name=fromLocation]');
  const txToLocationText=document.getElementById('txToLocationText');
  const txToLocationLabel=document.getElementById('txToLocationLabel');
  const txToLocationSelect=document.querySelector('#txForm select[name=toLocation]');
- const txReceivingSafeLabel=document.getElementById('txReceivingSafeLabel');
  const txSourcePharmacy=document.getElementById('txSourcePharmacy');
  const syncTxPdfRequirement=()=>{
    const received=txTypeSelect?.value==='received';
@@ -1753,13 +1753,17 @@ function bind(){
    if(txPharmacySourceLabel)txPharmacySourceLabel.hidden=!received;
    if(txToLocationText)txToLocationText.textContent='To';
    if(txToLocationLabel)txToLocationLabel.hidden=received;
-   if(txReceivingSafeLabel)txReceivingSafeLabel.hidden=!received;
    if(txToLocationSelect&&received)txToLocationSelect.value='Safe';
    if(txSourcePharmacy){
      txSourcePharmacy.required=received;
      if(received&&!txSourcePharmacy.value.trim())txSourcePharmacy.value='NKCH Pharmacy';
    }
-   if(txPdfInput)txPdfInput.required=required;
+   const expired=txTypeSelect?.value==='expired';
+   if(txPdfLabel)txPdfLabel.hidden=expired;
+   if(txPdfInput){
+     txPdfInput.required=required;
+     if(expired)txPdfInput.value='';
+   }
    if(txPdfHint)txPdfHint.textContent=required
      ?'DEA Form 222 PDF required for this transaction.'
      :'No DEA Form 222 required for internal redistribution between department inventory sites, including movement into Expired inventory.';
