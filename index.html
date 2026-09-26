@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/jpeg" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
   <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
-  <link rel="stylesheet" href="styles.css?v=20260925-115">
+  <link rel="stylesheet" href="styles.css?v=20260925-116">
 </head>
 <body>
   <header class="app-header">
@@ -96,7 +96,7 @@
 
   <dialog id="txDialog">
     <form method="dialog" id="txForm" class="dialog-form">
-      <div class="dialog-head"><h2>Record inventory transaction</h2><button value="cancel" class="icon-btn">×</button></div>
+      <div class="dialog-head"><h2>Record inventory transaction</h2><button type="button" id="closeTxDialog" class="icon-btn" aria-label="Close transaction">×</button></div>
       <div class="form-grid">
         <label>Type<select name="type" required>
           <option value="adjustment">Physical count / adjustment</option>
@@ -119,7 +119,7 @@
         <label>Recorded by<input name="recordedBy"></label>
         <label>Witness<input name="witness"></label>
       </div>
-      <div class="dialog-actions"><button value="cancel">Cancel</button><button class="primary" value="default" id="saveTxBtn">Save transaction</button></div>
+      <div class="dialog-actions"><button type="button" id="cancelTxDialog">Cancel</button><button type="button" class="primary" id="saveTxBtn">Save transaction</button></div>
     </form>
   </dialog>
 
@@ -154,6 +154,6 @@
   <script>if(window.pdfjsLib)window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';</script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
-  <script src="app.js?v=20260925-115"></script>
+  <script src="app.js?v=20260925-116"></script>
 </body>
 </html>
