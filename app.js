@@ -1519,7 +1519,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
        const medic3SafeNote=document.createElement('p');
        medic3SafeNote.className='pdf-medic3-safe-note';
-       medic3SafeNote.textContent='Medic 3 is a reserve unit. Its narcotics are normally stored in the Safe until placed in service. The Safe is the department reserve inventory.';
+       medic3SafeNote.textContent='Medic 3 is a reserve, semi-dynamic unit. Its narcotics are normally secured in the Safe and moved to Medic 3 when placed in service. The Safe is the department reserve inventory.';
 
        const wrap=document.createElement('div');
        wrap.className='pdf-medic3-safe-wrap';
