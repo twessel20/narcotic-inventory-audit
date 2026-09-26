@@ -171,6 +171,8 @@ async function saveTransaction(fd){
  if(!requireCloudAuth())throw new Error('Sign in is required for live inventory changes.');
 
  const type=fd.get('type');
+ const auditContextId=String(fd.get('auditContextId')||'').trim();
+ const auditLinkedIncident=type==='incident'&&Boolean(auditContextId);
  const from=fd.get('fromLocation');
  const to=fd.get('toLocation');
  const destination=type==='received'?'Safe':to;
@@ -200,10 +202,6 @@ async function saveTransaction(fd){
    if(!(supportFile instanceof File)||!supportFile.size)throw new Error('Attach the discrepancy / incident memo PDF before saving this transaction.');
    if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('The discrepancy / incident memo must be attached as a PDF.');
  }
- if(false){
-   if(!(supportFile instanceof File)||!supportFile.size)throw new Error('Attach the required DEA Form 222 PDF before saving this transaction.');
-   if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('DEA Form 222 must be attached as a PDF.');
- }
 
  if(type==='received'){
    if(!sourcePharmacy)throw new Error('Enter the source pharmacy.');
@@ -212,7 +210,7 @@ async function saveTransaction(fd){
  if(type==='incident'&&!String(fd.get('notes')||'').trim())throw new Error('Enter an incident / discrepancy explanation.');
 
  const b=await balances();
- if(type==='expired'||type==='destroyed'||type==='incident'){
+ if(type==='expired'||type==='destroyed'||(type==='incident'&&!auditLinkedIncident)){
    for(const item of items){
      if(Number(b[from]?.[item.medication]||0)<item.quantity)throw new Error(item.medication+' quantity exceeds the current '+from+' balance.');
    }
@@ -251,7 +249,7 @@ async function saveTransaction(fd){
      await setBalance('Expired',med,Number(b.Expired?.[med]||0)+qty);
      b[from][med]=Number(b[from]?.[med]||0)-qty;
      b.Expired[med]=Number(b.Expired?.[med]||0)+qty;
-   }else if(type==='destroyed'||type==='incident'){
+   }else if(type==='destroyed'||(type==='incident'&&!auditLinkedIncident)){
      await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
      b[from][med]=Number(b[from]?.[med]||0)-qty;
    }
@@ -264,7 +262,7 @@ async function saveTransaction(fd){
    incident:'Discrepancy / incident'
  };
 
- await put('transactions',{
+ const txRecord={
    id:txId,
    timestamp:nowISO(),
    type,
@@ -274,6 +272,10 @@ async function saveTransaction(fd){
    medication:items.length===1?items[0].medication:'Multiple medications',
    quantity:items.reduce((n,x)=>n+x.quantity,0),
    fromLocation:type==='received'?'':from,
+   incidentSourceLocation:type==='incident'?from:'',
+   auditId:auditLinkedIncident?auditContextId:'',
+   reconciliationMode:auditLinkedIncident?'audit_physical_count':'transaction_adjustment',
+   inventoryAdjusted:!auditLinkedIncident,
    externalSource:type==='received'?sourcePharmacy:'',
    sourcePharmacy:type==='received'?sourcePharmacy:'',
    toLocation:type==='expired'?'Expired':(type==='incident'?'':destination),
@@ -283,7 +285,29 @@ async function saveTransaction(fd){
    recordedBySignature:recordedCanvas.toDataURL(),
    witnessSignature:witnessCanvas.toDataURL(),
    supportingDocument
- });
+ };
+ await put('transactions',txRecord);
+ if(auditLinkedIncident){
+   const audit=await getOne('audits',auditContextId);
+   if(audit){
+     audit.incidents=Array.isArray(audit.incidents)?audit.incidents:[];
+     audit.incidents.push({
+       transactionId:txId,
+       timestamp:txRecord.timestamp,
+       sourceLocation:from,
+       items,
+       explanation:txRecord.notes,
+       recordedBy,
+       witness,
+       supportingDocument,
+       reconciliationMode:'audit_physical_count'
+     });
+     audit.supportingDocuments=Array.isArray(audit.supportingDocuments)?audit.supportingDocuments:[];
+     if(supportingDocument)audit.supportingDocuments.push({...supportingDocument,linkedTransactionId:txId,documentType:'Discrepancy / incident memo',sourceLocation:from});
+     audit.updatedAt=nowISO();
+     await put('audits',audit);
+   }
+ }
  await refreshAll();
 }
 function auditSkeleton(a){
@@ -301,15 +325,15 @@ async function startAudit(){
  const b=await balances(),reports=await getAll('reports');const d=new Date(),month=d.toLocaleString(undefined,{month:'long',year:'numeric'});
  reports.sort((x,y)=>String(y.finalizedAt||y.updatedAt||y.createdAt||'').localeCompare(String(x.finalizedAt||x.updatedAt||x.createdAt||'')));
  const previous=reports[0]||null;
- const counts={},priorCounts={};LOCS.forEach(l=>{counts[l]={};priorCounts[l]={};MEDS.forEach(m=>{counts[l][m]=b[l][m];priorCounts[l][m]=previous?.counts?.[l]?.[m]??null})});
+ const counts={},priorCounts={},openingCounts={};LOCS.forEach(l=>{counts[l]={};priorCounts[l]={};openingCounts[l]={};MEDS.forEach(m=>{counts[l][m]=b[l][m];openingCounts[l][m]=b[l][m];priorCounts[l][m]=previous?.counts?.[l]?.[m]??null})});
  const localDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
- const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],signatures:{},auditorName:'',auditorEmployeeNumber:'',attestationText:FINAL_ATTESTATION,attestationName:'',attestationEmployeeNumber:'',attestationAccepted:false};
+ const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,openingCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],incidents:[],signatures:{},auditorName:'',auditorEmployeeNumber:'',attestationText:FINAL_ATTESTATION,attestationName:'',attestationEmployeeNumber:'',attestationAccepted:false};
  await put('audits',a);await put('meta',{id:'activeAudit',auditId:a.id,updatedAt:nowISO()});await editAudit(a.id)
 }
 function unitAuditSection(a,loc,index){
  const tag=a.breakawayTags?.[loc]||{},savedSig=a.signatures?.[loc]||{};
  const sig={...savedSig,signer:savedSig.signer||a.auditorName||'',employeeNumber:savedSig.employeeNumber||a.auditorEmployeeNumber||''};
- const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];return '<div class="unit-med-row compact"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current">Current<input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+Number(a.counts?.[loc]?.[m]||0)+'"></label></div>'}).join('');
+ const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];return '<div class="unit-med-row compact"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current">Current<input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+Number(a.counts?.[loc]?.[m]||0)+'"></label><button type="button" class="audit-incident-btn" data-audit-incident data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Discrepancy / incident</button></div>'}).join('');
  return '<section class="audit-card unit-audit-card compact-unit" data-unit-section="'+esc(loc)+'">'+
  '<div class="unit-audit-head compact-head"><div><span class="kicker">LOCATION '+(index+1)+' OF '+LOCS.length+'</span><h3>'+esc(loc)+'</h3></div><span class="unit-step-badge">'+esc(loc)+'</span></div>'+
  '<div class="unit-compact-grid">'+
@@ -609,6 +633,28 @@ async function editAudit(id){
    const btn=document.getElementById('expandFinalSignature');
    if(btn)btn.onclick=()=>openStandaloneSignatureCapture(finalSigCanvas,'Final auditor signature',()=>scheduleAuditAutosave(a.id,true));
  }
+ document.querySelectorAll('[data-audit-incident]').forEach(btn=>btn.onclick=()=>{
+   const txForm=document.getElementById('txForm');
+   const txDialog=document.getElementById('txDialog');
+   if(!txForm||!txDialog)return;
+   txForm.reset();
+   const type=txForm.querySelector('select[name=type]');
+   const from=txForm.querySelector('select[name=fromLocation]');
+   const auditCtx=document.getElementById('txAuditContextId');
+   if(type)type.value='incident';
+   if(from)from.value=btn.dataset.loc||'';
+   if(auditCtx)auditCtx.value=a.id;
+   const rows=document.getElementById('txMedicationRows');
+   if(rows){rows.innerHTML='';addTxMedicationRow(btn.dataset.med||'',1);}
+   const currentInput=document.querySelector('[data-count-loc="'+CSS.escape(btn.dataset.loc||'')+'"][data-count-med="'+CSS.escape(btn.dataset.med||'')+'"]');
+   const currentCount=currentInput?Number(currentInput.value||0):0;
+   const expected=Number(a.openingCounts?.[btn.dataset.loc]?.[btn.dataset.med]??a.counts?.[btn.dataset.loc]?.[btn.dataset.med]??currentCount);
+   const notes=document.getElementById('txNotes');
+   if(notes&&!notes.value)notes.placeholder='Describe what happened. Expected '+expected+'; current physical count '+currentCount+'.';
+   const txTypeSelect=document.querySelector('#txForm select[name=type]');
+   if(txTypeSelect)txTypeSelect.dispatchEvent(new Event('change'));
+   txDialog.showModal();
+ });
  document.getElementById('saveAudit').onclick=()=>saveAuditFromUI(a.id,false);
  document.getElementById('finalizeAudit').onclick=()=>saveAuditFromUI(a.id,true);
  const monthPicker=document.getElementById('auditMonthPicker');
@@ -1599,6 +1645,7 @@ function reportHtml(r){
  sigCard('Medic 1')+sigCard('Medic 2')+sigCard('Medic 3')+sigCard('Safe')+sigCard('Expired')+
  '</div></section>'+
  '<section class="report-attestation"><h2>Final overall controlled-substance audit attestation</h2><p>'+esc(r.attestationText||FINAL_ATTESTATION).replace(/\n/g,'<br>')+'</p><div class="report-final-signature'+(r.isTest?' report-final-signature-explicit':'')+'"><div class="report-signature-label">FINAL CERTIFYING AUDITOR SIGNATURE</div>'+(r.isTest?'<div class="report-final-signature-capture">'+(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'<div class="report-signature-placeholder"></div>')+'</div>':(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':''))+'<div class="report-signature-name">'+esc(r.attestationName||'')+(r.attestationEmployeeNumber?' · Employee #'+esc(r.attestationEmployeeNumber):'')+'</div></div></section>'+
+ +(Array.isArray(r.incidents)&&r.incidents.length?'<section class="report-incidents"><h2>Discrepancies / incidents</h2>'+r.incidents.map(x=>'<div class="report-amendment-row"><b>'+esc(x.sourceLocation||'Unknown source')+'</b> · '+esc((x.items||[]).map(i=>i.medication+' × '+i.quantity).join(', '))+' · '+esc(x.explanation||'')+(x.supportingDocument?.name?' · Memo: '+esc(x.supportingDocument.name):'')+'</div>').join('')+'</section>':'')+
  '<section class="report-notes"><h2>Audit notes</h2><p class="audit-notes-text">'+esc(r.notes||'').replace(/\n/g,'<br>')+'</p>'+(r.usageSummary?'<div class="report-usage-summary">'+esc(r.usageSummary||'').replace(/\n/g,'<br>')+'</div>':'')+'</section>'+
  '<footer class="report-footer">Finalized inventory snapshot'+(recordNo?' · Record #'+esc(recordNo):'')+'</footer>'+
  '</div>';
@@ -1745,6 +1792,7 @@ function bind(){
  const txNotes=document.getElementById('txNotes');
  const txPdfLabel=document.getElementById('txSupportingPdfLabel');
  const txFromLocationLabel=document.getElementById('txFromLocationLabel');
+ const txFromLocationText=document.getElementById('txFromLocationText');
  const txPharmacySourceLabel=document.getElementById('txPharmacySourceLabel');
  const txFromLocationSelect=document.querySelector('#txForm select[name=fromLocation]');
  const txToLocationText=document.getElementById('txToLocationText');
@@ -1754,7 +1802,9 @@ function bind(){
  const syncTxPdfRequirement=()=>{
    const received=txTypeSelect?.value==='received';
    const incident=txTypeSelect?.value==='incident';
+   const auditIncident=incident&&Boolean(document.getElementById('txAuditContextId')?.value);
    const required=received||txTypeSelect?.value==='destroyed'||incident;
+   if(txFromLocationText)txFromLocationText.textContent=incident?'Vial source location':'From';
    if(txFromLocationLabel){
      txFromLocationLabel.hidden=received;
      txFromLocationLabel.style.display=received?'none':'';
@@ -1789,12 +1839,16 @@ function bind(){
        :'No DEA Form 222 required for internal redistribution between department inventory sites, including movement into Expired inventory.');
  };
  if(txTypeSelect){txTypeSelect.addEventListener('change',syncTxPdfRequirement);syncTxPdfRequirement();}
- document.getElementById('newTxBtn').onclick=()=>{syncTxPdfRequirement();document.getElementById('txDialog').showModal();};
+ document.getElementById('newTxBtn').onclick=()=>{
+   const auditCtx=document.getElementById('txAuditContextId');if(auditCtx)auditCtx.value='';
+   syncTxPdfRequirement();document.getElementById('txDialog').showModal();
+ };
  const txDialog=document.getElementById('txDialog');
  const txForm=document.getElementById('txForm');
  const closeTx=()=>{
    if(txDialog?.open)txDialog.close('cancel');
    txForm?.reset();
+   const auditCtx=document.getElementById('txAuditContextId');if(auditCtx)auditCtx.value='';
    if(txRowsHost){txRowsHost.innerHTML='';addTxMedicationRow();}
    [txRecordedSig,txWitnessSig].forEach(c=>{if(c){c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.hasSignature='false';}});
    syncTxPdfRequirement();
