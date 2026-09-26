@@ -1494,8 +1494,6 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
          medic3.classList.add('pdf-single-cert-card','pdf-medic3-cert');
          const grid=medic3.querySelector('.report-signature-grid');
          if(grid){
-           grid.style.setProperty('display','grid','important');
-           grid.style.setProperty('grid-template-columns','1fr 1fr','important');
            grid.style.setProperty('break-inside','avoid','important');
            grid.style.setProperty('page-break-inside','avoid','important');
          }
@@ -1526,24 +1524,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        const wrap=document.createElement('div');
        wrap.className='pdf-medic3-safe-wrap';
 
-       // On mobile PDF generation, keep Medic 3 and Safe side-by-side.
-       // The detailed visual sizing is handled by the PDF stylesheet so both columns stay balanced.
-       if(window.matchMedia('(max-width:700px)').matches){
-         wrap.style.setProperty('display','flex','important');
-         wrap.style.setProperty('flex-direction','row','important');
-         wrap.style.setProperty('flex-wrap','nowrap','important');
-         wrap.style.setProperty('gap','12px','important');
-         wrap.style.setProperty('width','100%','important');
-         wrap.style.setProperty('align-items','stretch','important');
-         [medic3,safe].filter(Boolean).forEach(card=>{
-           card.style.setProperty('flex','1 1 0','important');
-           card.style.setProperty('width','calc(50% - 6px)','important');
-           card.style.setProperty('max-width','calc(50% - 6px)','important');
-           card.style.setProperty('min-width','0','important');
-           card.style.setProperty('margin','0','important');
-         });
-       }
-
+       // Medic 3 / Safe intentionally uses the same PDF layout rules as Medic 1 / Medic 2.
        if(medic3)wrap.appendChild(medic3);
        if(safe)wrap.appendChild(safe);
 
