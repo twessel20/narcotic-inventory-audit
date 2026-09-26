@@ -2859,3 +2859,295 @@ body.report-open{overflow:hidden}
 .pdf-render-stage .pdf-inventory-tags-page section:last-child{
   margin-bottom:0 !important;
 }
+
+
+/* =====================================================================
+   PDF CLEAN RESET v102 - authoritative generated-PDF layout
+   ===================================================================== */
+.pdf-clean-stage .pdf-clean-report,
+.pdf-clean-stage .pdf-clean-report *{
+  box-sizing:border-box;
+}
+.pdf-clean-stage .pdf-clean-report{
+  width:7.55in !important;
+  max-width:7.55in !important;
+  margin:0 !important;
+  padding:0 !important;
+  overflow:visible !important;
+  color:#172838 !important;
+  background:#fff !important;
+}
+.pdf-clean-stage .pdf-clean-report section,
+.pdf-clean-stage .pdf-clean-report .pdf-packet-page,
+.pdf-clean-stage .pdf-clean-report .pdf-packet-cover{
+  break-before:auto !important;
+  page-break-before:auto !important;
+  break-after:auto !important;
+  page-break-after:auto !important;
+}
+.pdf-clean-stage .pdf-packet-page{
+  margin:0 !important;
+  padding:12px 14px !important;
+  border:1px solid #d9e3ea !important;
+  border-radius:10px !important;
+  background:#fff !important;
+  overflow:visible !important;
+}
+.pdf-clean-stage .pdf-packet-title{
+  margin:-12px -14px 12px !important;
+  padding:9px 12px 8px !important;
+  border-bottom:2px solid #123a5a !important;
+  background:#f6f9fb !important;
+  color:#123a5a !important;
+  font-size:1rem !important;
+  line-height:1.15 !important;
+  font-weight:900 !important;
+}
+.pdf-clean-stage .pdf-packet-page > section{
+  margin:10px 0 14px !important;
+  padding:0 !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:#fff !important;
+  overflow:visible !important;
+}
+.pdf-clean-stage .pdf-packet-page > section > h2{
+  margin:0 0 7px !important;
+  padding:4px 0 5px !important;
+  border-bottom:1px solid #d9e3ea !important;
+  background:transparent !important;
+  color:#172838 !important;
+  font-size:.9rem !important;
+  line-height:1.15 !important;
+}
+.pdf-clean-stage .pdf-packet-cover{
+  width:100% !important;
+  height:9.55in !important;
+  min-height:9.55in !important;
+  max-height:9.55in !important;
+  margin:0 !important;
+  overflow:hidden !important;
+  border:1.5px solid #c8d6e0 !important;
+  break-after:auto !important;
+  page-break-after:auto !important;
+}
+.pdf-clean-stage .pdf-packet-page,
+.pdf-clean-stage .pdf-page-start{
+  break-before:page !important;
+  page-break-before:always !important;
+}
+.pdf-clean-stage .pdf-packet-cover + .pdf-packet-page{
+  break-before:page !important;
+  page-break-before:always !important;
+}
+
+/* Monthly summary */
+.pdf-clean-stage .pdf-monthly-summary-page .report-top{
+  margin:0 0 8px !important;
+}
+.pdf-clean-stage .pdf-monthly-summary-page .report-top img{
+  width:74px !important;
+  height:74px !important;
+}
+.pdf-clean-stage .pdf-monthly-summary-page .report-top h1{
+  font-size:1.35rem !important;
+}
+.pdf-clean-stage .pdf-monthly-summary-page .report-meta-grid{
+  font-size:.8rem !important;
+  gap:4px 24px !important;
+}
+.pdf-clean-stage .pdf-monthly-summary-page .report-blue-rule{
+  margin:10px 0 !important;
+  border-top-width:2px !important;
+}
+.pdf-clean-stage .pdf-monthly-summary-page .report-executive-summary{
+  margin:10px 0 0 !important;
+  padding:10px 12px !important;
+  border:1px solid #d9e3ea !important;
+  border-radius:8px !important;
+  background:#f8fbfd !important;
+}
+.pdf-clean-stage .pdf-monthly-summary-page .report-executive-summary > h2{
+  margin:0 0 6px !important;
+  padding:0 !important;
+  border:0 !important;
+  background:transparent !important;
+  font-size:.92rem !important;
+}
+
+/* Inventory + tags */
+.pdf-clean-stage .pdf-inventory-tags-page .report-table{
+  width:100% !important;
+  min-width:0 !important;
+  table-layout:fixed !important;
+  font-size:.71rem !important;
+}
+.pdf-clean-stage .pdf-inventory-tags-page .report-table th,
+.pdf-clean-stage .pdf-inventory-tags-page .report-table td{
+  padding:5px !important;
+  line-height:1.16 !important;
+  white-space:normal !important;
+  overflow-wrap:anywhere !important;
+}
+.pdf-clean-stage .pdf-inventory-tags-page .report-inventory th:first-child,
+.pdf-clean-stage .pdf-inventory-tags-page .report-inventory td:first-child{
+  width:16% !important;
+}
+.pdf-clean-stage .pdf-inventory-tags-page .report-inventory th small{
+  display:block !important;
+  margin-top:1px !important;
+  font-size:.52rem !important;
+}
+
+/* ESO record */
+.pdf-clean-stage .pdf-eso-record-page .report-eso-source > h2{
+  display:none !important;
+}
+.pdf-clean-stage .pdf-eso-record-page .report-imported-admin > h2{
+  margin:8px 0 6px !important;
+  padding:4px 0 !important;
+  font-size:.88rem !important;
+}
+.pdf-clean-stage .pdf-eso-record-page .report-table{
+  width:100% !important;
+  table-layout:fixed !important;
+  font-size:.68rem !important;
+}
+.pdf-clean-stage .pdf-eso-record-page .report-table th,
+.pdf-clean-stage .pdf-eso-record-page .report-table td{
+  padding:4px 5px !important;
+  line-height:1.15 !important;
+  overflow-wrap:anywhere !important;
+}
+.pdf-clean-stage .report-vial-explainer{
+  margin:5px 0 8px !important;
+  font-size:.72rem !important;
+  line-height:1.28 !important;
+  color:#53687c !important;
+}
+.pdf-clean-stage .report-vial-summary{
+  margin-top:10px !important;
+  break-inside:auto !important;
+  page-break-inside:auto !important;
+}
+.pdf-clean-stage .report-vial-row{
+  break-inside:avoid !important;
+  page-break-inside:avoid !important;
+}
+
+/* Transactions */
+.pdf-clean-stage .pdf-transactions-page .report-note{
+  margin:0 0 9px !important;
+  font-size:.75rem !important;
+  line-height:1.3 !important;
+}
+.pdf-clean-stage .pdf-transactions-page .report-table{
+  width:100% !important;
+  table-layout:fixed !important;
+  font-size:.7rem !important;
+}
+.pdf-clean-stage .pdf-transactions-page .report-table th,
+.pdf-clean-stage .pdf-transactions-page .report-table td{
+  padding:5px !important;
+  line-height:1.15 !important;
+  overflow-wrap:anywhere !important;
+}
+
+/* Certification pages */
+.pdf-clean-stage .pdf-certifications-page{
+  padding:10px 12px !important;
+}
+.pdf-clean-stage .pdf-certifications-page .pdf-packet-title{
+  margin:-10px -12px 9px !important;
+  padding:7px 10px !important;
+  font-size:.9rem !important;
+}
+.pdf-clean-stage .pdf-certifications-primary .report-cert{
+  margin:0 0 8px !important;
+  padding:8px 9px !important;
+}
+.pdf-clean-stage .pdf-certifications-secondary-wrap{
+  display:grid !important;
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  gap:6px !important;
+  width:100% !important;
+  break-inside:avoid-page !important;
+  page-break-inside:avoid !important;
+}
+.pdf-clean-stage .pdf-certifications-secondary-wrap > .report-cert{
+  margin:0 !important;
+  padding:5px !important;
+  min-width:0 !important;
+  overflow:hidden !important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-cert h2{
+  margin:0 0 3px !important;
+  font-size:.72rem !important;
+  line-height:1.05 !important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-cert-site,
+.pdf-clean-stage .pdf-certifications-page .report-cert-statement,
+.pdf-clean-stage .pdf-certifications-page .report-signature-site{
+  margin:2px 0 !important;
+  font-size:.52rem !important;
+  line-height:1.08 !important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-signature-grid{
+  display:block !important;
+  margin-top:3px !important;
+}
+.pdf-clean-stage .pdf-certifications-primary .report-signature-grid{
+  display:grid !important;
+  grid-template-columns:1fr 1fr !important;
+  gap:8px !important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-signature-box{
+  margin:0 0 4px !important;
+  padding:4px 5px !important;
+  border-radius:6px !important;
+  break-inside:avoid !important;
+  page-break-inside:avoid !important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-signature-label{
+  font-size:.5rem !important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-signature-box img,
+.pdf-clean-stage .pdf-certifications-page .report-signature-placeholder{
+  width:100% !important;
+  height:28px !important;
+  max-height:28px !important;
+  margin:2px 0 0 !important;
+  object-fit:contain !important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-signature-name{
+  padding-top:2px !important;
+  font-size:.52rem !important;
+  line-height:1.05 !important;
+}
+
+/* Attestation and notes */
+.pdf-clean-stage .pdf-attestation-page .report-attestation,
+.pdf-clean-stage .pdf-notes-page .report-notes{
+  margin:0 !important;
+  padding:10px 12px !important;
+  border:1px solid #d9e3ea !important;
+  border-radius:8px !important;
+}
+.pdf-clean-stage .pdf-attestation-page .report-final-signature{
+  margin-top:10px !important;
+}
+.pdf-clean-stage .pdf-attestation-page .report-final-signature img{
+  height:72px !important;
+}
+.pdf-clean-stage .pdf-notes-page .report-footer{
+  margin-top:18px !important;
+}
+
+/* Generic annual/legacy PDF sections */
+.pdf-clean-stage .pdf-generic-section{
+  margin:0 !important;
+  padding:12px 14px !important;
+  border:1px solid #d9e3ea !important;
+  border-radius:10px !important;
+  background:#fff !important;
+}
