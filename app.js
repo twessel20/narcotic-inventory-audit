@@ -155,11 +155,41 @@ async function renderInventory(){
  totals.innerHTML=MEDS.map(m=>{const t=['Medic 1','Medic 2','Medic 3','Safe'].reduce((a,l)=>a+b[l][m],0);return '<div class="total-row"><div><b>'+m+'</b><small>Medic 1 + Medic 2 + Medic 3 + Safe</small></div><strong>'+t+'</strong></div>'}).join('');
 }
 
-async function renderActivity(){const q=(document.getElementById('activitySearch')?.value||'').toLowerCase();let rows=await getAll('transactions');rows.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));if(q)rows=rows.filter(r=>JSON.stringify(r).toLowerCase().includes(q));document.getElementById('activityList').innerHTML=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+' · '+esc(r.medication)+' · '+esc(r.quantity)+'</strong><div>'+esc(r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy):'')+(r.reference?' · Ref '+esc(r.reference):'')+'</div>'+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+'</div>').join(''):'<div class="empty">No activity recorded yet.</div>'}
+async function renderActivity(){const q=(document.getElementById('activitySearch')?.value||'').toLowerCase();let rows=await getAll('transactions');rows.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));if(q)rows=rows.filter(r=>JSON.stringify(r).toLowerCase().includes(q));document.getElementById('activityList').innerHTML=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+' · '+esc(r.medication)+' · '+esc(r.quantity)+'</strong><div>'+esc(r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy):'')+(r.reference?' · Ref '+esc(r.reference):'')+'</div>'+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+'</div>').join(''):'<div class="empty">No activity recorded yet.</div>'}
 
 async function saveTransaction(fd){
  if(!requireCloudAuth())throw new Error('Sign in is required for live inventory changes.');
  const type=fd.get('type'), med=fd.get('medication'), qty=Number(fd.get('quantity')||0), from=fd.get('fromLocation'), to=fd.get('toLocation');
+ const supportFile=fd.get('supportingPdf');
+ const requires222=type==='received'||type==='destroyed';
+
+ if(requires222){
+   if(!(supportFile instanceof File)||!supportFile.size)throw new Error('Attach the required DEA Form 222 PDF before saving this transaction.');
+   if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('DEA Form 222 must be attached as a PDF.');
+ }
+
+ const txId=uid('tx');
+ let supportingDocument=null;
+ if(supportFile instanceof File&&supportFile.size){
+   if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('Supporting documents must be PDF files.');
+   const buf=await supportFile.arrayBuffer();
+   const digest=await sha256Buffer(buf);
+   const path='transactions/'+txId+'/'+Date.now()+'-'+safeStorageName(supportFile.name);
+   const {error:uploadError}=await sb.storage.from('audit-supporting-docs').upload(path,supportFile,{contentType:'application/pdf',upsert:false});
+   if(uploadError)throw uploadError;
+   supportingDocument={
+     documentType:requires222?'DEA Form 222':'Supporting transaction PDF',
+     name:supportFile.name,
+     storageBucket:'audit-supporting-docs',
+     storagePath:path,
+     mimeType:'application/pdf',
+     size:supportFile.size,
+     sha256:digest,
+     uploadedAt:nowISO(),
+     uploadedBy:cloudSession?.user?.email||''
+   };
+ }
+
  const b=await balances();
  if(type==='adjustment'){
    if(!to)throw new Error('Choose the location being counted.');
@@ -178,10 +208,23 @@ async function saveTransaction(fd){
    await setBalance(from,med,b[from][med]-qty);
  }
  const labels={adjustment:'Physical count / adjustment',transfer:'Transfer',received:'Received / restock',expired:'Moved to expired',destroyed:'Destroyed / transferred out',waste:'Waste'};
- await put('transactions',{id:uid('tx'),timestamp:nowISO(),type,typeLabel:labels[type],medication:med,quantity:qty,fromLocation:from,toLocation:type==='expired'?'Expired':to,reference:fd.get('reference')||'',notes:fd.get('notes')||'',recordedBy:fd.get('recordedBy')||'',witness:fd.get('witness')||''});
+ await put('transactions',{
+   id:txId,
+   timestamp:nowISO(),
+   type,
+   typeLabel:labels[type],
+   medication:med,
+   quantity:qty,
+   fromLocation:from,
+   toLocation:type==='expired'?'Expired':to,
+   reference:fd.get('reference')||'',
+   notes:fd.get('notes')||'',
+   recordedBy:fd.get('recordedBy')||'',
+   witness:fd.get('witness')||'',
+   supportingDocument
+ });
  await refreshAll();
 }
-
 function auditSkeleton(a){
  const b=a.counts||{};return '<div class="audit-card"><div class="audit-header"><div><h3>'+esc(a.month||'Draft audit')+'</h3><div class="meta">Status: '+esc(a.status||'draft')+' · Saved '+fmtDate(a.updatedAt)+'</div></div><div class="button-row"><button data-audit-action="open" data-id="'+a.id+'">Open</button><button data-audit-action="delete" data-id="'+a.id+'">Delete</button></div></div></div>'
 }
@@ -1621,7 +1664,18 @@ function bind(){
    if(b.dataset.tab==='audit'&&!activeAuditId)await renderAudits();
    if(b.dataset.tab==='reports')await renderReports();
  });
- document.getElementById('newTxBtn').onclick=()=>document.getElementById('txDialog').showModal();
+ const txTypeSelect=document.querySelector('#txForm select[name=type]');
+ const txPdfInput=document.getElementById('txSupportingPdf');
+ const txPdfHint=document.getElementById('txSupportingPdfHint');
+ const syncTxPdfRequirement=()=>{
+   const required=txTypeSelect?.value==='received'||txTypeSelect?.value==='destroyed';
+   if(txPdfInput)txPdfInput.required=required;
+   if(txPdfHint)txPdfHint.textContent=required
+     ?'DEA Form 222 PDF required for this transaction.'
+     :'Optional unless required by department documentation policy.';
+ };
+ if(txTypeSelect){txTypeSelect.addEventListener('change',syncTxPdfRequirement);syncTxPdfRequirement();}
+ document.getElementById('newTxBtn').onclick=()=>{syncTxPdfRequirement();document.getElementById('txDialog').showModal();};
  document.getElementById('saveTxBtn').onclick=async e=>{e.preventDefault();try{await saveTransaction(new FormData(document.getElementById('txForm')));document.getElementById('txDialog').close();document.getElementById('txForm').reset()}catch(err){alert(err.message)}};
  document.getElementById('activitySearch').oninput=renderActivity;document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;
  document.getElementById('auditWorkspace').onclick=async e=>{const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open')editAudit(b.dataset.id);if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);renderAudits()}};
