@@ -155,29 +155,56 @@
     <form method="dialog" id="auditFindingForm" class="dialog-form">
       <input type="hidden" id="auditFindingLoc">
       <input type="hidden" id="auditFindingMed">
-      <div class="dialog-head"><h2>Audit finding</h2><button type="button" id="closeAuditFinding" class="icon-btn" aria-label="Close audit finding">×</button></div>
-      <div class="form-grid">
-        <label class="wide">Finding type
-          <select id="auditFindingType" required>
-            <option value="expired">Expired medication found</option>
-            <option value="damaged">Damaged vial found</option>
-          </select>
-        </label>
+      <select id="auditFindingType" hidden aria-hidden="true">
+        <option value="expired">Expired</option>
+        <option value="damaged">Damaged</option>
+      </select>
+
+      <div class="dialog-head">
+        <div><span class="kicker">MONTHLY AUDIT FINDING</span><h2>What did you find?</h2></div>
+        <button type="button" id="closeAuditFinding" class="icon-btn" aria-label="Close audit finding">×</button>
+      </div>
+
+      <div id="auditFindingContext" class="audit-finding-context"></div>
+
+      <div class="audit-finding-choice-grid" role="group" aria-label="Finding type">
+        <button type="button" class="audit-finding-choice selected" data-finding-choice="expired">
+          <strong>Expired medication</strong>
+          <span>The vial is physically present but past expiration. It will be removed from this unit and added to Expired inventory.</span>
+        </button>
+        <button type="button" class="audit-finding-choice" data-finding-choice="damaged">
+          <strong>Damaged vial</strong>
+          <span>The vial is damaged or unusable. You will specify whether the physical vial can still be retained in Expired inventory.</span>
+        </button>
+      </div>
+
+      <div class="form-grid audit-finding-fields">
         <label>Quantity
           <input id="auditFindingQty" type="number" min="1" step="1" inputmode="numeric" value="1" required>
+          <small>Whole vials only.</small>
         </label>
-        <label id="auditFindingRetainedLabel" hidden>Physical vial retained?
+
+        <label id="auditFindingRetainedLabel" hidden>Is the damaged vial still physically present?
           <select id="auditFindingRetained">
-            <option value="yes">Yes — place in Expired inventory</option>
-            <option value="no">No — cannot physically store vial</option>
+            <option value="yes">Yes — retain vial and move it to Expired inventory</option>
+            <option value="no">No — no physical vial remains to place in Expired inventory</option>
           </select>
         </label>
+
         <label class="wide" id="auditFindingNoteLabel" hidden>Damage / disposition explanation
-          <textarea id="auditFindingNote" rows="4" placeholder="Describe the damage. If the vial cannot be retained, explain why and what happened to it."></textarea>
+          <textarea id="auditFindingNote" rows="4" placeholder="Describe the damage and disposition. If no physical vial remains, document exactly what happened to it."></textarea>
         </label>
-        <div class="wide notice" id="auditFindingImpact"></div>
+
+        <div class="wide audit-finding-impact-card">
+          <span class="kicker">INVENTORY EFFECT</span>
+          <div id="auditFindingImpact"></div>
+        </div>
       </div>
-      <div class="dialog-actions"><button type="button" id="cancelAuditFinding">Cancel</button><button type="button" class="primary" id="saveAuditFinding">Record finding</button></div>
+
+      <div class="dialog-actions">
+        <button type="button" id="cancelAuditFinding">Cancel</button>
+        <button type="button" class="primary" id="saveAuditFinding">Record audit finding</button>
+      </div>
     </form>
   </dialog>
 
