@@ -156,8 +156,8 @@ async function renderInventory(){
  const lastAudit=finalized[0]||null;
  const lastAuditDate=lastAudit?formatDisplayDate(lastAudit.auditDate||lastAudit.finalizedAt||lastAudit.createdAt):'';
  const basisText=lastAuditDate
-   ?'Physical inventory last verified '+lastAuditDate+'. Displayed balances include recorded inventory transactions entered after that audit.'
-   :'No finalized physical audit is on file. Displayed balances reflect recorded inventory data only.';
+   ?'Physical inventory was last verified '+lastAuditDate+'. Active stock may have changed since that physical audit. Displayed balances reflect the last finalized audit adjusted only by inventory transactions recorded in this system after that date.'
+   :'No finalized physical audit is on file. Displayed balances reflect recorded inventory data only and should not be interpreted as a verified physical count.';
  const totalBasis=document.getElementById('inventoryBalanceAsOf');
  if(totalBasis)totalBasis.textContent=basisText;
  grid.innerHTML=LOCS.map(loc=>'<div class="location-card"><h3><span>'+loc+'</span><span class="pill '+(loc==='Expired'?'expired':'')+'">'+(loc==='Expired'?'Segregated':'Active')+'</span></h3><div class="location-card-meta">'+esc(lastAuditDate?'Last physical audit: '+lastAuditDate:'No finalized physical audit on file')+'</div>'+MEDS.map(m=>'<div class="med-row"><span>'+m+'</span><strong>'+b[loc][m]+'</strong></div>').join('')+'</div>').join('');
