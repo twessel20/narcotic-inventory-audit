@@ -1676,7 +1676,19 @@ function bind(){
  };
  if(txTypeSelect){txTypeSelect.addEventListener('change',syncTxPdfRequirement);syncTxPdfRequirement();}
  document.getElementById('newTxBtn').onclick=()=>{syncTxPdfRequirement();document.getElementById('txDialog').showModal();};
- document.getElementById('saveTxBtn').onclick=async e=>{e.preventDefault();try{await saveTransaction(new FormData(document.getElementById('txForm')));document.getElementById('txDialog').close();document.getElementById('txForm').reset()}catch(err){alert(err.message)}};
+ const txDialog=document.getElementById('txDialog');
+ const txForm=document.getElementById('txForm');
+ const closeTx=()=>{
+   if(txDialog?.open)txDialog.close('cancel');
+   txForm?.reset();
+   syncTxPdfRequirement();
+ };
+ const closeTxBtn=document.getElementById('closeTxDialog');
+ const cancelTxBtn=document.getElementById('cancelTxDialog');
+ if(closeTxBtn)closeTxBtn.onclick=closeTx;
+ if(cancelTxBtn)cancelTxBtn.onclick=closeTx;
+ if(txDialog)txDialog.addEventListener('cancel',e=>{e.preventDefault();closeTx();});
+ document.getElementById('saveTxBtn').onclick=async e=>{e.preventDefault();try{await saveTransaction(new FormData(txForm));txDialog.close();txForm.reset();syncTxPdfRequirement()}catch(err){alert(err.message)}};
  document.getElementById('activitySearch').oninput=renderActivity;document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;
  document.getElementById('auditWorkspace').onclick=async e=>{const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open')editAudit(b.dataset.id);if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);renderAudits()}};
  document.getElementById('reportsList').onclick=async e=>{
