@@ -5311,3 +5311,75 @@ body.report-open{overflow:hidden}
     zoom:1!important;
   }
 }
+
+
+/* v177 Medic 3 + Safe: fixed order and tighter single-page fit */
+.pdf-clean-stage .pdf-medic3-safe-page{
+  padding:5px 7px!important;
+  max-height:9.05in!important;
+  overflow:hidden!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-packet-title{
+  margin:-5px -7px 4px!important;
+  padding:5px 7px!important;
+  font-size:.78rem!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-explainer{
+  margin:0 0 3px!important;
+  font-size:.52rem!important;
+  line-height:1.03!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap{
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+  gap:5px!important;
+  align-items:flex-start!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .pdf-medic3-cert{order:1!important;}
+.pdf-clean-stage .pdf-medic3-safe-wrap .pdf-safe-cert{order:2!important;}
+
+.pdf-clean-stage .pdf-medic3-safe-wrap > .report-cert{
+  padding:3px 4px!important;
+  margin:0!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-cert h2{
+  margin:0 0 2px!important;
+  font-size:.64rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-cert-site,
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-cert-statement,
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-site{
+  margin:1px 0!important;
+  font-size:.43rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-grid{
+  display:block!important;
+  margin-top:1px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-box{
+  min-height:0!important;
+  height:auto!important;
+  margin:0 0 2px!important;
+  padding:2px 3px!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-label{
+  font-size:.41rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-box img,
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-placeholder{
+  height:18px!important;
+  min-height:18px!important;
+  max-height:18px!important;
+  margin:1px 0 0!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-name{
+  padding-top:1px!important;
+  font-size:.42rem!important;
+  line-height:1!important;
+}
