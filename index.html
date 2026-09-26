@@ -36,14 +36,18 @@
   <main id="app">
     <section id="inventory" class="tab-panel active">
       <div class="section-head">
-        <div><span class="kicker">CURRENT PHYSICAL BALANCE</span><h2>Inventory at a glance</h2></div>
+        <div><span class="kicker">RECORDED INVENTORY BALANCE</span><h2>Inventory at a glance</h2></div>
         <div class="inventory-primary-actions">
           <button type="button" id="startAuditHomeBtn">Start Audit</button>
           <button class="primary" id="newTxBtn">Record transaction</button>
         </div>
       </div>
+      <div class="notice inventory-balance-disclosure">
+        <strong>Inventory balance basis:</strong> These balances begin with the most recently finalized physical audit and are adjusted only by inventory transactions recorded in this system after that audit. They do not represent a new physical count unless a subsequent audit has been completed and finalized.
+      </div>
       <div class="card totals-card">
         <h3>Active stock totals</h3>
+        <p class="meta">Last finalized physical inventory, plus or minus recorded post-audit inventory transactions.</p>
         <div id="activeTotals"></div>
       </div>
       <div id="inventoryGrid" class="location-grid"></div>
