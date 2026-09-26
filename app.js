@@ -266,7 +266,6 @@ async function saveTransaction(fd){
    externalSource:type==='received'?sourcePharmacy:'',
    sourcePharmacy:type==='received'?sourcePharmacy:'',
    toLocation:type==='expired'?'Expired':destination,
-   reference:fd.get('reference')||'',
    notes:fd.get('notes')||'',
    recordedBy,
    witness,
