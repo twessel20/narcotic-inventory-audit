@@ -3792,3 +3792,69 @@ body.report-open{overflow:hidden}
     grid-template-columns:1fr 1fr 1fr;
   }
 }
+
+
+/* Full-screen landscape signature capture */
+.signature-capture-dialog.signature-landscape-mode{
+  width:100vw;
+  max-width:none;
+  height:100dvh;
+  max-height:100dvh;
+  margin:0;
+  padding:0;
+  border:0;
+  border-radius:0;
+  background:#f5f8fa;
+}
+.signature-capture-dialog.signature-landscape-mode::backdrop{
+  background:#f5f8fa;
+}
+.signature-capture-dialog.signature-landscape-mode .signature-capture-shell{
+  width:100%;
+  height:100%;
+  box-sizing:border-box;
+  display:grid;
+  grid-template-rows:auto auto minmax(0,1fr) auto;
+  gap:8px;
+  padding:10px max(12px,env(safe-area-inset-right)) calc(10px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left));
+}
+.signature-capture-dialog.signature-landscape-mode .signature-capture-head{
+  margin:0;
+}
+.signature-capture-dialog.signature-landscape-mode .signature-capture-head h2{
+  margin:0;
+  font-size:18px;
+}
+.signature-capture-dialog.signature-landscape-mode .signature-capture-hint{
+  text-align:center;
+  margin:0;
+  font-size:13px;
+}
+.signature-capture-dialog.signature-landscape-mode #signatureCaptureCanvas{
+  width:100%;
+  height:100%;
+  min-height:0;
+  border:2px solid #9eb3c0;
+  border-radius:10px;
+  background:#fff;
+  touch-action:none;
+}
+.signature-capture-dialog.signature-landscape-mode .signature-capture-actions{
+  display:grid;
+  grid-template-columns:1fr 2fr;
+  gap:10px;
+  margin:0;
+}
+.signature-capture-dialog.signature-landscape-mode .signature-capture-actions button,
+.signature-capture-dialog.signature-landscape-mode #signatureCaptureClose{
+  min-height:44px;
+}
+
+@media (orientation:portrait) and (max-width:900px){
+  .signature-capture-dialog.signature-landscape-mode .signature-capture-shell{
+    grid-template-rows:auto auto minmax(220px,1fr) auto;
+  }
+  .signature-capture-dialog.signature-landscape-mode .signature-capture-hint{
+    font-weight:700;
+  }
+}
