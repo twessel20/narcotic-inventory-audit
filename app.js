@@ -1002,6 +1002,10 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      [inventorySection,tagSection]
    );
 
+   if(esoSource){
+     const duplicateEsoTitle=esoSource.querySelector(':scope > h2');
+     if(duplicateEsoTitle)duplicateEsoTitle.remove();
+   }
    const esoPage=makePage(
      'ESO Narcotic Administration Record',
      'pdf-eso-record-page',
