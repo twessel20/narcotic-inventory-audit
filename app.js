@@ -1520,7 +1520,9 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
          backgroundColor:'#ffffff',
          logging:false,
          scrollX:0,
-         scrollY:0
+         scrollY:0,
+         windowWidth:1200,
+         windowHeight:1600
        },
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
        pagebreak:{
