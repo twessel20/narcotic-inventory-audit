@@ -3858,3 +3858,40 @@ body.report-open{overflow:hidden}
     font-weight:700;
   }
 }
+
+
+/* Required DEA Form 222 emphasis */
+#txSupportingPdfLabel{
+  position:relative;
+}
+#txSupportingPdfLabel.tx-pdf-required{
+  border:2px solid currentColor;
+  border-radius:12px;
+  padding:12px;
+  background:rgba(0,0,0,.035);
+}
+#txSupportingPdfLabel.tx-pdf-required #txSupportingPdfTitle{
+  font-weight:800;
+  font-size:15px;
+}
+.tx-required-badge{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  margin-left:8px;
+  padding:3px 8px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:800;
+  letter-spacing:.06em;
+  border:1px solid currentColor;
+}
+#txSupportingPdfLabel.tx-pdf-required #txSupportingPdfHint{
+  font-weight:800;
+  margin-top:8px;
+}
+#txSupportingPdfLabel.tx-pdf-required input[type=file]{
+  border:2px dashed currentColor;
+  padding:12px;
+  background:#fff;
+}
