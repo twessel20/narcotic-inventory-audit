@@ -3245,3 +3245,178 @@ body.report-open{overflow:hidden}
 .pdf-clean-stage .pdf-inventory-tags-page > section:last-of-type > h2{
   margin-bottom:9px !important;
 }
+
+
+/* =====================================================================
+   PDF VISUAL SYSTEM v110
+   Uses Calculated Vial Use styling as the visual standard throughout.
+   ===================================================================== */
+.pdf-clean-stage{
+  --pdf-navy:#123a5a;
+  --pdf-blue:#1f608e;
+  --pdf-blue-soft:#eef5fa;
+  --pdf-blue-softer:#f7fafc;
+  --pdf-line:#cbd9e2;
+  --pdf-line-soft:#dde7ed;
+  --pdf-ink:#172838;
+  --pdf-muted:#607686;
+}
+
+/* Page shells */
+.pdf-clean-stage .pdf-packet-page{
+  border:1px solid var(--pdf-line) !important;
+  background:#fff !important;
+  box-shadow:none !important;
+}
+.pdf-clean-stage .pdf-packet-title{
+  color:var(--pdf-navy) !important;
+  background:linear-gradient(180deg,#f4f8fb 0%,#edf4f8 100%) !important;
+  border-bottom:2px solid var(--pdf-blue) !important;
+  letter-spacing:.01em !important;
+}
+
+/* Subsection headings */
+.pdf-clean-stage .pdf-packet-page > section > h2,
+.pdf-clean-stage .pdf-eso-record-page .report-imported-admin > h2{
+  color:var(--pdf-navy) !important;
+  background:var(--pdf-blue-softer) !important;
+  border:1px solid var(--pdf-line-soft) !important;
+  border-left:4px solid var(--pdf-blue) !important;
+  border-radius:6px !important;
+  padding:6px 8px !important;
+}
+
+/* Tables */
+.pdf-clean-stage .report-table{
+  border:1px solid var(--pdf-line) !important;
+  border-radius:8px !important;
+  overflow:hidden !important;
+  background:#fff !important;
+}
+.pdf-clean-stage .report-table th{
+  background:var(--pdf-blue-soft) !important;
+  color:var(--pdf-navy) !important;
+  font-weight:850 !important;
+  border-color:var(--pdf-line) !important;
+}
+.pdf-clean-stage .report-table td{
+  border-color:var(--pdf-line-soft) !important;
+  color:var(--pdf-ink) !important;
+}
+.pdf-clean-stage .report-table tbody tr:nth-child(even) td{
+  background:#fbfdfe !important;
+}
+
+/* Inventory comparison emphasis */
+.pdf-clean-stage .pdf-inventory-tags-page .report-inventory td b{
+  color:var(--pdf-blue) !important;
+}
+.pdf-clean-stage .pdf-inventory-tags-page .report-inventory td:last-child,
+.pdf-clean-stage .pdf-inventory-tags-page .report-inventory th:last-child{
+  background:#f1f7fb !important;
+}
+
+/* Audit summary */
+.pdf-clean-stage .report-executive-summary{
+  background:var(--pdf-blue-softer) !important;
+  border:1px solid var(--pdf-line) !important;
+}
+.pdf-clean-stage .report-executive-summary .summary-lead,
+.pdf-clean-stage .report-executive-summary strong{
+  color:var(--pdf-navy) !important;
+}
+
+/* Calculated vial use = visual reference standard */
+.pdf-clean-stage .report-vial-summary{
+  background:var(--pdf-blue-softer) !important;
+  border:1px solid var(--pdf-line) !important;
+  border-radius:9px !important;
+  padding:10px 12px !important;
+}
+.pdf-clean-stage .report-vial-summary-title{
+  color:var(--pdf-navy) !important;
+  font-weight:900 !important;
+  background:var(--pdf-blue-soft) !important;
+  border-left:4px solid var(--pdf-blue) !important;
+  border-radius:5px !important;
+  padding:6px 8px !important;
+}
+.pdf-clean-stage .report-vial-row{
+  background:#fff !important;
+  border:1px solid var(--pdf-line-soft) !important;
+  border-radius:6px !important;
+  margin:5px 0 !important;
+  padding:6px 8px !important;
+}
+.pdf-clean-stage .report-vial-count{
+  color:var(--pdf-blue) !important;
+  font-weight:900 !important;
+}
+.pdf-clean-stage .report-vial-total{
+  background:var(--pdf-navy) !important;
+  color:#fff !important;
+  border-radius:6px !important;
+  padding:7px 9px !important;
+  margin-top:7px !important;
+}
+.pdf-clean-stage .report-vial-total strong,
+.pdf-clean-stage .report-vial-total span{
+  color:#fff !important;
+}
+
+/* Transactions */
+.pdf-clean-stage .pdf-transactions-page .report-note{
+  background:var(--pdf-blue-softer) !important;
+  border-left:4px solid var(--pdf-blue) !important;
+  border-radius:5px !important;
+  padding:7px 9px !important;
+  color:var(--pdf-muted) !important;
+}
+
+/* Certification pages */
+.pdf-clean-stage .pdf-certifications-page .report-cert{
+  border:1px solid var(--pdf-line) !important;
+  border-radius:8px !important;
+  background:var(--pdf-blue-softer) !important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-cert h2{
+  color:var(--pdf-navy) !important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-signature-box{
+  background:#fff !important;
+  border:1px solid var(--pdf-line-soft) !important;
+}
+.pdf-clean-stage .pdf-medic3-explainer,
+.pdf-clean-stage .pdf-expired-explainer{
+  background:var(--pdf-blue-softer) !important;
+  border-left:4px solid var(--pdf-blue) !important;
+  border-radius:5px !important;
+  padding:7px 9px !important;
+  color:var(--pdf-muted) !important;
+}
+
+/* Final attestation and notes */
+.pdf-clean-stage .pdf-attestation-page .report-attestation,
+.pdf-clean-stage .pdf-notes-page .report-notes{
+  background:var(--pdf-blue-softer) !important;
+  border:1px solid var(--pdf-line) !important;
+}
+.pdf-clean-stage .pdf-attestation-page .report-final-signature{
+  background:#fff !important;
+  border:1px solid var(--pdf-line-soft) !important;
+}
+.pdf-clean-stage .pdf-notes-page .report-footer{
+  color:var(--pdf-muted) !important;
+  border-top:1px solid var(--pdf-line) !important;
+}
+
+/* Supporting text */
+.pdf-clean-stage .report-note,
+.pdf-clean-stage .report-vial-explainer{
+  color:var(--pdf-muted) !important;
+}
+
+/* Footer line and page furniture remain restrained */
+.pdf-clean-stage .report-blue-rule{
+  border-top-color:var(--pdf-blue) !important;
+}
