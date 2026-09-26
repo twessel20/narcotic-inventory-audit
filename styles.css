@@ -4466,3 +4466,32 @@ body.report-open{overflow:hidden}
     min-height:48px;
   }
 }
+
+
+/* Balanced Inventory home actions */
+.inventory-primary-actions{
+  display:grid;
+  grid-template-columns:repeat(2,160px);
+  gap:10px;
+  align-items:stretch;
+}
+.inventory-primary-actions button{
+  width:160px;
+  min-height:44px;
+  padding:10px 14px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  font-weight:800;
+}
+@media(max-width:700px){
+  .inventory-primary-actions{
+    width:100%;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+  }
+  .inventory-primary-actions button{
+    width:100%;
+    min-height:48px;
+  }
+}
