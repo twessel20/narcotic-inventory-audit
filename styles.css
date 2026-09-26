@@ -6589,3 +6589,191 @@ body.report-open{overflow:hidden}
     grid-column:1;
   }
 }
+
+
+/* v211 mobile audit viewport containment pass */
+@media(max-width:700px){
+  #audit,
+  #audit .audit-workspace-shell,
+  #audit .audit-step-card,
+  #audit .audit-card,
+  #audit .unit-audit-card,
+  #audit .unit-compact-grid,
+  #audit .unit-compact-panel,
+  #audit .admin-import-body,
+  #audit .mobile-collapsible-admin,
+  #audit .attestation-card{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+    overflow-x:hidden!important;
+  }
+
+  #audit input,
+  #audit select,
+  #audit textarea,
+  #audit button,
+  #audit canvas{
+    max-width:100%!important;
+    box-sizing:border-box!important;
+  }
+
+  #audit input[type="date"],
+  #audit input[type="month"],
+  #audit input[type="email"],
+  #audit input[type="number"],
+  #audit input[type="text"],
+  #audit select,
+  #audit textarea{
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  #audit .admin-import-summary,
+  #audit .admin-import-summarybar,
+  #audit .admin-simple-title,
+  #audit .provider-vial-provider > summary{
+    min-width:0!important;
+    max-width:100%!important;
+  }
+
+  #audit .provider-vial-provider > summary{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    gap:8px!important;
+  }
+
+  #audit .provider-vial-provider > summary > div:first-child,
+  #audit .provider-vial-provider > summary strong,
+  #audit .provider-vial-provider > summary span{
+    min-width:0!important;
+    overflow-wrap:anywhere!important;
+  }
+
+  #audit .admin-actual-table,
+  #audit .provider-vial-list,
+  #audit .provider-vial-detail-list{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow-x:hidden!important;
+  }
+
+  #audit .provider-vial-detail-row{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+  }
+
+  #audit .final-signature-block,
+  #audit .final-signature-block canvas{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+  }
+
+  #audit .final-signature-block canvas{
+    height:130px!important;
+  }
+
+  #audit .audit-actions{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+
+  #audit .audit-actions button{
+    width:100%!important;
+    min-height:46px!important;
+  }
+
+  .mobile-card-nav{
+    width:100%!important;
+    max-width:100%!important;
+    margin:12px 0 0!important;
+    left:auto!important;
+    right:auto!important;
+    box-sizing:border-box!important;
+  }
+
+  .audit-finding-dialog{
+    width:100vw!important;
+    max-width:100vw!important;
+    min-width:0!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    padding:0!important;
+    border:0!important;
+    border-radius:0!important;
+    overflow-x:hidden!important;
+  }
+
+  .audit-finding-dialog .dialog-form{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    min-height:100dvh!important;
+    padding:12px!important;
+    box-sizing:border-box!important;
+    overflow-x:hidden!important;
+    overflow-y:auto!important;
+  }
+
+  .audit-finding-dialog .dialog-head,
+  .audit-finding-dialog .audit-finding-context,
+  .audit-finding-dialog .audit-finding-choice-grid,
+  .audit-finding-dialog .audit-finding-fields,
+  .audit-finding-dialog .audit-finding-impact-card,
+  .audit-finding-dialog .dialog-actions{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+
+  .audit-finding-dialog .audit-finding-choice,
+  .audit-finding-dialog input,
+  .audit-finding-dialog select,
+  .audit-finding-dialog textarea{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    box-sizing:border-box!important;
+  }
+
+  .audit-finding-dialog .dialog-actions{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    gap:8px!important;
+    position:sticky!important;
+    bottom:0!important;
+    margin-top:auto!important;
+    padding:10px 0 calc(10px + env(safe-area-inset-bottom))!important;
+    background:#fff!important;
+  }
+
+  .audit-finding-dialog .dialog-actions button{
+    width:100%!important;
+    min-width:0!important;
+    min-height:46px!important;
+  }
+}
+
+@media(max-width:420px){
+  .audit-finding-dialog .dialog-actions{
+    grid-template-columns:1fr!important;
+  }
+
+  #audit .provider-vial-detail-row{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+
+  #audit .provider-vial-calc{
+    grid-column:1!important;
+    grid-row:auto!important;
+    text-align:left!important;
+  }
+}
