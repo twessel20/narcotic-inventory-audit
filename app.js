@@ -173,6 +173,7 @@ async function saveTransaction(fd){
  const type=fd.get('type');
  const from=fd.get('fromLocation');
  const to=fd.get('toLocation');
+ const destination=type==='received'?'Safe':to;
  const sourcePharmacy=String(fd.get('sourcePharmacy')||'').trim();
  const meds=fd.getAll('txMedication');
  const qtys=fd.getAll('txQuantity');
@@ -196,7 +197,6 @@ async function saveTransaction(fd){
  }
 
  if(type==='received'){
-   if(!to)throw new Error('Choose the receiving location.');
    if(!sourcePharmacy)throw new Error('Enter the source pharmacy.');
  }
  if((type==='expired'||type==='destroyed')&&!from)throw new Error('Choose the source location.');
@@ -234,8 +234,8 @@ async function saveTransaction(fd){
  for(const item of items){
    const med=item.medication,qty=item.quantity;
    if(type==='received'){
-     await setBalance(to,med,Number(b[to]?.[med]||0)+qty);
-     b[to][med]=Number(b[to]?.[med]||0)+qty;
+     await setBalance(destination,med,Number(b[destination]?.[med]||0)+qty);
+     b[destination][med]=Number(b[destination]?.[med]||0)+qty;
    }else if(type==='expired'){
      await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
      await setBalance('Expired',med,Number(b.Expired?.[med]||0)+qty);
@@ -265,7 +265,7 @@ async function saveTransaction(fd){
    fromLocation:type==='received'?'':from,
    externalSource:type==='received'?sourcePharmacy:'',
    sourcePharmacy:type==='received'?sourcePharmacy:'',
-   toLocation:type==='expired'?'Expired':to,
+   toLocation:type==='expired'?'Expired':destination,
    reference:fd.get('reference')||'',
    notes:fd.get('notes')||'',
    recordedBy,
@@ -1735,6 +1735,9 @@ function bind(){
  const txPharmacySourceLabel=document.getElementById('txPharmacySourceLabel');
  const txFromLocationSelect=document.querySelector('#txForm select[name=fromLocation]');
  const txToLocationText=document.getElementById('txToLocationText');
+ const txToLocationLabel=document.getElementById('txToLocationLabel');
+ const txToLocationSelect=document.querySelector('#txForm select[name=toLocation]');
+ const txReceivingSafeLabel=document.getElementById('txReceivingSafeLabel');
  const txSourcePharmacy=document.getElementById('txSourcePharmacy');
  const syncTxPdfRequirement=()=>{
    const received=txTypeSelect?.value==='received';
@@ -1748,7 +1751,10 @@ function bind(){
      if(received)txFromLocationSelect.value='';
    }
    if(txPharmacySourceLabel)txPharmacySourceLabel.hidden=!received;
-   if(txToLocationText)txToLocationText.textContent=received?'Receiving location':'To';
+   if(txToLocationText)txToLocationText.textContent='To';
+   if(txToLocationLabel)txToLocationLabel.hidden=received;
+   if(txReceivingSafeLabel)txReceivingSafeLabel.hidden=!received;
+   if(txToLocationSelect&&received)txToLocationSelect.value='Safe';
    if(txSourcePharmacy){
      txSourcePharmacy.required=received;
      if(received&&!txSourcePharmacy.value.trim())txSourcePharmacy.value='NKCH Pharmacy';
