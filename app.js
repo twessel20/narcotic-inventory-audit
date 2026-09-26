@@ -1517,6 +1517,10 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
          }
        }
 
+       const medic3SafeNote=document.createElement('p');
+       medic3SafeNote.className='pdf-medic3-safe-note';
+       medic3SafeNote.textContent='Medic 3 is the reserve ambulance and is tracked as its own audit site. Its assigned narcotic inventory is normally secured in the Safe until Medic 3 is placed in service. The Safe serves as the department central reserve inventory.';
+
        const wrap=document.createElement('div');
        wrap.className='pdf-medic3-safe-wrap';
        if(medic3)wrap.appendChild(medic3);
@@ -1525,7 +1529,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        pages.push(makePage(
          'Medic 3 / Safe Audit Site Certifications',
          'pdf-certifications-page pdf-medic3-safe-page',
-         [wrap]
+         [medic3SafeNote,wrap]
        ));
      }
 
