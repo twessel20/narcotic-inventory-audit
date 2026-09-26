@@ -5210,3 +5210,104 @@ body.report-open{overflow:hidden}
   max-height:34px!important;
   margin-top:3px!important;
 }
+
+
+/* v171 generated PDF desktop-parity lock
+   The PDF is always laid out like desktop/letter output.
+   Mobile preview only scales the finished PDF page. */
+.pdf-clean-stage{
+  width:8.5in!important;
+  min-width:8.5in!important;
+  max-width:8.5in!important;
+}
+
+.pdf-clean-stage .pdf-clean-report{
+  width:7.55in!important;
+  min-width:7.55in!important;
+  max-width:7.55in!important;
+}
+
+.pdf-clean-stage .report-top{
+  display:flex!important;
+  grid-template-columns:none!important;
+  align-items:center!important;
+  gap:18px!important;
+  width:100%!important;
+}
+
+.pdf-clean-stage .report-top img{
+  width:88px!important;
+  height:88px!important;
+  flex:0 0 88px!important;
+}
+
+.pdf-clean-stage .report-top h1{
+  font-size:1.55rem!important;
+  line-height:1.12!important;
+}
+
+.pdf-clean-stage .report-meta-grid{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  column-gap:28px!important;
+  row-gap:4px!important;
+}
+
+.pdf-clean-stage .report-meta-grid .wide{
+  grid-column:1 / -1!important;
+}
+
+.pdf-clean-stage .report-cover-meta{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+}
+
+.pdf-clean-stage .report-signature-grid{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+}
+
+.pdf-clean-stage .report-table{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+}
+
+.pdf-clean-stage .report-inventory,
+.pdf-clean-stage .report-transactions,
+.pdf-clean-stage .report-imported-admin .report-table{
+  min-width:0!important;
+}
+
+.pdf-clean-stage .report-finalized,
+.pdf-clean-stage .report-sheet{
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  overflow:visible!important;
+}
+
+/* Keep the explicit certification packet layouts identical on all devices. */
+.pdf-clean-stage .pdf-medic1-medic2-wrap,
+.pdf-clean-stage .pdf-medic3-safe-wrap{
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+}
+
+.pdf-clean-stage .pdf-medic1-medic2-wrap > .report-cert,
+.pdf-clean-stage .pdf-medic3-safe-wrap > .report-cert{
+  flex:1 1 0!important;
+  width:calc(50% - 3.5px)!important;
+  max-width:calc(50% - 3.5px)!important;
+  min-width:0!important;
+}
+
+/* The mobile preview canvases scale the actual letter page; never reflow it. */
+@media(max-width:700px){
+  .pdf-clean-stage,
+  .pdf-clean-stage .pdf-clean-report{
+    transform:none!important;
+    zoom:1!important;
+  }
+}
