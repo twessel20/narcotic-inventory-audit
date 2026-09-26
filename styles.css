@@ -5763,3 +5763,40 @@ body.report-open{overflow:hidden}
   break-inside:auto!important;
   page-break-inside:auto!important;
 }
+
+
+/* v193 compact Safe certification just enough to keep signer names on page 8 */
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert{
+  padding:3px 4px!important;
+  margin:0!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert h2{
+  margin:0 0 1px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-cert-site,
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-cert-statement{
+  margin:1px 0!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-grid{
+  margin-top:1px!important;
+  gap:4px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-box{
+  min-height:0!important;
+  height:auto!important;
+  padding:2px 3px!important;
+  margin:0!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-box img,
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-placeholder{
+  height:14px!important;
+  min-height:14px!important;
+  max-height:14px!important;
+  margin:1px 0 0!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-name{
+  padding-top:1px!important;
+  margin:0!important;
+  font-size:.44rem!important;
+  line-height:1!important;
+}
