@@ -686,6 +686,27 @@ async function editAudit(id){
  updateAuditRouteProgress();
  setAutosaveStatus('Saved '+fmtDate(a.updatedAt));
 }
+async function enterSignatureLandscape(dialog){
+ const mobile=window.matchMedia('(max-width:900px)').matches;
+ if(!mobile||!dialog)return;
+ dialog.classList.add('signature-landscape-mode');
+ try{
+   if(document.fullscreenElement!==dialog&&dialog.requestFullscreen)await dialog.requestFullscreen({navigationUI:'hide'});
+ }catch(e){}
+ try{
+   if(screen.orientation?.lock)await screen.orientation.lock('landscape');
+ }catch(e){}
+ const hint=dialog.querySelector('.signature-capture-hint');
+ if(hint)hint.textContent=(window.innerWidth>window.innerHeight)
+   ?'Landscape signing mode'
+   :'Rotate phone to landscape for the full signing area.';
+}
+async function exitSignatureLandscape(dialog){
+ if(dialog)dialog.classList.remove('signature-landscape-mode');
+ try{if(screen.orientation?.unlock)screen.orientation.unlock();}catch(e){}
+ try{if(document.fullscreenElement===dialog&&document.exitFullscreen)await document.exitFullscreen();}catch(e){}
+}
+
 function openSignatureCapture(box,kind,onChange){
  const source=kind==='witness'?box.querySelector('[data-witness-canvas]'):box.querySelector('[data-canvas]');
  if(!source)return;
@@ -694,7 +715,7 @@ function openSignatureCapture(box,kind,onChange){
    dialog=document.createElement('dialog');
    dialog.id='signatureCaptureDialog';
    dialog.className='signature-capture-dialog';
-   dialog.innerHTML='<div class="signature-capture-shell"><div class="signature-capture-head"><div><span class="kicker">SIGNATURE CAPTURE</span><h2 id="signatureCaptureTitle">Signature</h2></div><button type="button" id="signatureCaptureClose">Done</button></div><div class="signature-capture-hint">Rotate your phone to landscape for the largest signing area.</div><canvas id="signatureCaptureCanvas" width="1200" height="500"></canvas><div class="signature-capture-actions"><button type="button" id="signatureCaptureClear">Clear</button><button type="button" class="primary" id="signatureCaptureSave">Use signature</button></div></div>';
+   dialog.innerHTML='<div class="signature-capture-shell"><div class="signature-capture-head"><div><span class="kicker">SIGNATURE CAPTURE</span><h2 id="signatureCaptureTitle">Signature</h2></div><button type="button" id="signatureCaptureClose">Done</button></div><div class="signature-capture-hint">Opening landscape signing mode…</div><canvas id="signatureCaptureCanvas" width="1200" height="500"></canvas><div class="signature-capture-actions"><button type="button" id="signatureCaptureClear">Clear</button><button type="button" class="primary" id="signatureCaptureSave">Use signature</button></div></div>';
    document.body.appendChild(dialog);
  }
  const title=dialog.querySelector('#signatureCaptureTitle');
@@ -722,9 +743,10 @@ function openSignatureCapture(box,kind,onChange){
    updateAuditRouteProgress();if(onChange)onChange();
  };
  dialog.querySelector('#signatureCaptureClear').onclick=()=>{lctx.clearRect(0,0,live.width,live.height);live.dataset.hasSignature='false'};
- dialog.querySelector('#signatureCaptureSave').onclick=()=>{apply();dialog.close()};
- dialog.querySelector('#signatureCaptureClose').onclick=()=>{apply();dialog.close()};
+ dialog.querySelector('#signatureCaptureSave').onclick=async()=>{apply();await exitSignatureLandscape(dialog);dialog.close()};
+ dialog.querySelector('#signatureCaptureClose').onclick=async()=>{apply();await exitSignatureLandscape(dialog);dialog.close()};
  dialog.showModal();
+ enterSignatureLandscape(dialog);
  setTimeout(()=>dialog.scrollTop=0,0);
 }
 function openStandaloneSignatureCapture(source,titleText,onChange){
@@ -734,7 +756,7 @@ function openStandaloneSignatureCapture(source,titleText,onChange){
    dialog=document.createElement('dialog');
    dialog.id='signatureCaptureDialog';
    dialog.className='signature-capture-dialog';
-   dialog.innerHTML='<div class="signature-capture-shell"><div class="signature-capture-head"><div><span class="kicker">SIGNATURE CAPTURE</span><h2 id="signatureCaptureTitle">Signature</h2></div><button type="button" id="signatureCaptureClose">Done</button></div><div class="signature-capture-hint">Rotate your phone to landscape for the largest signing area.</div><canvas id="signatureCaptureCanvas" width="1200" height="500"></canvas><div class="signature-capture-actions"><button type="button" id="signatureCaptureClear">Clear</button><button type="button" class="primary" id="signatureCaptureSave">Use signature</button></div></div>';
+   dialog.innerHTML='<div class="signature-capture-shell"><div class="signature-capture-head"><div><span class="kicker">SIGNATURE CAPTURE</span><h2 id="signatureCaptureTitle">Signature</h2></div><button type="button" id="signatureCaptureClose">Done</button></div><div class="signature-capture-hint">Opening landscape signing mode…</div><canvas id="signatureCaptureCanvas" width="1200" height="500"></canvas><div class="signature-capture-actions"><button type="button" id="signatureCaptureClear">Clear</button><button type="button" class="primary" id="signatureCaptureSave">Use signature</button></div></div>';
    document.body.appendChild(dialog);
  }
  dialog.querySelector('#signatureCaptureTitle').textContent=titleText||'Signature';
@@ -754,10 +776,20 @@ function openStandaloneSignatureCapture(source,titleText,onChange){
  live.addEventListener('touchstart',start,{passive:false});live.addEventListener('touchmove',move,{passive:false});live.addEventListener('touchend',end);
  const apply=()=>{const sctx=source.getContext('2d');sctx.clearRect(0,0,source.width,source.height);sctx.drawImage(live,0,0,source.width,source.height);source.dataset.hasSignature=live.dataset.hasSignature||'false';if(onChange)onChange()};
  dialog.querySelector('#signatureCaptureClear').onclick=()=>{lctx.clearRect(0,0,live.width,live.height);live.dataset.hasSignature='false'};
- dialog.querySelector('#signatureCaptureSave').onclick=()=>{apply();dialog.close()};
- dialog.querySelector('#signatureCaptureClose').onclick=()=>{apply();dialog.close()};
+ dialog.querySelector('#signatureCaptureSave').onclick=async()=>{apply();await exitSignatureLandscape(dialog);dialog.close()};
+ dialog.querySelector('#signatureCaptureClose').onclick=async()=>{apply();await exitSignatureLandscape(dialog);dialog.close()};
  dialog.showModal();
+ enterSignatureLandscape(dialog);
 }
+document.addEventListener('cancel',e=>{
+ const d=e.target;
+ if(d?.id==='signatureCaptureDialog')exitSignatureLandscape(d);
+},true);
+document.addEventListener('close',e=>{
+ const d=e.target;
+ if(d?.id==='signatureCaptureDialog')exitSignatureLandscape(d);
+},true);
+
 function setupCanvas(canvas,data,onChange){
  const ctx=canvas.getContext('2d');ctx.lineWidth=2;ctx.lineCap='round';canvas.dataset.hasSignature=data?'true':'false';
  if(data){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=data}
