@@ -176,8 +176,8 @@ async function saveTransaction(fd,finalSubmit=true){
  const existingTx=existingTransactionId?await getOne('transactions',existingTransactionId):null;
  const auditLinkedIncident=type==='incident'&&Boolean(auditContextId);
  const incidentDraft=type==='incident'&&!finalSubmit;
- const from=fd.get('fromLocation');
- const to=fd.get('toLocation');
+ const from=type==='destroyed'?'Safe':fd.get('fromLocation');
+ const to=type==='destroyed'?'':fd.get('toLocation');
  const destination=type==='received'?'Safe':to;
  const sourcePharmacy=String(fd.get('sourcePharmacy')||'').trim();
  const memoDescription=type==='incident'?String(fd.get('memoDescription')||'').trim():'';
@@ -284,7 +284,7 @@ async function saveTransaction(fd,finalSubmit=true){
    status:type==='incident'?(finalSubmit?'submitted':'draft'):'submitted',
    externalSource:type==='received'?sourcePharmacy:'',
    sourcePharmacy:type==='received'?sourcePharmacy:'',
-   toLocation:type==='incident'?'':destination,
+   toLocation:(type==='incident'||type==='destroyed')?'':destination,
    notes:type==='received'?'':(fd.get('notes')||''),
    summary:transactionSummary,
    memoDescription:type==='incident'?memoDescription:'',
@@ -1905,25 +1905,31 @@ function bind(){
  const syncTxPdfRequirement=()=>{
    const selectedType=txTypeSelect?.value||'';
    const received=selectedType==='received';
+   const destroyed=selectedType==='destroyed';
    const incident=selectedType==='incident';
    const auditIncident=incident&&Boolean(document.getElementById('txAuditContextId')?.value);
    const required=received||selectedType==='destroyed';
-   if(txFromLocationText)txFromLocationText.textContent=incident?'Vial source location':'From';
+   if(txFromLocationText)txFromLocationText.textContent=incident?'Vial source location':(destroyed?'Source location':'From');
    if(txFromLocationLabel){
      txFromLocationLabel.hidden=received;
      txFromLocationLabel.style.display=received?'none':'';
    }
    if(txFromLocationSelect){
-     txFromLocationSelect.disabled=received;
+     txFromLocationSelect.disabled=received||destroyed;
      if(received)txFromLocationSelect.value='';
+     if(destroyed)txFromLocationSelect.value='Safe';
    }
    if(txPharmacySourceLabel){
      txPharmacySourceLabel.hidden=!received;
      txPharmacySourceLabel.style.display=received?'':'none';
    }
    if(txToLocationText)txToLocationText.textContent='To';
-   if(txToLocationLabel)txToLocationLabel.hidden=received||incident;
-   if(txToLocationSelect&&received)txToLocationSelect.value='Safe';
+   if(txToLocationLabel)txToLocationLabel.hidden=received||incident||destroyed;
+   if(txToLocationSelect){
+     txToLocationSelect.disabled=incident||destroyed;
+     if(received)txToLocationSelect.value='Safe';
+     if(incident||destroyed)txToLocationSelect.value='';
+   }
    if(txSourcePharmacy){
      txSourcePharmacy.required=received;
      txSourcePharmacy.disabled=!received;
