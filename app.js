@@ -885,6 +885,12 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    const keepTogether=keepTitles.some(t=>title.startsWith(t));
    if(keepTogether)el.classList.add('pdf-keep-together');
 
+   if(title.startsWith('transactions in the audit reporting period')){
+     el.classList.add('pdf-break-before');
+     el.style.breakBefore='page';
+     el.style.pageBreakBefore='always';
+   }
+
    el.style.breakInside=keepTogether?'avoid':'auto';
    el.style.pageBreakInside=keepTogether?'avoid':'auto';
  });
