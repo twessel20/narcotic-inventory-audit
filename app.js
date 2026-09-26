@@ -1528,10 +1528,15 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        if(medic3)wrap.appendChild(medic3);
        if(safe)wrap.appendChild(safe);
 
+       const medic3SafeContent=document.createElement('div');
+       medic3SafeContent.className='pdf-medic3-safe-content';
+       medic3SafeContent.appendChild(medic3Intro);
+       medic3SafeContent.appendChild(wrap);
+
        pages.push(makePage(
          'Medic 3 / Safe Audit Site Certifications',
          'pdf-certifications-page pdf-medic3-safe-page',
-         [medic3Intro,wrap]
+         [medic3SafeContent]
        ));
      }
 
@@ -1626,7 +1631,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
          before:['.pdf-packet-page','.pdf-page-start'],
          avoid:[
            '.pdf-certifications-secondary-wrap',
-           '.pdf-medic3-safe-wrap',
+           '.pdf-medic3-safe-content',
            '.report-signature-box',
            '.report-final-signature',
            '.report-vial-summary',
