@@ -5619,3 +5619,24 @@ body.report-open{overflow:hidden}
   font-size:.46rem!important;
   line-height:1!important;
 }
+
+
+/* v187 keep Medic 3/Safe title, note, and cards on the same PDF page */
+.pdf-clean-stage .pdf-medic3-safe-page{
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-content{
+  display:block!important;
+  width:100%!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-content .pdf-medic3-explainer{
+  break-after:avoid!important;
+  page-break-after:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-content .pdf-medic3-safe-wrap{
+  break-before:avoid!important;
+  page-break-before:avoid!important;
+}
