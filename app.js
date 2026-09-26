@@ -217,10 +217,11 @@ async function saveTransaction(fd,finalSubmit=true){
  if(type==='received'&&!sourcePharmacy)throw new Error('Enter the source pharmacy.');
  if(type==='destroyed'&&!destructionCompany)throw new Error('Enter the destruction company.');
  if((type==='destroyed'||type==='incident')&&!from)throw new Error('Choose the source location.');
+ if(type==='incident'&&from==='Expired'&&!auditLinkedIncident)throw new Error('Expired inventory can only be reduced through Destroyed / transferred out.');
  if(type==='incident'&&!String(fd.get('notes')||'').trim())throw new Error('Enter an incident / discrepancy explanation.');
 
  const b=await balances();
- const shouldAdjustIncident=type==='incident'&&!auditLinkedIncident&&!incidentDraft&&!existingTx?.inventoryAdjusted;
+ const shouldAdjustIncident=type==='incident'&&!auditLinkedIncident&&!incidentDraft&&!existingTx?.inventoryAdjusted&&from!=='Expired';
  if(type==='destroyed'||shouldAdjustIncident){
    for(const item of items){
      if(Number(b[from]?.[item.medication]||0)<item.quantity)throw new Error(item.medication+' quantity exceeds the current '+from+' balance.');
@@ -1965,6 +1966,10 @@ function bind(){
      txFromLocationSelect.disabled=received||destroyed;
      if(received)txFromLocationSelect.value='';
      if(destroyed)txFromLocationSelect.value='Expired';
+     const auditIncident=incident&&Boolean(document.getElementById('txAuditContextId')?.value);
+     const expiredOption=[...txFromLocationSelect.options].find(o=>o.value==='Expired'||o.textContent==='Expired');
+     if(expiredOption)expiredOption.disabled=incident&&!auditIncident;
+     if(incident&&!auditIncident&&txFromLocationSelect.value==='Expired')txFromLocationSelect.value='';
    }
    if(txPharmacySourceLabel){
      txPharmacySourceLabel.hidden=!received;
