@@ -997,6 +997,10 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        'pdf-certifications-page pdf-certifications-secondary',
        []
      );
+     const medic3Intro=document.createElement('p');
+     medic3Intro.className='pdf-medic3-explainer';
+     medic3Intro.textContent='Medic 3 is the reserve ambulance. Its assigned narcotic inventory remains secured in the Safe and is maintained as its own separately tracked inventory site.';
+     pageB.appendChild(medic3Intro);
      const wrap=document.createElement('div');
      wrap.className='pdf-certifications-secondary-wrap';
      [byTitle('Medic 3 Certification'),byTitle('Safe Certification')]
