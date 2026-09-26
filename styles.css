@@ -4194,3 +4194,92 @@ body.report-open{overflow:hidden}
     display:contents;
   }
 }
+
+
+/* v151 desktop audit card layout */
+@media (min-width:901px){
+  .unit-med-table-head{display:none!important;}
+  .unit-med-list{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+  }
+  .unit-med-row.compact{
+    display:grid!important;
+    grid-template-columns:1fr 88px 110px!important;
+    grid-template-areas:
+      "name last current"
+      "actions actions actions";
+    gap:10px 12px!important;
+    align-items:end!important;
+    padding:14px!important;
+    border:1px solid #d7e0e6!important;
+    border-radius:12px!important;
+    background:#fff!important;
+    box-shadow:0 1px 2px rgba(0,0,0,.03);
+    margin:0!important;
+  }
+  .unit-med-name{
+    grid-area:name;
+    align-self:center;
+    font-size:1rem!important;
+    font-weight:850;
+    color:#243f58;
+  }
+  .unit-prior{
+    grid-area:last;
+    align-items:stretch!important;
+    text-align:left!important;
+  }
+  .unit-prior span{
+    display:block!important;
+    font-size:.68rem!important;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:#788997;
+  }
+  .unit-prior strong{
+    font-size:1.05rem!important;
+  }
+  .unit-current{
+    grid-area:current;
+    display:grid!important;
+    gap:4px;
+    font-size:.68rem!important;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    color:#788997;
+  }
+  .unit-current > span{
+    display:block!important;
+  }
+  .unit-current input{
+    width:100%;
+    min-height:42px!important;
+    text-align:center;
+    font-size:1rem!important;
+    font-weight:800;
+  }
+  .unit-med-actions{
+    grid-area:actions;
+    display:grid!important;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    padding-top:2px;
+    border-top:1px solid #edf1f4;
+  }
+  .audit-finding-btn,
+  .audit-incident-btn{
+    min-height:40px!important;
+    font-size:11.5px!important;
+    padding:8px 10px!important;
+  }
+  .inventory-panel-head{
+    margin-bottom:12px!important;
+  }
+}
+@media (min-width:901px) and (max-width:1180px){
+  .unit-med-list{
+    grid-template-columns:1fr;
+  }
+}
