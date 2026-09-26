@@ -163,7 +163,7 @@ async function renderActivity(){
  document.getElementById('activityList').innerHTML=rows.length?rows.map(r=>{
    const items=Array.isArray(r.items)&&r.items.length?r.items:[{medication:r.medication,quantity:r.quantity}];
    const itemText=items.map(x=>esc(x.medication)+' × '+esc(x.quantity)).join(' · ');
-   return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+(r.status==='draft'?' · DRAFT':'')+'</strong><div>'+itemText+'</div><div>'+esc(r.sourcePharmacy||r.externalSource||r.incidentSourceLocation||r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy)+(r.recordedByEmployeeNumber?' #'+esc(r.recordedByEmployeeNumber):''):'')+(r.witness?' · Witness '+esc(r.witness)+(r.witnessEmployeeNumber?' #'+esc(r.witnessEmployeeNumber):''):'')+'</div>'+(r.summary?'<div>'+esc(r.summary)+'</div>':'')+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.memoDescription?'<div class="meta"><b>Memo description:</b> '+esc(r.memoDescription)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+(r.type==='incident'&&r.status==='draft'?'<div class="button-row"><button type="button" data-resume-incident="'+esc(r.id)+'">Resume incident</button></div>':'')+'</div>';
+   return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+(r.status==='draft'?' · DRAFT':'')+'</strong><div>'+itemText+'</div><div>'+esc(r.sourcePharmacy||r.externalSource||r.incidentSourceLocation||r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy)+(r.recordedByEmployeeNumber?' #'+esc(r.recordedByEmployeeNumber):''):'')+(r.witness?' · Witness '+esc(r.witness)+(r.witnessEmployeeNumber?' #'+esc(r.witnessEmployeeNumber):''):'')+'</div>'+(r.summary?'<div>'+esc(r.summary)+'</div>':'')+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.memoDescription?'<div class="meta"><b>Memo description:</b> '+esc(r.memoDescription)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+(r.destructionReceipt?'<div class="meta"><b>Destruction receipt:</b> '+esc(r.destructionReceipt.name||'Attached PDF')+'</div>':'')+(r.type==='incident'&&r.status==='draft'?'<div class="button-row"><button type="button" data-resume-incident="'+esc(r.id)+'">Resume incident</button></div>':'')+'</div>';
  }).join(''):'<div class="empty">No activity recorded yet.</div>';
 }
 
@@ -203,11 +203,16 @@ async function saveTransaction(fd,finalSubmit=true){
  const supportFile=fd.get('supportingPdf');
  const uploadedFile=(supportFile instanceof File&&supportFile.size)?supportFile:null;
  const existingSupport=existingTx?.supportingDocument||null;
+ const destructionReceiptFile=fd.get('destructionReceipt');
+ const uploadedDestructionReceipt=(destructionReceiptFile instanceof File&&destructionReceiptFile.size)?destructionReceiptFile:null;
+ const existingDestructionReceipt=existingTx?.destructionReceipt||null;
  const requires222=type==='received'||type==='destroyed';
  const requiresIncidentMemo=type==='incident'&&finalSubmit;
  if(requires222&&!uploadedFile&&!existingSupport)throw new Error('Attach the required DEA Form 222 PDF before saving this transaction.');
+ if(type==='destroyed'&&!uploadedDestructionReceipt&&!existingDestructionReceipt)throw new Error('Attach the destruction company receipt before saving this transaction.');
  if(requiresIncidentMemo&&!uploadedFile&&!existingSupport)throw new Error('Attach the discrepancy / incident memo PDF before submitting this incident.');
  if(uploadedFile&&uploadedFile.type!=='application/pdf'&&!/\.pdf$/i.test(uploadedFile.name))throw new Error('Supporting documents must be PDF files.');
+ if(uploadedDestructionReceipt&&uploadedDestructionReceipt.type!=='application/pdf'&&!/\.pdf$/i.test(uploadedDestructionReceipt.name))throw new Error('The destruction receipt must be a PDF file.');
 
  if(type==='received'&&!sourcePharmacy)throw new Error('Enter the source pharmacy.');
  if(type==='destroyed'&&!destructionCompany)throw new Error('Enter the destruction company.');
@@ -224,6 +229,7 @@ async function saveTransaction(fd,finalSubmit=true){
 
  const txId=existingTransactionId||uid('tx');
  let supportingDocument=existingSupport;
+ let destructionReceipt=existingDestructionReceipt;
  if(uploadedFile){
    const buf=await uploadedFile.arrayBuffer();
    const digest=await sha256Buffer(buf);
@@ -238,6 +244,25 @@ async function saveTransaction(fd,finalSubmit=true){
      storagePath:path,
      mimeType:'application/pdf',
      size:uploadedFile.size,
+     sha256:digest,
+     uploadedAt:nowISO(),
+     uploadedBy:cloudSession?.user?.email||''
+   };
+ }
+ if(uploadedDestructionReceipt){
+   const buf=await uploadedDestructionReceipt.arrayBuffer();
+   const digest=await sha256Buffer(buf);
+   const path='transactions/'+txId+'/'+Date.now()+'-destruction-receipt-'+safeStorageName(uploadedDestructionReceipt.name);
+   const {error:receiptUploadError}=await sb.storage.from('audit-supporting-docs').upload(path,uploadedDestructionReceipt,{contentType:'application/pdf',upsert:false});
+   if(receiptUploadError)throw receiptUploadError;
+   destructionReceipt={
+     documentType:'Destruction receipt',
+     name:uploadedDestructionReceipt.name,
+     destructionCompany,
+     storageBucket:'audit-supporting-docs',
+     storagePath:path,
+     mimeType:'application/pdf',
+     size:uploadedDestructionReceipt.size,
      sha256:digest,
      uploadedAt:nowISO(),
      uploadedBy:cloudSession?.user?.email||''
@@ -294,7 +319,8 @@ async function saveTransaction(fd,finalSubmit=true){
    witnessEmployeeNumber,
    recordedBySignature:recordedCanvas.toDataURL(),
    witnessSignature:witnessCanvas.toDataURL(),
-   supportingDocument
+   supportingDocument,
+   destructionReceipt:type==='destroyed'?destructionReceipt:null
  };
  await put('transactions',txRecord);
 
@@ -901,7 +927,7 @@ async function saveAuditFromUI(id,finalize){
    });
    a.transactions=inRange;
    a.supportingDocuments=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
-   const txDocs=inRange.map(t=>t.supportingDocument).filter(d=>d?.storagePath);
+   const txDocs=inRange.flatMap(t=>[t.supportingDocument,t.destructionReceipt]).filter(d=>d?.storagePath);
    const mergedDocs=[...a.supportingDocuments,...txDocs];
    const seenDocs=new Set();
    a.supportingDocuments=mergedDocs.filter(d=>{const k=d.storageBucket+'|'+d.storagePath;if(!d.storagePath||seenDocs.has(k))return false;seenDocs.add(k);return true;});
@@ -1695,7 +1721,11 @@ function reportHtml(r){
  const amendment=(r.amendments||[]).map(a=>'<div class="report-amendment-row"><b>'+esc(a.location)+' · '+esc(a.medication)+':</b> '+esc(a.from)+' → '+esc(a.to)+' '+esc(a.unit||'')+'. '+esc(a.reason||'')+(a.recordedAt?' Recorded '+esc(formatDisplayDate(a.recordedAt)):'')+(a.recordedBy?' by '+esc(a.recordedBy):'')+'.</div>').join('');
  const tagRows=LOCS.map(l=>{const t=r.breakawayTags?.[l]||{};return '<tr><td>'+esc(l)+'</td><td>'+esc(t.foundRemoved||'—')+'</td><td><b>'+esc(t.newInstalled||'—')+'</b></td></tr>'}).join('');
  const txs=Array.isArray(r.transactions)?r.transactions:[];
- const txRows=txs.length?txs.map(t=>'<tr><td>'+esc(formatDisplayDate(t.date||t.timestamp)||'')+'</td><td>'+esc(t.typeLabel||t.type||t.action||'')+'</td><td>'+esc(t.medication||'')+'</td><td>'+esc(t.quantity||'')+'</td><td>'+esc((t.fromLocation||'')+(t.toLocation?' → '+t.toLocation:''))+'</td><td>'+esc(t.reference||t.vendor||t.incident||t.lot||'')+'</td></tr>').join(''):'<tr><td colspan="6" class="report-empty">No transactions recorded during this month.</td></tr>';
+ const txRows=txs.length?txs.map(t=>{
+   const docs=[t.supportingDocument?.name,t.destructionReceipt?.name].filter(Boolean).join(' · ');
+   const detail=t.destructionCompany||t.sourcePharmacy||t.reference||t.vendor||t.incident||t.lot||'';
+   return '<tr><td>'+esc(formatDisplayDate(t.date||t.timestamp)||'')+'</td><td>'+esc(t.typeLabel||t.type||t.action||'')+'</td><td>'+esc(t.medication||'')+'</td><td>'+esc(t.quantity||'')+'</td><td>'+esc((t.fromLocation||'')+(t.toLocation?' → '+t.toLocation:''))+'</td><td>'+esc(detail)+(docs?'<br><small>'+esc(docs)+'</small>':'')+'</td></tr>';
+ }).join(''):'<tr><td colspan="6" class="report-empty">No transactions recorded during this month.</td></tr>';
  const sigCard=(loc)=>{
    const x=r.signatures?.[loc]||{};
    const explicit=r.isTest;
@@ -1886,6 +1916,8 @@ function bind(){
  const txPdfHint=document.getElementById('txSupportingPdfHint');
  const txPdfTitle=document.getElementById('txSupportingPdfTitle');
  const txPdfRequiredBadge=document.getElementById('txPdfRequiredBadge');
+ const txDestructionReceiptLabel=document.getElementById('txDestructionReceiptLabel');
+ const txDestructionReceipt=document.getElementById('txDestructionReceipt');
  const txMemoDescriptionLabel=document.getElementById('txMemoDescriptionLabel');
  const txMemoDescription=document.getElementById('txMemoDescription');
  const txDraftBtn=document.getElementById('saveTxDraftBtn');
@@ -1982,6 +2014,16 @@ function bind(){
      :(required
        ?'REQUIRED: Attach the DEA Form 222 PDF before this transaction can be submitted.'
        :'Attach supporting documentation when applicable.');
+   if(txDestructionReceiptLabel){
+     txDestructionReceiptLabel.hidden=!destroyed;
+     txDestructionReceiptLabel.style.display=destroyed?'':'none';
+     txDestructionReceiptLabel.classList.toggle('tx-pdf-required',destroyed);
+   }
+   if(txDestructionReceipt){
+     txDestructionReceipt.required=destroyed;
+     txDestructionReceipt.disabled=!destroyed;
+     if(!destroyed)txDestructionReceipt.value='';
+   }
  };
  if(txTypeSelect){txTypeSelect.addEventListener('change',syncTxPdfRequirement);syncTxPdfRequirement();}
  document.getElementById('newTxBtn').onclick=()=>{
