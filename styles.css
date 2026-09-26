@@ -6963,3 +6963,56 @@ body.report-open{overflow:hidden}
     font-size:1.5rem!important;
   }
 }
+
+
+/* v216 iPhone audit details sizing correction */
+@media(max-width:700px){
+  .audit-header{
+    grid-template-columns:minmax(0,1fr) auto!important;
+  }
+
+  .audit-header .audit-back-btn{
+    width:auto!important;
+    max-width:none!important;
+    min-height:38px!important;
+    padding:7px 10px!important;
+    white-space:nowrap!important;
+  }
+
+  .audit-meta-grid input[type="month"],
+  .audit-meta-grid input[type="date"]{
+    -webkit-appearance:none!important;
+    appearance:none!important;
+    display:block!important;
+    height:46px!important;
+    min-height:46px!important;
+    max-height:46px!important;
+    padding:9px 11px!important;
+    line-height:26px!important;
+    text-align:left!important;
+    background:#fff!important;
+  }
+
+  .audit-meta-grid input[type="month"]::-webkit-date-and-time-value,
+  .audit-meta-grid input[type="date"]::-webkit-date-and-time-value{
+    text-align:left!important;
+    margin:0!important;
+    padding:0!important;
+    min-height:0!important;
+  }
+
+  .audit-meta-grid input[type="month"]::-webkit-calendar-picker-indicator,
+  .audit-meta-grid input[type="date"]::-webkit-calendar-picker-indicator{
+    margin:0 0 0 auto!important;
+    padding:2px!important;
+  }
+}
+
+@media(max-width:360px){
+  .audit-header{
+    grid-template-columns:minmax(0,1fr)!important;
+  }
+  .audit-header .audit-back-btn{
+    width:100%!important;
+  }
+}
