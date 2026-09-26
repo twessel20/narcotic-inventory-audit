@@ -1096,6 +1096,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
            '.pdf-certifications-secondary-wrap',
            '.report-signature-box',
            '.report-final-signature',
+           '.report-vial-summary',
            '.report-vial-row',
            '.report-meta-grid',
            '.report-top'
