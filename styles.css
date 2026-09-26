@@ -5733,3 +5733,18 @@ body.report-open{overflow:hidden}
   break-after:avoid!important;
   page-break-after:avoid!important;
 }
+
+
+/* v191 allow Medic 3 / Safe cards to remain under the explanation */
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap{
+  break-inside:auto!important;
+  page-break-inside:auto!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap > .report-cert{
+  break-inside:auto!important;
+  page-break-inside:auto!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-note{
+  break-after:auto!important;
+  page-break-after:auto!important;
+}
