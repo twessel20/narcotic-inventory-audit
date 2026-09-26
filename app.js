@@ -1672,7 +1672,7 @@ function bind(){
    if(txPdfInput)txPdfInput.required=required;
    if(txPdfHint)txPdfHint.textContent=required
      ?'DEA Form 222 PDF required for this transaction.'
-     :'No DEA Form 222 required for internal redistribution between department inventory sites.';
+     :'No DEA Form 222 required for internal redistribution between department inventory sites, including movement into Expired inventory.';
  };
  if(txTypeSelect){txTypeSelect.addEventListener('change',syncTxPdfRequirement);syncTxPdfRequirement();}
  document.getElementById('newTxBtn').onclick=()=>{syncTxPdfRequirement();document.getElementById('txDialog').showModal();};
