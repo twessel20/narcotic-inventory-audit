@@ -402,7 +402,7 @@ function unitAuditSection(a,loc,index){
  '<div class="unit-compact-panel Certification-panel"><h4>Certification</h4>'+sigBlock(loc,sig,true)+'</div>'+
  '</div></section>';
 }
-function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="signature-person-grid"><div><div class="auditor-id-grid"><label>Auditor name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-employee-number value="'+esc(s.employeeNumber||'')+'"></label></div><div class="signature-label-row"><div class="signature-label">Auditor signature</div><button type="button" class="expand-signature" data-expand-signature="auditor">Open larger</button></div><canvas width="500" height="150" data-canvas></canvas></div><div><div class="auditor-id-grid"><label>Witness name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-witness-employee-number value="'+esc(s.witnessEmployeeNumber||'')+'"></label></div><div class="signature-label-row"><div class="signature-label">Witness signature</div><button type="button" class="expand-signature" data-expand-signature="witness">Open larger</button></div><canvas width="500" height="150" data-witness-canvas></canvas></div></div><button type="button" class="clear-signatures" data-clear-sig>Clear signatures</button></div>'}
+function sigBlock(loc,s={},embedded=false){return '<div class="signature-box'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="signature-person-grid"><div><div class="auditor-id-grid"><label>Auditor name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-employee-number value="'+esc(s.employeeNumber||'')+'"></label></div><div class="signature-label-row"><div class="signature-label">Auditor signature</div><div class="button-row"><button type="button" class="clear-signature-btn" data-clear-signature="auditor">Clear</button><button type="button" class="expand-signature" data-expand-signature="auditor">Open larger</button></div></div><canvas width="500" height="150" data-canvas></canvas></div><div><div class="auditor-id-grid"><label>Witness name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-witness-employee-number value="'+esc(s.witnessEmployeeNumber||'')+'"></label></div><div class="signature-label-row"><div class="signature-label">Witness signature</div><div class="button-row"><button type="button" class="clear-signature-btn" data-clear-signature="witness">Clear</button><button type="button" class="expand-signature" data-expand-signature="witness">Open larger</button></div></div><canvas width="500" height="150" data-witness-canvas></canvas></div></div></div>'}
 function adminDoseUnit(medication=''){
  const m=String(medication).toLowerCase();
  return m==='fentanyl'?'mcg':'mg';
@@ -936,7 +936,14 @@ function setupSignature(box,s,onChange){
  const changed=()=>{updateAuditRouteProgress();if(onChange)onChange()};
  setupCanvas(c,s.signature||'',changed);setupCanvas(w,s.witnessSignature||'',changed);
  box.querySelectorAll('[data-expand-signature]').forEach(btn=>btn.onclick=()=>openSignatureCapture(box,btn.dataset.expandSignature,changed));
- box.querySelector('[data-clear-sig]').onclick=()=>{[c,w].forEach(x=>{x.getContext('2d').clearRect(0,0,x.width,x.height);x.dataset.hasSignature='false'});updateAuditRouteProgress();if(onChange)onChange()};
+ box.querySelectorAll('[data-clear-signature]').forEach(btn=>btn.onclick=()=>{
+   const target=btn.dataset.clearSignature==='witness'?w:c;
+   if(!target)return;
+   target.getContext('2d').clearRect(0,0,target.width,target.height);
+   target.dataset.hasSignature='false';
+   updateAuditRouteProgress();
+   if(onChange)onChange();
+ });
 }
 function setAutosaveStatus(msg){const el=document.getElementById('autosaveStatus');if(el)el.textContent=msg}
 function collectAuditFromUI(a){
