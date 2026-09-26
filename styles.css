@@ -3947,3 +3947,37 @@ body.report-open{overflow:hidden}
   padding:12px;
   background:#fff;
 }
+
+
+.audit-finding-actions{
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+}
+.audit-expired-btn,
+.audit-damaged-btn{
+  font-size:12px;
+  font-weight:700;
+  padding:7px 9px;
+}
+.audit-expired-btn{
+  background:#fff7df;
+  border-color:#c49a3a;
+  color:#765b19;
+}
+.audit-damaged-btn{
+  background:#fff1f0;
+  border-color:#c96a63;
+  color:#8f2f2a;
+}
+@media (max-width:700px){
+  .audit-finding-actions{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    width:100%;
+  }
+  .audit-expired-btn,
+  .audit-damaged-btn{
+    width:100%;
+  }
+}
