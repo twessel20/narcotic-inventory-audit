@@ -5887,3 +5887,84 @@ body.report-open{overflow:hidden}
   break-inside:avoid!important;
   page-break-inside:avoid!important;
 }
+
+/* v197 Medic 3 / Safe certifications: stack site cards, keep both signatures in-row */
+.pdf-clean-stage .pdf-medic3-safe-page{
+  height:auto!important;
+  min-height:0!important;
+  max-height:8.75in!important;
+  overflow:hidden!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap{
+  display:block!important;
+  width:100%!important;
+  margin:0!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap > .report-cert{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  margin:0 0 5px!important;
+  padding:4px 5px!important;
+  overflow:hidden!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap > .report-cert:last-child{
+  margin-bottom:0!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-grid{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:6px!important;
+  width:100%!important;
+  margin-top:2px!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-box{
+  width:100%!important;
+  min-width:0!important;
+  height:62px!important;
+  min-height:62px!important;
+  max-height:62px!important;
+  margin:0!important;
+  padding:3px 4px!important;
+  overflow:hidden!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-site{
+  margin:0 0 1px!important;
+  font-size:.47rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-label{
+  margin:0!important;
+  font-size:.45rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-box img,
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-placeholder{
+  width:100%!important;
+  height:23px!important;
+  min-height:23px!important;
+  max-height:23px!important;
+  margin:2px 0 0!important;
+  object-fit:contain!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap .report-signature-name{
+  display:block!important;
+  padding-top:2px!important;
+  margin:0!important;
+  font-size:.49rem!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
