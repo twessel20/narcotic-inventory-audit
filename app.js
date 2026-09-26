@@ -769,16 +769,18 @@ async function editAudit(id){
    const qty=Math.max(1,Number(findingQty?.value||1));
    const sourceInput=loc&&med?document.querySelector('[data-count-loc="'+CSS.escape(loc)+'"][data-count-med="'+CSS.escape(med)+'"]'):null;
    const expiredInput=med?document.querySelector('[data-count-loc="Expired"][data-count-med="'+CSS.escape(med)+'"]'):null;
-   const sourceBefore=Number(sourceInput?.value||0);
-   const expiredBefore=Number(expiredInput?.value||0);
-   const sourceAfter=Math.max(0,sourceBefore-qty);
-   const expiredAfter=expiredBefore+(retained?qty:0);
+   const sourceEntered=sourceInput&&sourceInput.value!=='';
+   const expiredEntered=expiredInput&&expiredInput.value!=='';
+   const sourceBefore=sourceEntered?Number(sourceInput.value):null;
+   const expiredBefore=expiredEntered?Number(expiredInput.value):null;
+   const sourceAfter=sourceEntered?Math.max(0,sourceBefore-qty):null;
+   const expiredAfter=expiredEntered?(expiredBefore+(retained?qty:0)):null;
 
-   if(findingContext)findingContext.innerHTML='<strong>'+esc(loc)+' · '+esc(med)+'</strong><span>Current audit count: '+sourceBefore+' vial'+(sourceBefore===1?'':'s')+'</span>';
+   if(findingContext)findingContext.innerHTML='<strong>'+esc(loc)+' · '+esc(med)+'</strong><span>'+(sourceEntered?'Current audit count: '+sourceBefore+' vial'+(sourceBefore===1?'':'s'):'Enter the current physical count first')+'</span>';
    if(findingImpact){
      findingImpact.innerHTML=
-       '<div><span>'+esc(loc)+'</span><strong>'+sourceBefore+' → '+sourceAfter+'</strong></div>'+
-       '<div><span>Expired inventory</span><strong>'+expiredBefore+' → '+expiredAfter+'</strong></div>'+
+       '<div><span>'+esc(loc)+'</span><strong>'+(sourceEntered?(sourceBefore+' → '+sourceAfter):'Not entered')+'</strong></div>'+
+       '<div><span>Expired inventory</span><strong>'+(expiredEntered?(expiredBefore+' → '+expiredAfter):'Not entered')+'</strong></div>'+
        '<p>'+(kind==='expired'
          ?'Expired vial(s) are physically moved into Expired inventory.'
          :(retained
@@ -828,11 +830,14 @@ async function editAudit(id){
    const expiredInput=document.querySelector('[data-count-loc="Expired"][data-count-med="'+CSS.escape(med)+'"]');
    if(!sourceInput||!expiredInput)return alert('Unable to locate the audit inventory fields.');
 
-   const available=Number(sourceInput.value||0);
+   if(sourceInput.value==='')return alert('Enter the physical count for '+med+' at '+loc+' before recording this finding.');
+   if(expiredInput.value==='')return alert('Enter the physical count for '+med+' at Expired before recording this finding.');
+   const available=Number(sourceInput.value);
+   const expiredAvailable=Number(expiredInput.value);
    if(qty>available)return alert('Quantity exceeds the current '+loc+' audit count for '+med+'.');
 
    sourceInput.value=String(available-qty);
-   if(physicalRetained)expiredInput.value=String(Number(expiredInput.value||0)+qty);
+   if(physicalRetained)expiredInput.value=String(expiredAvailable+qty);
 
    collectAuditFromUI(a);
    a.inventoryFindings=Array.isArray(a.inventoryFindings)?a.inventoryFindings:[];
@@ -1110,6 +1115,10 @@ async function saveAuditFromUI(id,finalize){
    try{
      await flushPendingWrites();
      if(pendingWrites().length)throw new Error('Pending offline changes must finish syncing before finalization.');
+     const finalizedReports=await getAll('reports');
+     const thisMonth=a.monthValue||monthTextToValue(a.month||'');
+     const duplicate=finalizedReports.find(r=>r.auditId!==a.id&&(r.monthValue||monthTextToValue(r.month||''))===thisMonth);
+     if(duplicate)throw new Error('A finalized audit already exists for '+(a.month||thisMonth)+'. Open the existing report instead of creating a second finalized monthly audit.');
 
    const docs=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
    const hasAdminImport=docs.some(d=>String(d.mimeType||'').toLowerCase()==='application/pdf'&&d.storagePath&&Array.isArray(d.administrationRows)&&d.administrationRows.length);
