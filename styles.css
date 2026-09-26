@@ -5721,3 +5721,15 @@ body.report-open{overflow:hidden}
   font-size:.46rem!important;
   line-height:1!important;
 }
+
+
+/* v190 compact explanatory note for Medic 3 / Safe page */
+.pdf-clean-stage .pdf-medic3-safe-note{
+  margin:0 0 4px!important;
+  padding:0!important;
+  font-size:.5rem!important;
+  line-height:1.08!important;
+  color:#4f6473!important;
+  break-after:avoid!important;
+  page-break-after:avoid!important;
+}
