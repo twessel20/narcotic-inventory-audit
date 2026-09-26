@@ -1472,20 +1472,56 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    });
  }
 
- const stage=document.createElement('div');
+ const renderFrame=document.createElement('iframe');
+ renderFrame.setAttribute('aria-hidden','true');
+ renderFrame.tabIndex=-1;
+ renderFrame.style.position='fixed';
+ renderFrame.style.left='-20000px';
+ renderFrame.style.top='0';
+ renderFrame.style.width='1200px';
+ renderFrame.style.height='1600px';
+ renderFrame.style.border='0';
+ renderFrame.style.opacity='0';
+ renderFrame.style.pointerEvents='none';
+ renderFrame.style.zIndex='-1';
+ document.body.appendChild(renderFrame);
+
+ const frameDoc=renderFrame.contentDocument;
+ if(!frameDoc)throw new Error('Desktop PDF render frame is unavailable.');
+ frameDoc.open();
+ frameDoc.write('<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=1200, initial-scale=1"></head><body></body></html>');
+ frameDoc.close();
+
+ document.querySelectorAll('link[rel="stylesheet"],style').forEach(node=>{
+   const copied=node.cloneNode(true);
+   if(copied.tagName==='LINK'&&copied.getAttribute('href')){
+     copied.setAttribute('href',new URL(copied.getAttribute('href'),document.baseURI).href);
+   }
+   frameDoc.head.appendChild(copied);
+ });
+
+ const stage=frameDoc.createElement('div');
  stage.className='pdf-render-stage pdf-clean-stage';
- stage.style.position='fixed';
- stage.style.left='-10000px';
- stage.style.top='0';
+ stage.style.position='relative';
  stage.style.width='8.5in';
  stage.style.padding='0.35in';
+ stage.style.margin='0';
  stage.style.background='#fff';
- stage.style.zIndex='-1';
  stage.appendChild(clone);
- document.body.appendChild(stage);
+ frameDoc.body.style.margin='0';
+ frameDoc.body.style.width='1200px';
+ frameDoc.body.style.minWidth='1200px';
+ frameDoc.body.style.background='#fff';
+ frameDoc.body.appendChild(stage);
 
  try{
-   await new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve)));
+   await new Promise(resolve=>setTimeout(resolve,80));
+   await new Promise(resolve=>renderFrame.contentWindow.requestAnimationFrame(()=>renderFrame.contentWindow.requestAnimationFrame(resolve)));
+   const pendingImages=[...clone.querySelectorAll('img')].map(img=>{
+     if(img.complete)return Promise.resolve();
+     return new Promise(res=>{img.addEventListener('load',res,{once:true});img.addEventListener('error',res,{once:true});});
+   });
+   await Promise.all(pendingImages);
 
    const safeName=String(title||'Narcotic Audit Report')
      .replace(/[\\/:*?"<>|]+/g,'-')
@@ -1520,7 +1556,9 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
          backgroundColor:'#ffffff',
          logging:false,
          scrollX:0,
-         scrollY:0
+         scrollY:0,
+         windowWidth:1200,
+         windowHeight:1600
        },
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
        pagebreak:{
@@ -1580,7 +1618,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      safeName
    };
  }finally{
-   stage.remove();
+   renderFrame.remove();
  }
 }
 
