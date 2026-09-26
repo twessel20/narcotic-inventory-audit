@@ -6443,3 +6443,22 @@ body.report-open{overflow:hidden}
   #auditStepPrev{grid-column:1!important;grid-row:2!important}
   #auditStepNext{grid-column:2!important;grid-row:2!important}
 }
+
+
+/* v208 front-page inventory audit-date descriptors */
+.location-card-meta{
+  margin:-2px 0 10px;
+  padding:6px 8px;
+  border-radius:8px;
+  background:#f3f7fa;
+  color:#5f7487;
+  font-size:.74rem;
+  font-weight:750;
+  line-height:1.25;
+}
+@media(max-width:700px){
+  .location-card-meta{
+    font-size:.76rem;
+    margin-bottom:9px;
+  }
+}
