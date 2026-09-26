@@ -1877,13 +1877,18 @@ function bind(){
      txFromLocationSelect.disabled=received;
      if(received)txFromLocationSelect.value='';
    }
-   if(txPharmacySourceLabel)txPharmacySourceLabel.hidden=!received;
+   if(txPharmacySourceLabel){
+     txPharmacySourceLabel.hidden=!received;
+     txPharmacySourceLabel.style.display=received?'':'none';
+   }
    if(txToLocationText)txToLocationText.textContent='To';
    if(txToLocationLabel)txToLocationLabel.hidden=received||incident;
    if(txToLocationSelect&&received)txToLocationSelect.value='Safe';
    if(txSourcePharmacy){
      txSourcePharmacy.required=received;
+     txSourcePharmacy.disabled=!received;
      if(received&&!txSourcePharmacy.value.trim())txSourcePharmacy.value='NKCH Pharmacy';
+     if(!received)txSourcePharmacy.value='';
    }
    const expired=txTypeSelect?.value==='expired';
    if(txNotesLabel)txNotesLabel.textContent=incident?'Incident / discrepancy explanation':'Reason / notes';
