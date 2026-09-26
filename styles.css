@@ -5431,3 +5431,107 @@ body.report-open{overflow:hidden}
   font-size:.5rem!important;
   line-height:1.05!important;
 }
+
+
+/* v184 polish Medic 3 / Safe certification page after pagination fix */
+.pdf-clean-stage .pdf-medic3-safe-page{
+  padding:12px 14px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-packet-title{
+  margin:-12px -14px 10px!important;
+  padding:9px 12px!important;
+  font-size:1rem!important;
+  line-height:1.1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-explainer{
+  margin:0 0 10px!important;
+  font-size:.72rem!important;
+  line-height:1.28!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap{
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:nowrap!important;
+  gap:12px!important;
+  width:100%!important;
+  align-items:stretch!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap > .report-cert{
+  flex:1 1 0!important;
+  width:calc(50% - 6px)!important;
+  max-width:calc(50% - 6px)!important;
+  min-width:0!important;
+  margin:0!important;
+  padding:10px 11px!important;
+  border:1px solid #d6e1e8!important;
+  border-radius:9px!important;
+  overflow:hidden!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-cert h2{
+  margin:0 0 5px!important;
+  font-size:.88rem!important;
+  line-height:1.05!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-cert-site{
+  margin:0 0 4px!important;
+  font-size:.6rem!important;
+  line-height:1.05!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-cert-statement{
+  margin:0 0 7px!important;
+  font-size:.62rem!important;
+  line-height:1.22!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-grid{
+  display:grid!important;
+  grid-template-columns:1fr!important;
+  gap:7px!important;
+  margin-top:6px!important;
+  width:100%!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-box{
+  width:100%!important;
+  min-width:0!important;
+  min-height:0!important;
+  margin:0!important;
+  padding:7px 8px!important;
+  border-radius:8px!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-site{
+  margin:0 0 3px!important;
+  font-size:.58rem!important;
+  line-height:1.05!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-label{
+  margin:0!important;
+  font-size:.58rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-box img,
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-placeholder{
+  display:block!important;
+  width:100%!important;
+  height:46px!important;
+  min-height:46px!important;
+  max-height:46px!important;
+  margin:4px 0 0!important;
+  object-fit:contain!important;
+  object-position:left center!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-name{
+  padding-top:4px!important;
+  font-size:.62rem!important;
+  line-height:1.05!important;
+}
+
+/* Safe follows the same visual order as all other sites: Auditor, then Witness. */
+.pdf-clean-stage .pdf-safe-cert .report-signature-grid > .report-signature-box:first-child{
+  order:1!important;
+}
+.pdf-clean-stage .pdf-safe-cert .report-signature-grid > .report-signature-box:last-child{
+  order:2!important;
+}
