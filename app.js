@@ -1884,6 +1884,8 @@ function bind(){
  const txTypeSelect=document.querySelector('#txForm select[name=type]');
  const txPdfInput=document.getElementById('txSupportingPdf');
  const txPdfHint=document.getElementById('txSupportingPdfHint');
+ const txPdfTitle=document.getElementById('txSupportingPdfTitle');
+ const txPdfRequiredBadge=document.getElementById('txPdfRequiredBadge');
  const txMemoDescriptionLabel=document.getElementById('txMemoDescriptionLabel');
  const txMemoDescription=document.getElementById('txMemoDescription');
  const txDraftBtn=document.getElementById('saveTxDraftBtn');
@@ -1938,15 +1940,20 @@ function bind(){
      txNotes.required=incident;
      txNotes.placeholder=incident?'Describe what happened, including broken/damaged vial details and circumstances.':'';
    }
-   if(txPdfLabel)txPdfLabel.hidden=false;
+   if(txPdfLabel){
+     txPdfLabel.hidden=false;
+     txPdfLabel.classList.toggle('tx-pdf-required',required);
+   }
+   if(txPdfRequiredBadge)txPdfRequiredBadge.hidden=!required;
+   if(txPdfTitle)txPdfTitle.textContent=required?'DEA Form 222':'Supporting PDF';
    if(txPdfInput){
      txPdfInput.required=required;
    }
    if(txPdfHint)txPdfHint.textContent=incident
      ?'Memo PDF is optional while saving a draft, but required before final incident submission. DEA Form 222 is not required.'
      :(required
-       ?'DEA Form 222 PDF required for this transaction.'
-       :'No DEA Form 222 required for internal redistribution between department inventory sites, including movement into Expired inventory.');
+       ?'REQUIRED: Attach the DEA Form 222 PDF before this transaction can be submitted.'
+       :'Attach supporting documentation when applicable.');
  };
  if(txTypeSelect){txTypeSelect.addEventListener('change',syncTxPdfRequirement);syncTxPdfRequirement();}
  document.getElementById('newTxBtn').onclick=()=>{
