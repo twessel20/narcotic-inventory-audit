@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/jpeg" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
   <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
-  <link rel="stylesheet" href="styles.css?v=20260925-154">
+  <link rel="stylesheet" href="styles.css?v=20260925-155">
 </head>
 <body>
   <header class="app-header">
@@ -37,7 +37,10 @@
     <section id="inventory" class="tab-panel active">
       <div class="section-head">
         <div><span class="kicker">CURRENT PHYSICAL BALANCE</span><h2>Inventory at a glance</h2></div>
-        <button class="primary" id="newTxBtn">Record transaction</button>
+        <div class="inventory-primary-actions">
+          <button type="button" id="startAuditHomeBtn">Start Audit</button>
+          <button class="primary" id="newTxBtn">Record transaction</button>
+        </div>
       </div>
       <div id="inventoryGrid" class="location-grid"></div>
       <div class="card totals-card">
@@ -206,6 +209,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script src="app.js?v=20260925-154"></script>
+  <script src="app.js?v=20260925-155"></script>
 </body>
 </html>
