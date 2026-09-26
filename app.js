@@ -867,11 +867,17 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    if(el.classList.contains('report-cert'))return;
 
    el.classList.remove('pdf-section-page','pdf-keep-together');
-   el.classList.add('pdf-report-section','pdf-section-page');
+   el.classList.add('pdf-report-section');
 
-   // Every major report section begins on its own PDF page.
-   el.style.breakBefore='page';
-   el.style.pageBreakBefore='always';
+   // Cover is already page 1. Other sections are assigned page starts below.
+   if(!el.classList.contains('report-cover-page')){
+     el.classList.add('pdf-section-page');
+     el.style.breakBefore='page';
+     el.style.pageBreakBefore='always';
+   }else{
+     el.style.breakBefore='auto';
+     el.style.pageBreakBefore='auto';
+   }
    el.style.breakAfter='auto';
    el.style.pageBreakAfter='auto';
 
@@ -916,9 +922,9 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
  clone.querySelectorAll('.report-table').forEach(el=>{el.style.minWidth='0';el.style.width='100%';});
  const vialSection=clone.querySelector('.pdf-vial-section');
  if(vialSection){
-   vialSection.classList.add('pdf-break-before','pdf-standalone-section');
-   vialSection.style.breakBefore='page';
-   vialSection.style.pageBreakBefore='always';
+   vialSection.classList.remove('pdf-break-before','pdf-standalone-section');
+   vialSection.style.breakBefore='auto';
+   vialSection.style.pageBreakBefore='auto';
    vialSection.style.breakInside='avoid';
    vialSection.style.pageBreakInside='avoid';
  }
@@ -931,6 +937,66 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    el.style.breakInside='avoid';
    el.style.pageBreakInside='avoid';
  });
+
+ // Build formal compound pages for the PDF packet.
+ const cover=clone.querySelector('.report-cover-page');
+
+ // Finalized monthly record + Executive Summary on one page.
+ const reportTop=clone.querySelector('.report-top');
+ const metaGrid=clone.querySelector('.report-meta-grid');
+ const blueRule=clone.querySelector('.report-blue-rule');
+ const executive=clone.querySelector('.report-executive-summary');
+ if(reportTop&&executive){
+   const monthlyPage=document.createElement('section');
+   monthlyPage.className='pdf-report-section pdf-section-page pdf-monthly-summary-page';
+   monthlyPage.innerHTML='<h2>Finalized Monthly Record / Executive Summary</h2>';
+   [reportTop,metaGrid,blueRule,executive].filter(Boolean).forEach(n=>{
+     n.classList.remove?.('pdf-section-page','pdf-report-section');
+     n.style.breakBefore='auto';n.style.pageBreakBefore='auto';
+     monthlyPage.appendChild(n);
+   });
+   if(cover?.nextSibling)cover.parentNode.insertBefore(monthlyPage,cover.nextSibling);
+   else clone.appendChild(monthlyPage);
+ }
+
+ // Inventory comparison + Breakaway tag record on one page.
+ const inventorySection=[...clone.querySelectorAll('section')].find(s=>(s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase()==='inventory comparison');
+ const tagSection=[...clone.querySelectorAll('section')].find(s=>(s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase()==='breakaway tag record');
+ if(inventorySection&&tagSection){
+   const inventoryPage=document.createElement('section');
+   inventoryPage.className='pdf-report-section pdf-section-page pdf-inventory-tags-page';
+   inventoryPage.innerHTML='<h2>Inventory Comparison / Breakaway Tag Record</h2>';
+   [inventorySection,tagSection].forEach(n=>{
+     n.classList.remove('pdf-section-page','pdf-report-section');
+     n.style.breakBefore='auto';n.style.pageBreakBefore='auto';
+     inventoryPage.appendChild(n);
+   });
+   const anchor=monthlyPage?.nextSibling||inventorySection;
+   if(anchor)clone.insertBefore(inventoryPage,anchor); else clone.appendChild(inventoryPage);
+ }
+
+ // Treat the imported/exported ESO PDF record as one complete supporting-record section.
+ const esoSource=clone.querySelector('.report-eso-source');
+ const importedAdmin=clone.querySelector('.report-imported-admin');
+ const calculatedVials=clone.querySelector('.pdf-vial-section');
+ if(esoSource){
+   const esoPage=document.createElement('section');
+   esoPage.className='pdf-report-section pdf-section-page pdf-eso-record-page';
+   esoPage.innerHTML='<h2>ESO Narcotic Administration Record</h2>';
+   [esoSource,importedAdmin].filter(Boolean).forEach(n=>{
+     n.classList.remove('pdf-section-page','pdf-report-section','pdf-break-before');
+     n.style.breakBefore='auto';n.style.pageBreakBefore='auto';
+     esoPage.appendChild(n);
+   });
+   if(calculatedVials){
+     calculatedVials.classList.remove('pdf-break-before','pdf-standalone-section');
+     calculatedVials.style.breakBefore='auto';calculatedVials.style.pageBreakBefore='auto';
+     esoPage.appendChild(calculatedVials);
+   }
+   // Place before transactions when possible.
+   const tx=[...clone.querySelectorAll('section')].find(s=>(s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase().startsWith('transactions in the audit reporting period'));
+   if(tx)clone.insertBefore(esoPage,tx); else clone.appendChild(esoPage);
+ }
 
  const stage=document.createElement('div');
  stage.className='pdf-render-stage';
@@ -1341,13 +1407,13 @@ function reportHtml(r){
  (amendment?'<section class="report-amendment"><h2>Amended inventory record — correction history</h2><p>The table below includes these corrections. Signatures were recorded before these amendments and certify the original record, not the corrected entries.</p>'+amendment+'</section>':'')+
  '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+esc(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
  '<section><h2>Breakaway tag record</h2><table class="report-table"><thead><tr><th>Location</th><th>Tag found / removed</th><th>New tag installed</th></tr></thead><tbody>'+tagRows+'</tbody></table></section>'+
- '<section><h2>Narcotic usage exports</h2><p>Reference documents only. Monthly inventory totals are the manually verified physical counts; usage exports do not calculate expected counts or variances.</p>'+(sourceDoc?'<p><u>'+esc(sourceDoc.name)+'</u> — uploaded '+esc(sourceDoc.uploadedAt||'')+(sourceDoc.uploadedBy?' by '+esc(sourceDoc.uploadedBy):'')+'</p>':'')+'<p class="report-note">Uploaded PDFs are separate supporting documents; open each attachment to print its contents.</p></section>'+
+ '<section class="report-eso-source"><h2>ESO Narcotic Administration Record</h2><p>This section documents the narcotic administration record imported from an exported ESO software PDF. The imported ESO record is retained as the source reference for administration activity during the audit period. Physical inventory totals remain based on the manually verified count.</p>'+(sourceDoc?'<p><b>Imported ESO PDF:</b> <u>'+esc(sourceDoc.name)+'</u> — imported '+esc(formatDisplayDate(sourceDoc.uploadedAt)||'')+(sourceDoc.uploadedBy?' by '+esc(sourceDoc.uploadedBy):'')+'</p>':'')+'<p class="report-note">The source PDF, imported administration rows, and calculated vial-use reconciliation below are treated as one supporting-record section.</p></section>'+
  (r.isTest&&Array.isArray(r.administrationRows)&&r.administrationRows.length?
- '<section class="report-imported-admin pdf-break-before"><h2>Imported narcotic administrations</h2><p class="report-note">Source doses are shown as imported. Vial use below is calculated from the department vial rules for reconciliation.</p>'+
+ '<section class="report-imported-admin"><h2>Imported ESO Administration Detail</h2><p class="report-note">Administration rows below were extracted from the imported ESO software PDF. Source doses are preserved as imported; calculated vial use is derived separately using department vial rules for reconciliation.</p>'+
  '<table class="report-table"><thead><tr><th>Date</th><th>Report</th><th>Provider</th><th>Medication</th><th>Dose</th><th>Unit</th></tr></thead><tbody>'+
  r.administrationRows.map(x=>'<tr><td>'+esc(formatAdminDate(x.date))+'</td><td>'+esc(x.report)+'</td><td>'+esc(x.provider)+'</td><td>'+esc(x.medication)+'</td><td><b>'+esc(x.dose)+' '+esc(adminDoseUnit(x.medication))+'</b></td><td>'+esc(String(x.unit||'').replace(/^M([123])$/,'Medic $1'))+'</td></tr>').join('')+
  '</tbody></table>'+
- '<div class="report-usage-summary report-vial-summary pdf-vial-section"><div class="report-vial-summary-title">Calculated vial use by provider</div>'+
+ '<div class="report-usage-summary report-vial-summary pdf-vial-section"><div class="report-vial-summary-title">Calculated Vial Use from Imported ESO Record</div>'+
  providerVialData(r.administrationRows).providers.map(([provider,items])=>{
    const total=items.reduce((n,x)=>n+x.vials,0);
    const breakdown=new Map();
