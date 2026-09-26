@@ -1910,7 +1910,6 @@ function bind(){
  document.getElementById('newTxBtn').onclick=()=>{
    const auditCtx=document.getElementById('txAuditContextId');if(auditCtx)auditCtx.value='';
    const txId=document.getElementById('txTransactionId');if(txId)txId.value='';
-   const txId=document.getElementById('txTransactionId');if(txId)txId.value='';
    syncTxPdfRequirement();document.getElementById('txDialog').showModal();
  };
  const txDialog=document.getElementById('txDialog');
@@ -1919,6 +1918,7 @@ function bind(){
    if(txDialog?.open)txDialog.close('cancel');
    txForm?.reset();
    const auditCtx=document.getElementById('txAuditContextId');if(auditCtx)auditCtx.value='';
+   const txId=document.getElementById('txTransactionId');if(txId)txId.value='';
    if(txRowsHost){txRowsHost.innerHTML='';addTxMedicationRow();}
    [txRecordedSig,txWitnessSig].forEach(c=>{if(c){c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.hasSignature='false';}});
    syncTxPdfRequirement();
