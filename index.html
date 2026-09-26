@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/jpeg" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
   <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
-  <link rel="stylesheet" href="styles.css?v=20260925-117">
+  <link rel="stylesheet" href="styles.css?v=20260925-118">
 </head>
 <body>
   <header class="app-header">
@@ -104,7 +104,8 @@
           <option value="expired">Move to expired</option>
           <option value="destroyed">Destroyed / transferred out</option>
         </select></label>
-        <label>From<select name="fromLocation"></select></label>
+        <label id="txFromLocationLabel">From<select name="fromLocation"></select></label>
+        <label id="txPharmacySourceLabel" hidden>Source pharmacy<input name="sourcePharmacy" id="txSourcePharmacy" value="NKCH Pharmacy" placeholder="Pharmacy name"></label>
         <label>To<select name="toLocation"></select></label>
         <label>Report / reference<input name="reference"></label>
 
@@ -169,6 +170,6 @@
   <script>if(window.pdfjsLib)window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';</script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
-  <script src="app.js?v=20260925-117"></script>
+  <script src="app.js?v=20260925-118"></script>
 </body>
 </html>
