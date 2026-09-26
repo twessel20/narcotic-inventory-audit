@@ -150,8 +150,17 @@ function monthValueToText(v=''){
 async function renderInventory(){
  const grid=document.getElementById('inventoryGrid'),totals=document.getElementById('activeTotals');
  if(!grid||!totals)return;
- const b=await balances();
- grid.innerHTML=LOCS.map(loc=>'<div class="location-card"><h3><span>'+loc+'</span><span class="pill '+(loc==='Expired'?'expired':'')+'">'+(loc==='Expired'?'Segregated':'Active')+'</span></h3>'+MEDS.map(m=>'<div class="med-row"><span>'+m+'</span><strong>'+b[loc][m]+'</strong></div>').join('')+'</div>').join('');
+ const [b,reports]=await Promise.all([balances(),getAll('reports')]);
+ const finalized=[...(reports||[])].filter(r=>String(r.status||'finalized').toLowerCase()==='finalized');
+ finalized.sort((a,b)=>String(b.finalizedAt||b.auditDate||b.createdAt||'').localeCompare(String(a.finalizedAt||a.auditDate||a.createdAt||'')));
+ const lastAudit=finalized[0]||null;
+ const lastAuditDate=lastAudit?formatDisplayDate(lastAudit.auditDate||lastAudit.finalizedAt||lastAudit.createdAt):'';
+ const basisText=lastAuditDate
+   ?'Physical inventory last verified '+lastAuditDate+'. Displayed balances include recorded inventory transactions entered after that audit.'
+   :'No finalized physical audit is on file. Displayed balances reflect recorded inventory data only.';
+ const totalBasis=document.getElementById('inventoryBalanceAsOf');
+ if(totalBasis)totalBasis.textContent=basisText;
+ grid.innerHTML=LOCS.map(loc=>'<div class="location-card"><h3><span>'+loc+'</span><span class="pill '+(loc==='Expired'?'expired':'')+'">'+(loc==='Expired'?'Segregated':'Active')+'</span></h3><div class="location-card-meta">'+esc(lastAuditDate?'Last physical audit: '+lastAuditDate:'No finalized physical audit on file')+'</div>'+MEDS.map(m=>'<div class="med-row"><span>'+m+'</span><strong>'+b[loc][m]+'</strong></div>').join('')+'</div>').join('');
  totals.innerHTML=MEDS.map(m=>{const t=['Medic 1','Medic 2','Medic 3','Safe'].reduce((a,l)=>a+b[l][m],0);return '<div class="total-row"><div><b>'+m+'</b><small>Medic 1 + Medic 2 + Medic 3 + Safe</small></div><strong>'+t+'</strong></div>'}).join('');
 }
 
