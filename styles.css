@@ -4495,3 +4495,97 @@ body.report-open{overflow:hidden}
     min-height:48px;
   }
 }
+
+
+/* v159 mobile report/PDF controls */
+@media(max-width:700px){
+  #reportDialog{
+    width:100vw!important;
+    height:100dvh!important;
+    max-height:100dvh!important;
+    margin:0!important;
+    padding:0!important;
+    overflow:hidden!important;
+    border-radius:0!important;
+  }
+
+  #reportPreview{
+    height:100%;
+    min-height:0;
+    overflow-y:auto;
+    overflow-x:hidden;
+    -webkit-overflow-scrolling:touch;
+    background:#fff;
+  }
+
+  .report-finalized{
+    padding:0 10px 18px!important;
+  }
+
+  .report-toolbar{
+    position:sticky!important;
+    top:0!important;
+    z-index:50!important;
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:8px!important;
+    width:calc(100% + 20px)!important;
+    margin:0 -10px 12px!important;
+    padding:10px!important;
+    background:#fff!important;
+    border-bottom:1px solid #dfe7ed!important;
+    box-shadow:0 2px 6px rgba(0,0,0,.05);
+  }
+
+  .report-toolbar button{
+    width:100%!important;
+    min-width:0!important;
+    min-height:46px!important;
+    margin:0!important;
+    padding:8px 10px!important;
+    white-space:normal!important;
+    line-height:1.15!important;
+    text-align:center!important;
+    font-size:13px!important;
+  }
+
+  .pdf-preview-dialog{
+    width:100vw!important;
+    height:100dvh!important;
+    max-width:none!important;
+    max-height:none!important;
+    margin:0!important;
+    padding:0!important;
+    border-radius:0!important;
+    overflow:hidden!important;
+  }
+
+  .pdf-preview-head{
+    height:auto!important;
+    min-height:58px!important;
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    align-items:center!important;
+    gap:10px!important;
+    padding:8px 10px!important;
+  }
+
+  .pdf-preview-head #closePdfPreview{
+    min-height:42px!important;
+    padding:8px 14px!important;
+  }
+
+  #pdfPreviewTitle{
+    max-width:100%!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+
+  #pdfPreviewFrame{
+    width:100%!important;
+    height:calc(100dvh - 58px)!important;
+    min-height:0!important;
+    border:0!important;
+  }
+}
