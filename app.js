@@ -1014,7 +1014,29 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    }
    pages.push(inventoryPage,esoPage);
    if(txSection)pages.push(makePage('Transactions in the Audit Reporting Period','pdf-transactions-page',[txSection]));
-   if(signatureSection)pages.push(makePage('Audit Site Certifications','pdf-certifications-page',[signatureSection]));
+   if(signatureSection){
+     const certCards=[...signatureSection.querySelectorAll('.report-cert')];
+     const certByTitle=title=>certCards.find(card=>(card.querySelector('h2')?.textContent||'').trim().toLowerCase()===title.toLowerCase());
+
+     const certPageA=document.createElement('section');
+     certPageA.className='pdf-packet-page pdf-certifications-page pdf-certifications-primary';
+     certPageA.innerHTML='<h2 class="pdf-packet-title">Audit Site Certifications — Medic 1 / Medic 2</h2>';
+     [certByTitle('Medic 1 Certification'),certByTitle('Medic 2 Certification')].filter(Boolean).forEach(card=>{
+       clearBreaks(card);
+       certPageA.appendChild(card);
+     });
+
+     const certPageB=document.createElement('section');
+     certPageB.className='pdf-packet-page pdf-certifications-page pdf-certifications-secondary';
+     certPageB.innerHTML='<h2 class="pdf-packet-title">Audit Site Certifications — Medic 3 / Safe / Expired</h2>';
+     [certByTitle('Medic 3 Certification'),certByTitle('Safe Certification'),certByTitle('Expired Certification')].filter(Boolean).forEach(card=>{
+       clearBreaks(card);
+       certPageB.appendChild(card);
+     });
+
+     if(certPageA.childElementCount>1)pages.push(certPageA);
+     if(certPageB.childElementCount>1)pages.push(certPageB);
+   }
    if(attestationSection)pages.push(makePage('Final Controlled-Substance Audit Attestation','pdf-attestation-page',[attestationSection]));
    if(notesSection||reportFooter)pages.push(makePage('Audit Notes / Final Record','pdf-notes-page',[notesSection,reportFooter]));
 
@@ -1038,25 +1060,14 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
    // Pre-paginate Certification cards. The Certification section starts on a fresh
    // PDF page, so move any whole card that will not fit to the next page.
-   const pdfSignatureSection=clone.querySelector('.report-signature-section');
-   if(pdfSignatureSection){
-     const cards=[...pdfSignatureSection.querySelectorAll('.report-cert')];
-     const sectionHeading=pdfSignatureSection.querySelector(':scope > h2');
-     const pageCapacity=9.45*96;
-     let used=(sectionHeading?.getBoundingClientRect().height||0)+18;
-     for(const card of cards){
-       card.classList.remove('pdf-break-before');
-       const h=(card.getBoundingClientRect().height||0)+10;
-       if(used>25 && used+h>pageCapacity){
-         card.classList.add('pdf-break-before');
-         card.style.breakBefore='page';
-         card.style.pageBreakBefore='always';
-         used=h;
-       }else{
-         used+=h;
-       }
-     }
-   }
+   // Certification cards are already grouped into dedicated packet pages.
+   clone.querySelectorAll('.pdf-certifications-page .report-cert').forEach(card=>{
+     card.classList.remove('pdf-break-before');
+     card.style.breakBefore='auto';
+     card.style.pageBreakBefore='auto';
+     card.style.breakInside='avoid';
+     card.style.pageBreakInside='avoid';
+   });
 
    const safeName=String(title||'Narcotic Audit Report')
      .replace(/[\\/:*?"<>|]+/g,'-')
@@ -1430,13 +1441,13 @@ function reportHtml(r){
  (amendment?'<section class="report-amendment"><h2>Amended inventory record — correction history</h2><p>The table below includes these corrections. Signatures were recorded before these amendments and certify the original record, not the corrected entries.</p>'+amendment+'</section>':'')+
  '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+esc(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
  '<section><h2>Breakaway tag record</h2><table class="report-table"><thead><tr><th>Location</th><th>Tag found / removed</th><th>New tag installed</th></tr></thead><tbody>'+tagRows+'</tbody></table></section>'+
- '<section class="report-eso-source"><h2>ESO Narcotic Administration Record</h2><p>This section documents the narcotic administration record imported from an exported ESO software PDF. The imported ESO record is retained as the source reference for administration activity during the audit period. Physical inventory totals remain based on the manually verified count.</p>'+(sourceDoc?'<p><b>Imported ESO PDF:</b> <u>'+esc(sourceDoc.name)+'</u> — imported '+esc(formatDisplayDate(sourceDoc.uploadedAt)||'')+(sourceDoc.uploadedBy?' by '+esc(sourceDoc.uploadedBy):'')+'</p>':'')+'<p class="report-note">The source PDF, imported administration rows, and calculated vial-use reconciliation below are treated as one supporting-record section.</p></section>'+
+ '<section class="report-eso-source"><h2>ESO Narcotic Administration Record</h2><p>Administration activity was imported from the ESO software PDF for this audit period. Physical inventory totals remain based on the manually verified count.</p>'+(sourceDoc?'<p><b>Imported ESO PDF:</b> <u>'+esc(sourceDoc.name)+'</u> — imported '+esc(formatDisplayDate(sourceDoc.uploadedAt)||'')+(sourceDoc.uploadedBy?' by '+esc(sourceDoc.uploadedBy):'')+'</p>':'')+'<p class="report-note">The imported record and calculated vial-use reconciliation are included below.</p></section>'+
  (r.isTest&&Array.isArray(r.administrationRows)&&r.administrationRows.length?
- '<section class="report-imported-admin"><h2>Imported ESO Administration Detail</h2><p class="report-note">Administration rows below were extracted from the imported ESO software PDF. Source doses are preserved as imported; calculated vial use is derived separately using department vial rules for reconciliation.</p>'+
+ '<section class="report-imported-admin"><h2>Administration Detail</h2><p class="report-note">Source doses are preserved as imported. Calculated vial use is derived separately using department vial rules.</p>'+
  '<table class="report-table"><thead><tr><th>Date</th><th>Report</th><th>Provider</th><th>Medication</th><th>Dose</th><th>Unit</th></tr></thead><tbody>'+
  r.administrationRows.map(x=>'<tr><td>'+esc(formatAdminDate(x.date))+'</td><td>'+esc(x.report)+'</td><td>'+esc(x.provider)+'</td><td>'+esc(x.medication)+'</td><td><b>'+esc(x.dose)+' '+esc(adminDoseUnit(x.medication))+'</b></td><td>'+esc(String(x.unit||'').replace(/^M([123])$/,'Medic $1'))+'</td></tr>').join('')+
  '</tbody></table>'+
- '<div class="report-usage-summary report-vial-summary pdf-vial-section"><div class="report-vial-summary-title">Calculated Vial Use from Imported ESO Record</div>'+
+ '<div class="report-usage-summary report-vial-summary pdf-vial-section"><div class="report-vial-summary-title">Calculated Vial Use</div>'+
  providerVialData(r.administrationRows).providers.map(([provider,items])=>{
    const total=items.reduce((n,x)=>n+x.vials,0);
    const breakdown=new Map();
