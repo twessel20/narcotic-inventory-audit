@@ -3151,3 +3151,27 @@ body.report-open{overflow:hidden}
   border-radius:10px !important;
   background:#fff !important;
 }
+
+
+/* Keep the full Calculated Vial Use block together in generated PDFs */
+.pdf-clean-stage .pdf-eso-record-page .report-vial-summary{
+  display:block !important;
+  width:100% !important;
+  margin:12px 0 0 !important;
+  padding:10px 12px !important;
+  break-inside:avoid-page !important;
+  page-break-inside:avoid !important;
+  overflow:visible !important;
+}
+.pdf-clean-stage .pdf-eso-record-page .report-vial-summary-title{
+  margin:0 0 6px !important;
+  font-size:.88rem !important;
+  line-height:1.15 !important;
+}
+.pdf-clean-stage .pdf-eso-record-page .report-vial-explainer{
+  margin:4px 0 8px !important;
+}
+.pdf-clean-stage .pdf-eso-record-page .report-vial-row{
+  break-inside:avoid !important;
+  page-break-inside:avoid !important;
+}
