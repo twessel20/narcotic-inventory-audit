@@ -5855,3 +5855,35 @@ body.report-open{overflow:hidden}
   overflow:hidden!important;
   text-overflow:ellipsis!important;
 }
+
+/* v196 compact Medic 3 / Safe generated PDF page and prevent overflow-only blank page */
+.pdf-clean-stage .pdf-medic3-safe-page{
+  height:auto!important;
+  min-height:0!important;
+  max-height:8.85in!important;
+  overflow:hidden!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-note{
+  margin:0 0 3px!important;
+  font-size:.48rem!important;
+  line-height:1.04!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap{
+  margin:0!important;
+  gap:6px!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-safe-wrap > .report-cert{
+  margin:0!important;
+  padding:4px!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .report-signature-grid{
+  margin-top:1px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .report-signature-box{
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
