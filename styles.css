@@ -3613,3 +3613,182 @@ body.report-open{overflow:hidden}
   .tx-med-row .remove-tx-med{grid-column:1/-1;}
   .tx-signatures{grid-template-columns:1fr;}
 }
+
+
+/* Mobile transaction dialog overhaul */
+@media(max-width:700px){
+  #txDialog{
+    width:100vw;
+    max-width:none;
+    height:100dvh;
+    max-height:100dvh;
+    margin:0;
+    padding:0;
+    border:0;
+    border-radius:0;
+  }
+  #txDialog::backdrop{background:rgba(10,24,34,.5);}
+  #txForm.dialog-form{
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+    padding:0;
+    background:#f4f7f9;
+  }
+  #txDialog .dialog-head{
+    position:sticky;
+    top:0;
+    z-index:5;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:12px;
+    padding:14px 16px;
+    background:#fff;
+    border-bottom:1px solid #dbe5eb;
+  }
+  #txDialog .dialog-head h2{
+    margin:0;
+    font-size:20px;
+    line-height:1.2;
+  }
+  #txDialog .icon-btn{
+    width:42px;
+    height:42px;
+    min-width:42px;
+    border-radius:999px;
+    font-size:24px;
+  }
+  #txDialog .form-grid{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    padding:14px 14px 110px;
+    flex:1;
+    overflow-y:auto;
+  }
+  #txDialog .form-grid > label,
+  #txDialog .form-grid > .wide{
+    width:100%;
+    min-width:0;
+    margin:0;
+  }
+  #txDialog label{
+    font-size:13px;
+    font-weight:700;
+    color:#344c5b;
+  }
+  #txDialog input,
+  #txDialog select,
+  #txDialog textarea{
+    width:100%;
+    min-height:48px;
+    margin-top:6px;
+    font-size:16px;
+    border-radius:10px;
+  }
+  #txDialog textarea{min-height:108px;resize:vertical;}
+  #txDialog input[type=file]{
+    min-height:0;
+    padding:10px;
+    background:#fff;
+  }
+  #txDialog small{
+    display:block;
+    margin-top:6px;
+    line-height:1.35;
+  }
+  #txDialog .tx-items-card{
+    padding:12px;
+    border-radius:12px;
+    background:#fff;
+  }
+  #txDialog .tx-items-head{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:10px;
+    margin-bottom:10px;
+  }
+  #txDialog .tx-items-head button{
+    width:100%;
+    min-height:44px;
+  }
+  #txDialog .tx-med-row{
+    display:grid;
+    grid-template-columns:1fr 86px;
+    gap:8px;
+    padding:10px 0;
+    margin:0;
+    border-top:1px solid #e2e9ee;
+  }
+  #txDialog .tx-med-row:first-child{border-top:0;}
+  #txDialog .tx-med-row label{
+    min-width:0;
+    margin:0;
+  }
+  #txDialog .tx-med-row .remove-tx-med{
+    grid-column:1/-1;
+    width:100%;
+    min-height:40px;
+  }
+  #txDialog .tx-signatures{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+  }
+  #txDialog .tx-signature-person{
+    padding:12px;
+    border-radius:12px;
+    background:#fff;
+  }
+  #txDialog .auditor-id-grid{
+    display:grid;
+    grid-template-columns:1fr;
+    gap:10px;
+  }
+  #txDialog .signature-label-row{
+    display:flex;
+    flex-direction:column;
+    align-items:stretch;
+    gap:8px;
+    margin-top:10px;
+  }
+  #txDialog .signature-label-row .button-row{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    width:100%;
+  }
+  #txDialog .signature-label-row button{
+    min-height:42px;
+    width:100%;
+  }
+  #txDialog .tx-signature-person canvas{
+    height:150px;
+    margin-top:8px;
+  }
+  #txDialog .dialog-actions{
+    position:fixed;
+    left:0;
+    right:0;
+    bottom:0;
+    z-index:6;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:8px;
+    padding:10px 12px calc(10px + env(safe-area-inset-bottom));
+    background:rgba(255,255,255,.97);
+    border-top:1px solid #d7e2e8;
+    box-shadow:0 -4px 16px rgba(20,40,50,.08);
+  }
+  #txDialog .dialog-actions button{
+    min-height:48px;
+    width:100%;
+    margin:0;
+  }
+  #txDialog .dialog-actions button[hidden]{display:none!important;}
+  #txDialog .dialog-actions:has(#saveTxDraftBtn:not([hidden])){
+    grid-template-columns:1fr 1fr 1fr;
+  }
+}
