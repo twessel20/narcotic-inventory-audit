@@ -163,7 +163,7 @@ async function renderActivity(){
  document.getElementById('activityList').innerHTML=rows.length?rows.map(r=>{
    const items=Array.isArray(r.items)&&r.items.length?r.items:[{medication:r.medication,quantity:r.quantity}];
    const itemText=items.map(x=>esc(x.medication)+' × '+esc(x.quantity)).join(' · ');
-   return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+'</strong><div>'+itemText+'</div><div>'+esc(r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy):'')+(r.witness?' · Witness '+esc(r.witness):'')+(r.reference?' · Ref '+esc(r.reference):'')+'</div>'+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+'</div>';
+   return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+'</strong><div>'+itemText+'</div><div>'+esc(r.sourcePharmacy||r.externalSource||r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy):'')+(r.witness?' · Witness '+esc(r.witness):'')+(r.reference?' · Ref '+esc(r.reference):'')+'</div>'+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+'</div>';
  }).join(''):'<div class="empty">No activity recorded yet.</div>';
 }
 
@@ -173,6 +173,7 @@ async function saveTransaction(fd){
  const type=fd.get('type');
  const from=fd.get('fromLocation');
  const to=fd.get('toLocation');
+ const sourcePharmacy=String(fd.get('sourcePharmacy')||'').trim();
  const meds=fd.getAll('txMedication');
  const qtys=fd.getAll('txQuantity');
  const items=meds.map((med,i)=>({medication:String(med||''),quantity:Number(qtys[i]||0)})).filter(x=>x.medication&&x.quantity>0);
@@ -195,7 +196,10 @@ async function saveTransaction(fd){
  }
 
  if(type==='adjustment'&&!to)throw new Error('Choose the location being counted.');
- if(type==='received'&&!to)throw new Error('Choose the receiving location.');
+ if(type==='received'){
+   if(!to)throw new Error('Choose the receiving location.');
+   if(!sourcePharmacy)throw new Error('Enter the source pharmacy.');
+ }
  if((type==='expired'||type==='destroyed')&&!from)throw new Error('Choose the source location.');
 
  const b=await balances();
@@ -262,7 +266,9 @@ async function saveTransaction(fd){
    medications:items,
    medication:items.length===1?items[0].medication:'Multiple medications',
    quantity:items.reduce((n,x)=>n+x.quantity,0),
-   fromLocation:from,
+   fromLocation:type==='received'?'':from,
+   externalSource:type==='received'?sourcePharmacy:'',
+   sourcePharmacy:type==='received'?sourcePharmacy:'',
    toLocation:type==='expired'?'Expired':to,
    reference:fd.get('reference')||'',
    notes:fd.get('notes')||'',
@@ -1729,8 +1735,18 @@ function bind(){
  const txTypeSelect=document.querySelector('#txForm select[name=type]');
  const txPdfInput=document.getElementById('txSupportingPdf');
  const txPdfHint=document.getElementById('txSupportingPdfHint');
+ const txFromLocationLabel=document.getElementById('txFromLocationLabel');
+ const txPharmacySourceLabel=document.getElementById('txPharmacySourceLabel');
+ const txSourcePharmacy=document.getElementById('txSourcePharmacy');
  const syncTxPdfRequirement=()=>{
-   const required=txTypeSelect?.value==='received'||txTypeSelect?.value==='destroyed';
+   const received=txTypeSelect?.value==='received';
+   const required=received||txTypeSelect?.value==='destroyed';
+   if(txFromLocationLabel)txFromLocationLabel.hidden=received;
+   if(txPharmacySourceLabel)txPharmacySourceLabel.hidden=!received;
+   if(txSourcePharmacy){
+     txSourcePharmacy.required=received;
+     if(received&&!txSourcePharmacy.value.trim())txSourcePharmacy.value='NKCH Pharmacy';
+   }
    if(txPdfInput)txPdfInput.required=required;
    if(txPdfHint)txPdfHint.textContent=required
      ?'DEA Form 222 PDF required for this transaction.'
