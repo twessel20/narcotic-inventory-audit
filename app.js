@@ -209,12 +209,12 @@ async function saveTransaction(fd,finalSubmit=true){
  if(uploadedFile&&uploadedFile.type!=='application/pdf'&&!/\.pdf$/i.test(uploadedFile.name))throw new Error('Supporting documents must be PDF files.');
 
  if(type==='received'&&!sourcePharmacy)throw new Error('Enter the source pharmacy.');
- if((type==='expired'||type==='destroyed'||type==='incident')&&!from)throw new Error('Choose the source location.');
+ if((type==='destroyed'||type==='incident')&&!from)throw new Error('Choose the source location.');
  if(type==='incident'&&!String(fd.get('notes')||'').trim())throw new Error('Enter an incident / discrepancy explanation.');
 
  const b=await balances();
  const shouldAdjustIncident=type==='incident'&&!auditLinkedIncident&&!incidentDraft&&!existingTx?.inventoryAdjusted;
- if(type==='expired'||type==='destroyed'||shouldAdjustIncident){
+ if(type==='destroyed'||shouldAdjustIncident){
    for(const item of items){
      if(Number(b[from]?.[item.medication]||0)<item.quantity)throw new Error(item.medication+' quantity exceeds the current '+from+' balance.');
    }
@@ -261,7 +261,7 @@ async function saveTransaction(fd,finalSubmit=true){
    }
  }
 
- const labels={received:'Received / restock',expired:'Moved to expired',destroyed:'Destroyed / transferred out',incident:'Discrepancy / incident'};
+ const labels={received:'Received / restock',destroyed:'Destroyed / transferred out',incident:'Discrepancy / incident'};
  const txRecord={
    ...(existingTx||{}),
    id:txId,
@@ -281,7 +281,7 @@ async function saveTransaction(fd,finalSubmit=true){
    status:type==='incident'?(finalSubmit?'submitted':'draft'):'submitted',
    externalSource:type==='received'?sourcePharmacy:'',
    sourcePharmacy:type==='received'?sourcePharmacy:'',
-   toLocation:type==='expired'?'Expired':(type==='incident'?'':destination),
+   toLocation:type==='incident'?'':destination,
    notes:fd.get('notes')||'',
    memoDescription:type==='incident'?memoDescription:'',
    recordedBy,
@@ -1923,7 +1923,6 @@ function bind(){
      if(received&&!txSourcePharmacy.value.trim())txSourcePharmacy.value='NKCH Pharmacy';
      if(!received)txSourcePharmacy.value='';
    }
-   const expired=selectedType==='expired';
    if(txNotesLabel)txNotesLabel.textContent=incident?'Incident / discrepancy explanation':'Reason / notes';
    if(txMemoDescriptionLabel)txMemoDescriptionLabel.hidden=!incident;
    if(txMemoDescription)txMemoDescription.required=false;
@@ -1933,10 +1932,9 @@ function bind(){
      txNotes.required=incident;
      txNotes.placeholder=incident?'Describe what happened, including broken/damaged vial details and circumstances.':'';
    }
-   if(txPdfLabel)txPdfLabel.hidden=expired;
+   if(txPdfLabel)txPdfLabel.hidden=false;
    if(txPdfInput){
      txPdfInput.required=required;
-     if(expired)txPdfInput.value='';
    }
    if(txPdfHint)txPdfHint.textContent=incident
      ?'Memo PDF is optional while saving a draft, but required before final incident submission. DEA Form 222 is not required.'
