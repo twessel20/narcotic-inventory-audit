@@ -1333,6 +1333,15 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    clearPdfBreaks(cover);
    cover.classList.add('pdf-packet-cover');
 
+   if(executive){
+     executive.classList.remove('pdf-executive-page');
+     executive.style.breakBefore='auto';
+     executive.style.pageBreakBefore='auto';
+     executive.style.breakAfter='auto';
+     executive.style.pageBreakAfter='auto';
+     executive.style.minHeight='0';
+   }
+
    const pages=[cover];
 
    pages.push(makePage(
