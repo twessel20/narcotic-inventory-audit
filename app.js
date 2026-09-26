@@ -1489,48 +1489,136 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      const medic3=byTitle('Medic 3 Certification');
      const safe=byTitle('Safe Certification');
      if(medic3||safe){
-       if(medic3){
-         clearPdfBreaks(medic3);
-         medic3.classList.add('pdf-single-cert-card','pdf-medic3-cert');
-         const grid=medic3.querySelector('.report-signature-grid');
-         if(grid){
-           grid.style.setProperty('break-inside','avoid','important');
-           grid.style.setProperty('page-break-inside','avoid','important');
-         }
-       }
-       if(safe){
-         clearPdfBreaks(safe);
-         safe.classList.add('pdf-single-cert-card','pdf-safe-cert');
-         safe.style.setProperty('break-inside','avoid','important');
-         safe.style.setProperty('page-break-inside','avoid','important');
+       const compactCertCard=card=>{
+         if(!card)return;
+         clearPdfBreaks(card);
+         card.style.setProperty('width','100%','important');
+         card.style.setProperty('max-width','100%','important');
+         card.style.setProperty('margin','0 0 4px','important');
+         card.style.setProperty('padding','4px 5px','important');
+         card.style.setProperty('break-inside','avoid','important');
+         card.style.setProperty('page-break-inside','avoid','important');
+         card.style.setProperty('overflow','hidden','important');
 
-         const grid=safe.querySelector('.report-signature-grid');
+         const h2=card.querySelector('h2');
+         if(h2){
+           h2.style.setProperty('margin','0 0 2px','important');
+           h2.style.setProperty('font-size','12px','important');
+           h2.style.setProperty('line-height','1','important');
+         }
+         const site=card.querySelector('.report-cert-site');
+         if(site){
+           site.style.setProperty('margin','0 0 1px','important');
+           site.style.setProperty('font-size','8px','important');
+           site.style.setProperty('line-height','1','important');
+         }
+         const statement=card.querySelector('.report-cert-statement');
+         if(statement){
+           statement.style.setProperty('margin','0 0 3px','important');
+           statement.style.setProperty('font-size','9px','important');
+           statement.style.setProperty('line-height','1.08','important');
+         }
+
+         const grid=card.querySelector('.report-signature-grid');
          if(grid){
            const boxes=[...grid.querySelectorAll(':scope > .report-signature-box')];
            const auditorBox=boxes.find(box=>(box.querySelector('.report-signature-label')?.textContent||'').toUpperCase().includes('AUDITOR'));
            const witnessBox=boxes.find(box=>(box.querySelector('.report-signature-label')?.textContent||'').toUpperCase().includes('WITNESS'));
-           if(auditorBox&&witnessBox){
-             grid.replaceChildren(auditorBox,witnessBox);
-           }
+           if(auditorBox&&witnessBox)grid.replaceChildren(auditorBox,witnessBox);
+
+           grid.style.setProperty('display','grid','important');
+           grid.style.setProperty('grid-template-columns','1fr 1fr','important');
+           grid.style.setProperty('gap','6px','important');
+           grid.style.setProperty('width','100%','important');
+           grid.style.setProperty('margin','2px 0 0','important');
            grid.style.setProperty('break-inside','avoid','important');
            grid.style.setProperty('page-break-inside','avoid','important');
+
+           [...grid.querySelectorAll(':scope > .report-signature-box')].forEach(box=>{
+             box.style.setProperty('width','100%','important');
+             box.style.setProperty('min-width','0','important');
+             box.style.setProperty('height','58px','important');
+             box.style.setProperty('min-height','58px','important');
+             box.style.setProperty('max-height','58px','important');
+             box.style.setProperty('padding','4px 5px','important');
+             box.style.setProperty('margin','0','important');
+             box.style.setProperty('overflow','hidden','important');
+             box.style.setProperty('break-inside','avoid','important');
+             box.style.setProperty('page-break-inside','avoid','important');
+
+             const siteLine=box.querySelector('.report-signature-site');
+             if(siteLine){
+               siteLine.style.setProperty('margin','0 0 1px','important');
+               siteLine.style.setProperty('font-size','8px','important');
+               siteLine.style.setProperty('line-height','1','important');
+             }
+             const label=box.querySelector('.report-signature-label');
+             if(label){
+               label.style.setProperty('margin','0','important');
+               label.style.setProperty('font-size','8px','important');
+               label.style.setProperty('line-height','1','important');
+             }
+             const sig=box.querySelector('img,.report-signature-placeholder');
+             if(sig){
+               sig.style.setProperty('display','block','important');
+               sig.style.setProperty('width','100%','important');
+               sig.style.setProperty('height','20px','important');
+               sig.style.setProperty('min-height','20px','important');
+               sig.style.setProperty('max-height','20px','important');
+               sig.style.setProperty('margin','2px 0 0','important');
+               sig.style.setProperty('object-fit','contain','important');
+             }
+             const name=box.querySelector('.report-signature-name');
+             if(name){
+               name.style.setProperty('display','block','important');
+               name.style.setProperty('padding-top','2px','important');
+               name.style.setProperty('margin','0','important');
+               name.style.setProperty('font-size','8px','important');
+               name.style.setProperty('line-height','1','important');
+               name.style.setProperty('white-space','nowrap','important');
+             }
+           });
          }
+       };
+
+       if(medic3){
+         medic3.classList.add('pdf-single-cert-card','pdf-medic3-cert');
+         compactCertCard(medic3);
+       }
+       if(safe){
+         safe.classList.add('pdf-single-cert-card','pdf-safe-cert');
+         compactCertCard(safe);
        }
 
        const medic3SafeNote=document.createElement('p');
        medic3SafeNote.className='pdf-medic3-safe-note';
        medic3SafeNote.textContent='Medic 3 is a reserve, semi-dynamic unit. Its narcotics are normally secured in the Safe and moved to Medic 3 when placed in service. The Safe is the department reserve inventory.';
+       medic3SafeNote.style.setProperty('margin','0 0 3px','important');
+       medic3SafeNote.style.setProperty('font-size','8px','important');
+       medic3SafeNote.style.setProperty('line-height','1.08','important');
 
        const wrap=document.createElement('div');
        wrap.className='pdf-medic3-safe-wrap';
+       wrap.style.setProperty('display','block','important');
+       wrap.style.setProperty('width','100%','important');
+       wrap.style.setProperty('margin','0','important');
+       wrap.style.setProperty('break-inside','avoid','important');
+       wrap.style.setProperty('page-break-inside','avoid','important');
        if(medic3)wrap.appendChild(medic3);
        if(safe)wrap.appendChild(safe);
 
-       pages.push(makePage(
+       const certPage=makePage(
          'Medic 3 / Safe Audit Site Certifications',
          'pdf-certifications-page pdf-medic3-safe-page',
          [medic3SafeNote,wrap]
-       ));
+       );
+       certPage.style.setProperty('height','auto','important');
+       certPage.style.setProperty('min-height','0','important');
+       certPage.style.setProperty('max-height','8.6in','important');
+       certPage.style.setProperty('overflow','hidden','important');
+       certPage.style.setProperty('break-inside','avoid','important');
+       certPage.style.setProperty('page-break-inside','avoid','important');
+       pages.push(certPage);
      }
 
      const expiredIntro=document.createElement('p');
