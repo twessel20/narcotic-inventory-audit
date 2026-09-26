@@ -2212,7 +2212,7 @@ function bind(){
    const restore=(canvas,data)=>{canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);canvas.dataset.hasSignature='false';if(!data)return;const img=new Image();img.onload=()=>{canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);canvas.dataset.hasSignature='true';};img.src=data;};
    restore(txRecordedSig,tx.recordedBySignature);restore(txWitnessSig,tx.witnessSignature);
    syncTxPdfRequirement();txDialog.showModal();
- };document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;
+ };document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;const startAuditHomeBtn=document.getElementById('startAuditHomeBtn');if(startAuditHomeBtn)startAuditHomeBtn.onclick=startAudit;
  document.getElementById('auditWorkspace').onclick=async e=>{const start=e.target.closest('[data-audit-start]');if(start){await startAudit();return}const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open')editAudit(b.dataset.id);if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);renderAudits()}};
  document.getElementById('reportsList').onclick=async e=>{
    const test=e.target.closest('[data-test-report]');
