@@ -4283,3 +4283,21 @@ body.report-open{overflow:hidden}
     grid-template-columns:1fr;
   }
 }
+
+
+/* Individual audit signature clear controls */
+.signature-label-row .clear-signature-btn{
+  background:#fff1f0;
+  border-color:#c96a63;
+  color:#8f2f2a;
+  font-weight:700;
+}
+.signature-label-row .clear-signature-btn:hover{
+  background:#ffe6e3;
+}
+.signature-label-row .expand-signature{
+  background:#eaf4fb;
+  border-color:#4f8fba;
+  color:#1f5f88;
+  font-weight:700;
+}
