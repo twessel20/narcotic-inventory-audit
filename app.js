@@ -180,7 +180,7 @@ async function saveTransaction(fd,finalSubmit=true){
  const to=fd.get('toLocation');
  const destination=type==='received'?'Safe':to;
  const sourcePharmacy=String(fd.get('sourcePharmacy')||'').trim();
- const memoDescription=String(fd.get('memoDescription')||'').trim();
+ const memoDescription=type==='incident'?String(fd.get('memoDescription')||'').trim():'';
  const meds=fd.getAll('txMedication');
  const qtys=fd.getAll('txQuantity');
  const items=meds.map((med,i)=>({medication:String(med||''),quantity:Number(qtys[i]||0)})).filter(x=>x.medication&&x.quantity>0);
@@ -1932,8 +1932,15 @@ function bind(){
    }
    if(txNotesField)txNotesField.hidden=received;
    if(txNotesLabel)txNotesLabel.textContent=incident?'Incident / discrepancy explanation':'Reason / notes';
-   if(txMemoDescriptionLabel)txMemoDescriptionLabel.hidden=!incident;
-   if(txMemoDescription)txMemoDescription.required=false;
+   if(txMemoDescriptionLabel){
+     txMemoDescriptionLabel.hidden=!incident;
+     txMemoDescriptionLabel.style.display=incident?'':'none';
+   }
+   if(txMemoDescription){
+     txMemoDescription.required=false;
+     txMemoDescription.disabled=!incident;
+     if(!incident)txMemoDescription.value='';
+   }
    if(txDraftBtn)txDraftBtn.hidden=!incident;
    if(txSubmitBtn)txSubmitBtn.textContent=incident?'Submit incident':'Save transaction';
    if(txNotes){
