@@ -1519,6 +1519,17 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
            statement.style.setProperty('line-height','1.08','important');
          }
 
+         
+         const siteSummary=card.querySelector('.report-cert-site');
+         if(siteSummary)siteSummary.style.setProperty('display','none','important');
+         const certStatement=card.querySelector('.report-cert-statement');
+         if(certStatement){
+           certStatement.textContent='Auditor and witness certify the documented inventory count and seal record.';
+           certStatement.style.setProperty('margin','0 0 2px','important');
+           certStatement.style.setProperty('font-size','8px','important');
+           certStatement.style.setProperty('line-height','1','important');
+         }
+
          const grid=card.querySelector('.report-signature-grid');
          if(grid){
            const boxes=[...grid.querySelectorAll(':scope > .report-signature-box')];
