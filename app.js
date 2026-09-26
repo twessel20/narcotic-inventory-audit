@@ -387,13 +387,13 @@ async function startAudit(){
  const previous=reports[0]||null;
  const counts={},priorCounts={},openingCounts={};LOCS.forEach(l=>{counts[l]={};priorCounts[l]={};openingCounts[l]={};MEDS.forEach(m=>{counts[l][m]=b[l][m];openingCounts[l][m]=b[l][m];priorCounts[l][m]=previous?.counts?.[l]?.[m]??null})});
  const localDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
- const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,openingCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],incidents:[],signatures:{},auditorName:'',auditorEmployeeNumber:'',attestationText:FINAL_ATTESTATION,attestationName:'',attestationEmployeeNumber:'',attestationAccepted:false};
+ const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,openingCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],incidents:[],inventoryFindings:[],signatures:{},auditorName:'',auditorEmployeeNumber:'',attestationText:FINAL_ATTESTATION,attestationName:'',attestationEmployeeNumber:'',attestationAccepted:false};
  await put('audits',a);await put('meta',{id:'activeAudit',auditId:a.id,updatedAt:nowISO()});await editAudit(a.id)
 }
 function unitAuditSection(a,loc,index){
  const tag=a.breakawayTags?.[loc]||{},savedSig=a.signatures?.[loc]||{};
  const sig={...savedSig,signer:savedSig.signer||a.auditorName||'',employeeNumber:savedSig.employeeNumber||a.auditorEmployeeNumber||''};
- const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];return '<div class="unit-med-row compact"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current">Current<input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+Number(a.counts?.[loc]?.[m]||0)+'"></label><button type="button" class="audit-incident-btn" data-audit-incident data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Discrepancy / incident</button></div>'}).join('');
+ const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];const findingBtns=loc==='Expired'?'':'<div class="audit-finding-actions"><button type="button" class="audit-expired-btn" data-audit-finding="expired" data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Expired found</button><button type="button" class="audit-damaged-btn" data-audit-finding="damaged" data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Damaged vial</button></div>';return '<div class="unit-med-row compact"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current">Current<input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+Number(a.counts?.[loc]?.[m]||0)+'"></label>'+findingBtns+'<button type="button" class="audit-incident-btn" data-audit-incident data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Discrepancy / incident</button></div>'}).join('');
  return '<section class="audit-card unit-audit-card compact-unit" data-unit-section="'+esc(loc)+'">'+
  '<div class="unit-audit-head compact-head"><div><span class="kicker">LOCATION '+(index+1)+' OF '+LOCS.length+'</span><h3>'+esc(loc)+'</h3></div><span class="unit-step-badge">'+esc(loc)+'</span></div>'+
  '<div class="unit-compact-grid">'+
@@ -693,6 +693,49 @@ async function editAudit(id){
    const btn=document.getElementById('expandFinalSignature');
    if(btn)btn.onclick=()=>openStandaloneSignatureCapture(finalSigCanvas,'Final auditor signature',()=>scheduleAuditAutosave(a.id,true));
  }
+ document.querySelectorAll('[data-audit-finding]').forEach(btn=>btn.onclick=async()=>{
+   const loc=btn.dataset.loc||'';
+   const med=btn.dataset.med||'';
+   const kind=btn.dataset.auditFinding||'expired';
+   if(!loc||loc==='Expired'||!med)return;
+   const sourceInput=document.querySelector('[data-count-loc="'+CSS.escape(loc)+'"][data-count-med="'+CSS.escape(med)+'"]');
+   const expiredInput=document.querySelector('[data-count-loc="Expired"][data-count-med="'+CSS.escape(med)+'"]');
+   if(!sourceInput||!expiredInput)return alert('Unable to locate the audit inventory fields.');
+   const available=Number(sourceInput.value||0);
+   const raw=prompt((kind==='damaged'?'Damaged vial':'Expired medication')+' found — quantity to move from '+loc+' to Expired inventory:', '1');
+   if(raw===null)return;
+   const qty=Number(raw);
+   if(!Number.isInteger(qty)||qty<1)return alert('Enter a whole-vial quantity of 1 or greater.');
+   if(qty>available)return alert('Quantity exceeds the current '+loc+' audit count for '+med+'.');
+   let note='';
+   if(kind==='damaged'){
+     const entered=prompt('Briefly describe the damage (optional):','');
+     if(entered===null)return;
+     note=String(entered||'').trim();
+   }
+   sourceInput.value=String(available-qty);
+   expiredInput.value=String(Number(expiredInput.value||0)+qty);
+   collectAuditFromUI(a);
+   a.inventoryFindings=Array.isArray(a.inventoryFindings)?a.inventoryFindings:[];
+   a.inventoryFindings.push({
+     id:uid('finding'),
+     type:kind,
+     typeLabel:kind==='damaged'?'Damaged vial found during audit':'Expired medication found during audit',
+     sourceLocation:loc,
+     destinationLocation:'Expired',
+     medication:med,
+     quantity:qty,
+     note,
+     recordedAt:nowISO(),
+     recordedBy:a.auditorName||''
+   });
+   a.updatedAt=nowISO();
+   await put('audits',a);
+   await put('meta',{id:'activeAudit',auditId:a.id,updatedAt:a.updatedAt});
+   updateAuditRouteProgress();
+   scheduleAuditAutosave(a.id,true);
+   alert((kind==='damaged'?'Damaged vial':'Expired medication')+' recorded in this audit. '+loc+' decreased by '+qty+' and Expired increased by '+qty+'.');
+ });
  document.querySelectorAll('[data-audit-incident]').forEach(btn=>btn.onclick=()=>{
    const txForm=document.getElementById('txForm');
    const txDialog=document.getElementById('txDialog');
@@ -1027,9 +1070,10 @@ function annualSummaryHtml(year,reports){
    return {m,first:firstTotal,last:lastTotal,diff:lastTotal-firstTotal};
  });
 
- let adminRows=[],amendments=0,certifiedSites=0,totalSites=0;
+ let adminRows=[],amendments=0,certifiedSites=0,totalSites=0,inventoryFindings=[];
  reports.forEach(r=>{
    if(Array.isArray(r.administrationRows))adminRows.push(...r.administrationRows);
+   if(Array.isArray(r.inventoryFindings))inventoryFindings.push(...r.inventoryFindings.map(x=>({...x,auditMonth:r.month||''})));
    amendments+=Array.isArray(r.amendments)?r.amendments.length:0;
    LOCS.forEach(loc=>{
      totalSites++;
@@ -1762,6 +1806,7 @@ function reportHtml(r){
  (amendment?'<section class="report-amendment"><h2>Amended inventory record — correction history</h2><p>The table below includes these corrections. Signatures were recorded before these amendments and certify the original record, not the corrected entries.</p>'+amendment+'</section>':'')+
  '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+esc(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
  '<section><h2>Breakaway tag record</h2><table class="report-table"><thead><tr><th>Location</th><th>Tag found / removed</th><th>New tag installed</th></tr></thead><tbody>'+tagRows+'</tbody></table></section>'+
+ (Array.isArray(r.inventoryFindings)&&r.inventoryFindings.length?'<section class="report-audit-findings"><h2>Expired / damaged medications found during audit</h2><p class="report-note">These items were identified during the physical audit and moved within the audit from the source location into Expired inventory. No separate inventory transaction was created.</p><table class="report-table"><thead><tr><th>Date</th><th>Finding</th><th>Source</th><th>Medication</th><th>Qty</th><th>Notes</th></tr></thead><tbody>'+r.inventoryFindings.map(x=>'<tr><td>'+esc(formatDisplayDate(x.recordedAt)||'')+'</td><td>'+esc(x.typeLabel||x.type||'')+'</td><td>'+esc(x.sourceLocation||'')+' → Expired</td><td>'+esc(x.medication||'')+'</td><td>'+esc(x.quantity||'')+'</td><td>'+esc(x.note||'')+'</td></tr>').join('')+'</tbody></table></section>':'')+
  '<section class="report-eso-source"><h2>ESO Narcotic Administration Record</h2><p>Administration activity was imported from the ESO software PDF for this audit period. Physical inventory totals remain based on the manually verified count.</p>'+(sourceDoc?'<p><b>Imported ESO PDF:</b> <u>'+esc(sourceDoc.name)+'</u> — imported '+esc(formatDisplayDate(sourceDoc.uploadedAt)||'')+(sourceDoc.uploadedBy?' by '+esc(sourceDoc.uploadedBy):'')+'</p>':'')+'<p class="report-note">The imported record and calculated vial-use reconciliation are included below.</p></section>'+
  (r.isTest&&Array.isArray(r.administrationRows)&&r.administrationRows.length?
  '<section class="report-imported-admin"><h2>Administration Detail</h2><p class="report-note">Source doses are preserved as imported. Calculated vial use is derived separately using department vial rules.</p>'+
