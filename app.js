@@ -1488,20 +1488,29 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
      const medic3=byTitle('Medic 3 Certification');
      const safe=byTitle('Safe Certification');
-     if(medic3||safe){
-       if(medic3){clearPdfBreaks(medic3);medic3.classList.add('pdf-single-cert-card');}
-       if(safe){clearPdfBreaks(safe);safe.classList.add('pdf-single-cert-card');}
+
+     // Keep each audit-site certification intact. Safe always starts on its
+     // own page so its auditor and witness certification cards stay together.
+     if(medic3){
+       clearPdfBreaks(medic3);
+       medic3.classList.add('pdf-single-cert-card','pdf-medic3-cert');
        const medic3Intro=document.createElement('p');
        medic3Intro.className='pdf-medic3-explainer';
        medic3Intro.textContent='Medic 3 is the reserve ambulance and functions as a semi-dynamic inventory site. Its assigned narcotic inventory is normally secured in the Safe until Medic 3 is placed in service.';
-       const wrap=document.createElement('div');
-       wrap.className='pdf-medic3-safe-wrap';
-       if(medic3){medic3.style.order='1';medic3.classList.add('pdf-medic3-cert');wrap.appendChild(medic3);}
-       if(safe){safe.style.order='2';safe.classList.add('pdf-safe-cert');wrap.appendChild(safe);}
        pages.push(makePage(
-         'Medic 3 / Safe Audit Site Certifications',
-         'pdf-certifications-page pdf-medic3-safe-page',
-         [medic3Intro,wrap]
+         'Medic 3 Audit Site Certification',
+         'pdf-certifications-page pdf-single-certification-page pdf-cert-medic-3',
+         [medic3Intro,medic3]
+       ));
+     }
+
+     if(safe){
+       clearPdfBreaks(safe);
+       safe.classList.add('pdf-single-cert-card','pdf-safe-cert');
+       pages.push(makePage(
+         'Safe Audit Site Certification',
+         'pdf-certifications-page pdf-single-certification-page pdf-cert-safe',
+         [safe]
        ));
      }
 
