@@ -6462,3 +6462,130 @@ body.report-open{overflow:hidden}
     margin-bottom:9px;
   }
 }
+
+
+/* v209 clearer expired / damaged monthly audit workflow */
+.audit-finding-context{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:4px 0 14px;
+  padding:10px 12px;
+  border:1px solid #d9e3ea;
+  border-radius:10px;
+  background:#f7fafc;
+}
+.audit-finding-context strong{
+  color:#17324e;
+  font-size:.92rem;
+}
+.audit-finding-context span{
+  color:#607487;
+  font-size:.78rem;
+  font-weight:750;
+  text-align:right;
+}
+.audit-finding-choice-grid{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:10px;
+  margin-bottom:14px;
+}
+.audit-finding-choice{
+  display:block;
+  width:100%;
+  min-width:0;
+  padding:13px 14px;
+  border:2px solid #d7e1e8;
+  border-radius:12px;
+  background:#fff;
+  text-align:left;
+  color:#243f58;
+}
+.audit-finding-choice strong{
+  display:block;
+  margin-bottom:4px;
+  font-size:.96rem;
+}
+.audit-finding-choice span{
+  display:block;
+  color:#667a8a;
+  font-size:.78rem;
+  line-height:1.35;
+}
+.audit-finding-choice.selected{
+  border-color:#315f83;
+  background:#eef5fa;
+  box-shadow:0 0 0 1px #315f83 inset;
+}
+.audit-finding-fields{
+  margin-top:0;
+}
+.audit-finding-fields small{
+  display:block;
+  margin-top:4px;
+  color:#6d7f8d;
+}
+.audit-finding-impact-card{
+  padding:12px;
+  border:1px solid #cfdce5;
+  border-radius:10px;
+  background:#f8fbfd;
+}
+#auditFindingImpact{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px 12px;
+  margin-top:5px;
+}
+#auditFindingImpact > div{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:8px 9px;
+  border-radius:8px;
+  background:#fff;
+  border:1px solid #e1e8ed;
+}
+#auditFindingImpact > div span{
+  color:#5d7182;
+  font-size:.78rem;
+}
+#auditFindingImpact > div strong{
+  color:#17324e;
+  font-size:.9rem;
+  white-space:nowrap;
+}
+#auditFindingImpact p{
+  grid-column:1 / -1;
+  margin:1px 0 0;
+  color:#526878;
+  font-size:.78rem;
+  line-height:1.4;
+}
+
+@media(max-width:700px){
+  .audit-finding-context{
+    align-items:flex-start;
+    flex-direction:column;
+    gap:3px;
+  }
+  .audit-finding-context span{
+    text-align:left;
+  }
+  .audit-finding-choice-grid{
+    grid-template-columns:1fr;
+  }
+  .audit-finding-choice{
+    min-height:0;
+    padding:12px;
+  }
+  #auditFindingImpact{
+    grid-template-columns:1fr;
+  }
+  #auditFindingImpact p{
+    grid-column:1;
+  }
+}
