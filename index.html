@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/jpeg" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
   <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
-  <link rel="stylesheet" href="styles.css?v=20260925-137">
+  <link rel="stylesheet" href="styles.css?v=20260925-138">
 </head>
 <body>
   <header class="app-header">
@@ -118,9 +118,9 @@
 
         <label class="wide" id="txNotesField"><span id="txNotesLabel">Reason / notes</span><textarea name="notes" id="txNotes" rows="3"></textarea></label>
         <label class="wide" id="txMemoDescriptionLabel" hidden>Memo description<input name="memoDescription" id="txMemoDescription" placeholder="Brief description of the attached memo"></label>
-        <label class="wide" id="txSupportingPdfLabel">Supporting PDF
+        <label class="wide" id="txSupportingPdfLabel"><span id="txSupportingPdfTitle">Supporting PDF</span><span id="txPdfRequiredBadge" class="tx-required-badge" hidden>REQUIRED</span>
           <input name="supportingPdf" id="txSupportingPdf" type="file" accept="application/pdf,.pdf">
-          <small id="txSupportingPdfHint">DEA Form 222 is required for Received / restock and Destroyed / transferred out transactions. Internal redistribution and movement into Expired inventory do not require a DEA Form 222.</small>
+          <small id="txSupportingPdfHint">Upload supporting documentation when required.</small>
         </label>
 
         <div class="wide tx-signatures">
@@ -171,6 +171,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script src="app.js?v=20260925-137"></script>
+  <script src="app.js?v=20260925-138"></script>
 </body>
 </html>
