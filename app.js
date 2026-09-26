@@ -884,6 +884,22 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
  };
 
  clearPdfBreaks(clone);
+
+ // Explicit descriptor hooks for PDF styling.
+ clone.querySelectorAll('.report-meta-grid > div').forEach(el=>{
+   if(!el.textContent.trim()){ el.classList.add('pdf-meta-empty'); return; }
+   el.classList.add('pdf-descriptor-row');
+   const label=el.querySelector(':scope > b');
+   if(label)label.classList.add('pdf-descriptor-label');
+ });
+ clone.querySelectorAll(
+   '.report-note,.report-vial-explainer,.pdf-medic3-explainer,.pdf-expired-explainer,.report-cert-statement'
+ ).forEach(el=>el.classList.add('pdf-descriptor-callout'));
+ clone.querySelectorAll('.report-signature-label,.report-signature-site,.report-cert-site').forEach(el=>
+   el.classList.add('pdf-descriptor-chip')
+ );
+ clone.querySelectorAll('.report-eso-source p').forEach(el=>el.classList.add('pdf-descriptor-callout'));
+
  clone.querySelectorAll('.report-table').forEach(table=>{
    table.style.width='100%';
    table.style.minWidth='0';
@@ -1409,7 +1425,7 @@ function executiveSummaryHtml(r){
    :' No amendments were recorded.';
 
  return '<section class="report-executive-summary simple-summary paragraph-summary pdf-executive-page">'+
- '<h2>Executive summary</h2>'+
+ '<h2>Audit Summary</h2>'+
  '<p>'+esc(inventorySentence+usageSentence+certSentence+amendmentSentence)+'</p>'+
  '</section>';
 }
@@ -1422,7 +1438,7 @@ function newReportFrontMatterHtml(r){
 function newReportSummaryHtml(r){
  try{return executiveSummaryHtml(r)}catch(err){
    console.error('Executive summary failed',err);
-   return '<section class="report-executive-summary simple-summary paragraph-summary pdf-executive-page"><h2>Executive summary</h2><p>The summary could not be calculated from this preview. The detailed audit sections below remain available and unchanged.</p></section>';
+   return '<section class="report-executive-summary simple-summary paragraph-summary pdf-executive-page"><h2>Audit Summary</h2><p>The summary could not be calculated from this preview. The detailed audit sections below remain available and unchanged.</p></section>';
  }
 }
 
