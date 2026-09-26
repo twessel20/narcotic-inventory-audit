@@ -3213,3 +3213,12 @@ body.report-open{overflow:hidden}
 .pdf-clean-stage .pdf-expired-certification-page .report-signature-name{
   font-size:.74rem !important;
 }
+
+
+/* Medic 3 reserve-unit explanation */
+.pdf-clean-stage .pdf-medic3-explainer{
+  margin:0 0 10px !important;
+  font-size:.76rem !important;
+  line-height:1.34 !important;
+  color:#53687c !important;
+}
