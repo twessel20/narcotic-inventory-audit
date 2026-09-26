@@ -163,7 +163,7 @@ async function renderActivity(){
  document.getElementById('activityList').innerHTML=rows.length?rows.map(r=>{
    const items=Array.isArray(r.items)&&r.items.length?r.items:[{medication:r.medication,quantity:r.quantity}];
    const itemText=items.map(x=>esc(x.medication)+' × '+esc(x.quantity)).join(' · ');
-   return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+(r.status==='draft'?' · DRAFT':'')+'</strong><div>'+itemText+'</div><div>'+esc(r.sourcePharmacy||r.externalSource||r.incidentSourceLocation||r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy)+(r.recordedByEmployeeNumber?' #'+esc(r.recordedByEmployeeNumber):''):'')+(r.witness?' · Witness '+esc(r.witness)+(r.witnessEmployeeNumber?' #'+esc(r.witnessEmployeeNumber):''):'')+'</div>'+(r.summary?'<div>'+esc(r.summary)+'</div>':'')+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.memoDescription?'<div class="meta"><b>Memo description:</b> '+esc(r.memoDescription)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+(r.destructionReceipt?'<div class="meta"><b>Destruction receipt:</b> '+esc(r.destructionReceipt.name||'Attached PDF')+'</div>':'')+(r.type==='incident'&&r.status==='draft'?'<div class="button-row"><button type="button" data-resume-incident="'+esc(r.id)+'">Resume incident</button></div>':'')+'</div>';
+   return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+(r.status==='draft'?' · DRAFT':'')+'</strong><div>'+itemText+'</div><div>'+esc(r.sourcePharmacy||r.externalSource||r.incidentSourceLocation||r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy)+(r.recordedByEmployeeNumber?' #'+esc(r.recordedByEmployeeNumber):''):'')+(r.witness?' · Witness '+esc(r.witness)+(r.witnessEmployeeNumber?' #'+esc(r.witnessEmployeeNumber):''):'')+'</div>'+(r.summary?'<div>'+esc(r.summary)+'</div>':'')+(Array.isArray(r.inventoryImpact)&&r.inventoryImpact.length?'<div class="meta">'+r.inventoryImpact.map(x=>esc(x.location+' · '+x.medication+': '+x.before+' → '+x.after)).join('<br>')+'</div>':'')+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.memoDescription?'<div class="meta"><b>Memo description:</b> '+esc(r.memoDescription)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+(r.destructionReceipt?'<div class="meta"><b>Destruction receipt:</b> '+esc(r.destructionReceipt.name||'Attached PDF')+'</div>':'')+(r.type==='incident'&&r.status==='draft'?'<div class="button-row"><button type="button" data-resume-incident="'+esc(r.id)+'">Resume incident</button></div>':'')+'</div>';
  }).join(''):'<div class="empty">No activity recorded yet.</div>';
 }
 
@@ -228,6 +228,17 @@ async function saveTransaction(fd,finalSubmit=true){
  }
 
  const txId=existingTransactionId||uid('tx');
+ const inventoryImpact=items.map(item=>{
+   if(type==='received'){
+     const before=Number(b.Safe?.[item.medication]||0);
+     return {location:'Safe',medication:item.medication,before,change:item.quantity,after:before+item.quantity};
+   }
+   if(type==='destroyed'){
+     const before=Number(b.Expired?.[item.medication]||0);
+     return {location:'Expired',medication:item.medication,before,change:-item.quantity,after:before-item.quantity};
+   }
+   return null;
+ }).filter(Boolean);
  let supportingDocument=existingSupport;
  let destructionReceipt=existingDestructionReceipt;
  if(uploadedFile){
@@ -272,11 +283,11 @@ async function saveTransaction(fd,finalSubmit=true){
  for(const item of items){
    const med=item.medication,qty=item.quantity;
    if(type==='received'&&!existingTx?.inventoryAdjusted){
-     await setBalance(destination,med,Number(b[destination]?.[med]||0)+qty);
-     b[destination][med]=Number(b[destination]?.[med]||0)+qty;
+     await setBalance('Safe',med,Number(b.Safe?.[med]||0)+qty);
+     b.Safe[med]=Number(b.Safe?.[med]||0)+qty;
    }else if(type==='destroyed'&&!existingTx?.inventoryAdjusted){
-     await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
-     b[from][med]=Number(b[from]?.[med]||0)-qty;
+     await setBalance('Expired',med,Number(b.Expired?.[med]||0)-qty);
+     b.Expired[med]=Number(b.Expired?.[med]||0)-qty;
    }else if(shouldAdjustIncident){
      await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
      b[from][med]=Number(b[from]?.[med]||0)-qty;
@@ -312,6 +323,7 @@ async function saveTransaction(fd,finalSubmit=true){
    toLocation:(type==='incident'||type==='destroyed')?'':destination,
    notes:(type==='received'||type==='destroyed')?'':(fd.get('notes')||''),
    summary:transactionSummary,
+   inventoryImpact,
    memoDescription:type==='incident'?memoDescription:'',
    recordedBy,
    recordedByEmployeeNumber,
@@ -1723,8 +1735,9 @@ function reportHtml(r){
  const txs=Array.isArray(r.transactions)?r.transactions:[];
  const txRows=txs.length?txs.map(t=>{
    const docs=[t.supportingDocument?.name,t.destructionReceipt?.name].filter(Boolean).join(' · ');
+   const impact=Array.isArray(t.inventoryImpact)?t.inventoryImpact.map(x=>x.location+' '+x.medication+': '+x.before+' → '+x.after).join(' · '):'';
    const detail=t.destructionCompany||t.sourcePharmacy||t.reference||t.vendor||t.incident||t.lot||'';
-   return '<tr><td>'+esc(formatDisplayDate(t.date||t.timestamp)||'')+'</td><td>'+esc(t.typeLabel||t.type||t.action||'')+'</td><td>'+esc(t.medication||'')+'</td><td>'+esc(t.quantity||'')+'</td><td>'+esc((t.fromLocation||'')+(t.toLocation?' → '+t.toLocation:''))+'</td><td>'+esc(detail)+(docs?'<br><small>'+esc(docs)+'</small>':'')+'</td></tr>';
+   return '<tr><td>'+esc(formatDisplayDate(t.date||t.timestamp)||'')+'</td><td>'+esc(t.typeLabel||t.type||t.action||'')+'</td><td>'+esc(t.medication||'')+'</td><td>'+esc(t.quantity||'')+'</td><td>'+esc((t.fromLocation||'')+(t.toLocation?' → '+t.toLocation:''))+(impact?'<br><small>'+esc(impact)+'</small>':'')+'</td><td>'+esc(detail)+(docs?'<br><small>'+esc(docs)+'</small>':'')+'</td></tr>';
  }).join(''):'<tr><td colspan="6" class="report-empty">No transactions recorded during this month.</td></tr>';
  const sigCard=(loc)=>{
    const x=r.signatures?.[loc]||{};
