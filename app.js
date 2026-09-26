@@ -969,8 +969,13 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
      const h=Math.max(0,el.getBoundingClientRect().height||0);
      const keepTogether=el.classList.contains('pdf-keep-together');
+     const forcedBreak=el.classList.contains('pdf-break-before');
 
-     if(keepTogether && h>0 && h<sectionPageCapacity && usedOnPage>0 && usedOnPage+h>sectionPageCapacity){
+     if(forcedBreak){
+       el.style.breakBefore='page';
+       el.style.pageBreakBefore='always';
+       usedOnPage=h;
+     }else if(keepTogether && h>0 && h<sectionPageCapacity && usedOnPage>0 && usedOnPage+h>sectionPageCapacity){
        el.classList.add('pdf-break-before');
        el.style.breakBefore='page';
        el.style.pageBreakBefore='always';
