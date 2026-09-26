@@ -163,20 +163,24 @@ async function renderActivity(){
  document.getElementById('activityList').innerHTML=rows.length?rows.map(r=>{
    const items=Array.isArray(r.items)&&r.items.length?r.items:[{medication:r.medication,quantity:r.quantity}];
    const itemText=items.map(x=>esc(x.medication)+' × '+esc(x.quantity)).join(' · ');
-   return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+'</strong><div>'+itemText+'</div><div>'+esc(r.sourcePharmacy||r.externalSource||r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy):'')+(r.witness?' · Witness '+esc(r.witness):'')+(r.reference?' · Ref '+esc(r.reference):'')+'</div>'+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+'</div>';
+   return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+(r.status==='draft'?' · DRAFT':'')+'</strong><div>'+itemText+'</div><div>'+esc(r.sourcePharmacy||r.externalSource||r.incidentSourceLocation||r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy)+(r.recordedByEmployeeNumber?' #'+esc(r.recordedByEmployeeNumber):''):'')+(r.witness?' · Witness '+esc(r.witness)+(r.witnessEmployeeNumber?' #'+esc(r.witnessEmployeeNumber):''):'')+'</div>'+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.memoDescription?'<div class="meta"><b>Memo description:</b> '+esc(r.memoDescription)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+(r.type==='incident'&&r.status==='draft'?'<div class="button-row"><button type="button" data-resume-incident="'+esc(r.id)+'">Resume incident</button></div>':'')+'</div>';
  }).join(''):'<div class="empty">No activity recorded yet.</div>';
 }
 
-async function saveTransaction(fd){
+async function saveTransaction(fd,finalSubmit=true){
  if(!requireCloudAuth())throw new Error('Sign in is required for live inventory changes.');
 
  const type=fd.get('type');
  const auditContextId=String(fd.get('auditContextId')||'').trim();
+ const existingTransactionId=String(fd.get('transactionId')||'').trim();
+ const existingTx=existingTransactionId?await getOne('transactions',existingTransactionId):null;
  const auditLinkedIncident=type==='incident'&&Boolean(auditContextId);
+ const incidentDraft=type==='incident'&&!finalSubmit;
  const from=fd.get('fromLocation');
  const to=fd.get('toLocation');
  const destination=type==='received'?'Safe':to;
  const sourcePharmacy=String(fd.get('sourcePharmacy')||'').trim();
+ const memoDescription=String(fd.get('memoDescription')||'').trim();
  const meds=fd.getAll('txMedication');
  const qtys=fd.getAll('txQuantity');
  const items=meds.map((med,i)=>({medication:String(med||''),quantity:Number(qtys[i]||0)})).filter(x=>x.medication&&x.quantity>0);
@@ -196,79 +200,73 @@ async function saveTransaction(fd){
  if(witnessCanvas?.dataset.hasSignature!=='true')throw new Error('Witness signature is required.');
 
  const supportFile=fd.get('supportingPdf');
+ const uploadedFile=(supportFile instanceof File&&supportFile.size)?supportFile:null;
+ const existingSupport=existingTx?.supportingDocument||null;
  const requires222=type==='received'||type==='destroyed';
- const requiresIncidentMemo=type==='incident';
- if(requires222){
-   if(!(supportFile instanceof File)||!supportFile.size)throw new Error('Attach the required DEA Form 222 PDF before saving this transaction.');
-   if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('DEA Form 222 must be attached as a PDF.');
- }
- if(requiresIncidentMemo){
-   if(!(supportFile instanceof File)||!supportFile.size)throw new Error('Attach the discrepancy / incident memo PDF before saving this transaction.');
-   if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('The discrepancy / incident memo must be attached as a PDF.');
- }
+ const requiresIncidentMemo=type==='incident'&&finalSubmit;
+ if(requires222&&!uploadedFile&&!existingSupport)throw new Error('Attach the required DEA Form 222 PDF before saving this transaction.');
+ if(requiresIncidentMemo&&!uploadedFile&&!existingSupport)throw new Error('Attach the discrepancy / incident memo PDF before submitting this incident.');
+ if(uploadedFile&&uploadedFile.type!=='application/pdf'&&!/\.pdf$/i.test(uploadedFile.name))throw new Error('Supporting documents must be PDF files.');
 
- if(type==='received'){
-   if(!sourcePharmacy)throw new Error('Enter the source pharmacy.');
- }
+ if(type==='received'&&!sourcePharmacy)throw new Error('Enter the source pharmacy.');
  if((type==='expired'||type==='destroyed'||type==='incident')&&!from)throw new Error('Choose the source location.');
  if(type==='incident'&&!String(fd.get('notes')||'').trim())throw new Error('Enter an incident / discrepancy explanation.');
 
  const b=await balances();
- if(type==='expired'||type==='destroyed'||(type==='incident'&&!auditLinkedIncident)){
+ const shouldAdjustIncident=type==='incident'&&!auditLinkedIncident&&!incidentDraft&&!existingTx?.inventoryAdjusted;
+ if(type==='expired'||type==='destroyed'||shouldAdjustIncident){
    for(const item of items){
      if(Number(b[from]?.[item.medication]||0)<item.quantity)throw new Error(item.medication+' quantity exceeds the current '+from+' balance.');
    }
  }
 
- const txId=uid('tx');
- let supportingDocument=null;
- if(supportFile instanceof File&&supportFile.size){
-   if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('Supporting documents must be PDF files.');
-   const buf=await supportFile.arrayBuffer();
+ const txId=existingTransactionId||uid('tx');
+ let supportingDocument=existingSupport;
+ if(uploadedFile){
+   const buf=await uploadedFile.arrayBuffer();
    const digest=await sha256Buffer(buf);
-   const path='transactions/'+txId+'/'+Date.now()+'-'+safeStorageName(supportFile.name);
-   const {error:uploadError}=await sb.storage.from('audit-supporting-docs').upload(path,supportFile,{contentType:'application/pdf',upsert:false});
+   const path='transactions/'+txId+'/'+Date.now()+'-'+safeStorageName(uploadedFile.name);
+   const {error:uploadError}=await sb.storage.from('audit-supporting-docs').upload(path,uploadedFile,{contentType:'application/pdf',upsert:false});
    if(uploadError)throw uploadError;
    supportingDocument={
-     documentType:requires222?'DEA Form 222':(requiresIncidentMemo?'Discrepancy / incident memo':'Supporting transaction PDF'),
-     name:supportFile.name,
+     documentType:requires222?'DEA Form 222':(type==='incident'?'Discrepancy / incident memo':'Supporting transaction PDF'),
+     name:uploadedFile.name,
+     description:type==='incident'?memoDescription:'',
      storageBucket:'audit-supporting-docs',
      storagePath:path,
      mimeType:'application/pdf',
-     size:supportFile.size,
+     size:uploadedFile.size,
      sha256:digest,
      uploadedAt:nowISO(),
      uploadedBy:cloudSession?.user?.email||''
    };
  }
 
- // Apply inventory changes only after the full transaction validates.
  for(const item of items){
    const med=item.medication,qty=item.quantity;
-   if(type==='received'){
+   if(type==='received'&&!existingTx?.inventoryAdjusted){
      await setBalance(destination,med,Number(b[destination]?.[med]||0)+qty);
      b[destination][med]=Number(b[destination]?.[med]||0)+qty;
-   }else if(type==='expired'){
+   }else if(type==='expired'&&!existingTx?.inventoryAdjusted){
      await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
      await setBalance('Expired',med,Number(b.Expired?.[med]||0)+qty);
      b[from][med]=Number(b[from]?.[med]||0)-qty;
      b.Expired[med]=Number(b.Expired?.[med]||0)+qty;
-   }else if(type==='destroyed'||(type==='incident'&&!auditLinkedIncident)){
+   }else if(type==='destroyed'&&!existingTx?.inventoryAdjusted){
+     await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
+     b[from][med]=Number(b[from]?.[med]||0)-qty;
+   }else if(shouldAdjustIncident){
      await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
      b[from][med]=Number(b[from]?.[med]||0)-qty;
    }
  }
 
- const labels={
-   received:'Received / restock',
-   expired:'Moved to expired',
-   destroyed:'Destroyed / transferred out',
-   incident:'Discrepancy / incident'
- };
-
+ const labels={received:'Received / restock',expired:'Moved to expired',destroyed:'Destroyed / transferred out',incident:'Discrepancy / incident'};
  const txRecord={
+   ...(existingTx||{}),
    id:txId,
-   timestamp:nowISO(),
+   timestamp:existingTx?.timestamp||nowISO(),
+   updatedAt:nowISO(),
    type,
    typeLabel:labels[type],
    items,
@@ -277,13 +275,15 @@ async function saveTransaction(fd){
    quantity:items.reduce((n,x)=>n+x.quantity,0),
    fromLocation:type==='received'?'':from,
    incidentSourceLocation:type==='incident'?from:'',
-   auditId:auditLinkedIncident?auditContextId:'',
-   reconciliationMode:auditLinkedIncident?'audit_physical_count':'transaction_adjustment',
-   inventoryAdjusted:!auditLinkedIncident,
+   auditId:auditLinkedIncident?auditContextId:(existingTx?.auditId||''),
+   reconciliationMode:auditLinkedIncident?'audit_physical_count':(incidentDraft?'draft_pending':'transaction_adjustment'),
+   inventoryAdjusted:type==='incident'?(auditLinkedIncident?false:(incidentDraft?Boolean(existingTx?.inventoryAdjusted):true)):true,
+   status:type==='incident'?(finalSubmit?'submitted':'draft'):'submitted',
    externalSource:type==='received'?sourcePharmacy:'',
    sourcePharmacy:type==='received'?sourcePharmacy:'',
    toLocation:type==='expired'?'Expired':(type==='incident'?'':destination),
    notes:fd.get('notes')||'',
+   memoDescription:type==='incident'?memoDescription:'',
    recordedBy,
    recordedByEmployeeNumber,
    witness,
@@ -293,31 +293,40 @@ async function saveTransaction(fd){
    supportingDocument
  };
  await put('transactions',txRecord);
+
  if(auditLinkedIncident){
    const audit=await getOne('audits',auditContextId);
    if(audit){
      audit.incidents=Array.isArray(audit.incidents)?audit.incidents:[];
-     audit.incidents.push({
+     const incidentRecord={
        transactionId:txId,
        timestamp:txRecord.timestamp,
+       updatedAt:txRecord.updatedAt,
        sourceLocation:from,
        items,
        explanation:txRecord.notes,
+       memoDescription,
        recordedBy,
        recordedByEmployeeNumber,
        witness,
        witnessEmployeeNumber,
        supportingDocument,
-       reconciliationMode:'audit_physical_count'
-     });
+       reconciliationMode:'audit_physical_count',
+       status:finalSubmit?'submitted':'draft'
+     };
+     const ix=audit.incidents.findIndex(x=>x.transactionId===txId);
+     if(ix>=0)audit.incidents[ix]=incidentRecord;else audit.incidents.push(incidentRecord);
      audit.supportingDocuments=Array.isArray(audit.supportingDocuments)?audit.supportingDocuments:[];
-     if(supportingDocument)audit.supportingDocuments.push({...supportingDocument,linkedTransactionId:txId,documentType:'Discrepancy / incident memo',sourceLocation:from});
+     audit.supportingDocuments=audit.supportingDocuments.filter(d=>d.linkedTransactionId!==txId);
+     if(supportingDocument)audit.supportingDocuments.push({...supportingDocument,linkedTransactionId:txId,documentType:'Discrepancy / incident memo',sourceLocation:from,description:memoDescription});
      audit.updatedAt=nowISO();
      await put('audits',audit);
    }
  }
  await refreshAll();
+ return txRecord;
 }
+
 function auditSkeleton(a){
  const b=a.counts||{};return '<div class="audit-card"><div class="audit-header"><div><h3>'+esc(a.month||'Draft audit')+'</h3><div class="meta">Status: '+esc(a.status||'draft')+' · Saved '+fmtDate(a.updatedAt)+'</div></div><div class="button-row"><button data-audit-action="open" data-id="'+a.id+'">Open</button><button data-audit-action="delete" data-id="'+a.id+'">Delete</button></div></div></div>'
 }
@@ -827,6 +836,9 @@ async function saveAuditFromUI(id,finalize){
      if(admin){admin.setAttribute('open','');const adminStep=admin.closest('[data-audit-step]');if(adminStep&&window.matchMedia('(max-width:700px)').matches){document.querySelectorAll('[data-audit-step]').forEach(s=>s.classList.remove('active-step'));adminStep.classList.add('active-step')}admin.scrollIntoView({behavior:'smooth',block:'start'})}
      return alert('Administration PDF import is required before finalizing this audit.');
    }
+   const auditIncidents=Array.isArray(a.incidents)?a.incidents:[];
+   const incompleteIncident=auditIncidents.find(x=>x.status!=='submitted'||!x.supportingDocument?.storagePath);
+   if(incompleteIncident)return alert('All audit discrepancies / incidents must be submitted with an attached memo before the audit can be finalized.');
    if(!a.auditorName?.trim())return alert('Auditor name is required in Audit Details.');
    if(!a.auditorEmployeeNumber?.trim())return alert('Auditor employee number is required in Audit Details.');
    if(!a.attestationAccepted||!a.attestationName.trim())return alert('Final attestation and auditor name are required.');
@@ -844,6 +856,19 @@ async function saveAuditFromUI(id,finalize){
        await setBalance(loc,med,Number(a.counts?.[loc]?.[med]||0));
      }
    }
+   const allTx=await getAll('transactions');
+   const inRange=allTx.filter(t=>{
+     if(t.auditId===a.id)return true;
+     if(t.status==='draft')return false;
+     const d=String(t.timestamp||'').slice(0,10);
+     return (!a.dateRangeStart||d>=a.dateRangeStart)&&(!a.dateRangeEnd||d<=a.dateRangeEnd);
+   });
+   a.transactions=inRange;
+   a.supportingDocuments=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
+   const txDocs=inRange.map(t=>t.supportingDocument).filter(d=>d?.storagePath);
+   const mergedDocs=[...a.supportingDocuments,...txDocs];
+   const seenDocs=new Set();
+   a.supportingDocuments=mergedDocs.filter(d=>{const k=d.storageBucket+'|'+d.storagePath;if(!d.storagePath||seenDocs.has(k))return false;seenDocs.add(k);return true;});
    await put('reports',{...a,id:'report_'+a.id,auditId:a.id});
  }
  await put('audits',a);if(finalize){activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});}await refreshAll();if(finalize)showReport('report_'+a.id);else editAudit(a.id)
@@ -975,13 +1000,14 @@ async function showAnnualReport(year){
  const d=document.getElementById('reportDialog'),preview=document.getElementById('reportPreview');
  if(d.open)d.close();
  preview.innerHTML=annualSummaryHtml(year,rows);
+ preview._packetSupportingDocuments=uniqueSupportingDocuments(rows.flatMap(r=>r.supportingDocuments||[]));
  d.showModal();document.body.classList.add('report-open');
  const title='Gladstone FD Narcotic Inventory Audit Annual Summary — '+year;
  const close=document.getElementById('closeReport'),pdfPreview=document.getElementById('previewPdfReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
  if(close)close.onclick=()=>d.close();
  if(pdfPreview)pdfPreview.onclick=()=>previewRenderedReportPdf(preview,title);
  if(share)share.onclick=()=>shareRenderedReport(preview,title);
- if(print)print.onclick=()=>window.print();
+ if(print)print.onclick=()=>shareRenderedReport(preview,shareTitle);
  d.onclose=()=>{document.body.classList.remove('report-open');preview.innerHTML='';setTimeout(refreshAll,0)};
 }
 
@@ -1006,6 +1032,30 @@ async function sharePdfFile(file,title){
    return true;
  }
  return false;
+}
+
+function uniqueSupportingDocuments(docs=[]){
+ const seen=new Set();
+ return (docs||[]).filter(d=>{
+   if(!d?.storagePath)return false;
+   const k=(d.storageBucket||'audit-supporting-docs')+'|'+d.storagePath;
+   if(seen.has(k))return false;seen.add(k);return true;
+ });
+}
+async function appendSupportingPdfs(baseBlob,docs=[]){
+ const unique=uniqueSupportingDocuments(docs);
+ if(!unique.length)return baseBlob;
+ if(!window.PDFLib?.PDFDocument)throw new Error('PDF packet merger is not available.');
+ const merged=await window.PDFLib.PDFDocument.load(await baseBlob.arrayBuffer());
+ for(const doc of unique){
+   const bucket=doc.storageBucket||'audit-supporting-docs';
+   const {data,error}=await sb.storage.from(bucket).download(doc.storagePath);
+   if(error||!data)throw new Error('Unable to retrieve supporting document: '+(doc.name||'PDF'));
+   const src=await window.PDFLib.PDFDocument.load(await data.arrayBuffer());
+   const pages=await merged.copyPages(src,src.getPageIndices());
+   pages.forEach(p=>merged.addPage(p));
+ }
+ return new Blob([await merged.save()],{type:'application/pdf'});
 }
 
 async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit Report'){
@@ -1329,7 +1379,8 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      }
    }
 
-   const blob=pdf.output('blob');
+   const baseBlob=pdf.output('blob');
+   const blob=await appendSupportingPdfs(baseBlob,preview?._packetSupportingDocuments||[]);
    return {
      blob,
      file:new File([blob],safeName+'.pdf',{type:'application/pdf'}),
@@ -1402,7 +1453,7 @@ async function showTestReport(){
    if(close)close.onclick=()=>d.close();
    if(pdfPreview)pdfPreview.onclick=()=>previewRenderedReportPdf(preview,shareTitle);
    if(share)share.onclick=()=>shareRenderedReport(preview,shareTitle);
-   if(print)print.onclick=()=>window.print();
+   if(print)print.onclick=()=>shareRenderedReport(preview,shareTitle);
  }catch(err){
    preview.innerHTML='<div class="report-loading"><b>Unable to render the test report.</b><br><span>'+esc(err?.message||String(err))+'</span></div>';
    console.error(err);
@@ -1420,13 +1471,14 @@ async function showReport(id){
  try{
    const b=reportHtml(r);
    preview.innerHTML=b;
+   preview._packetSupportingDocuments=uniqueSupportingDocuments(r.supportingDocuments||[]);
    d.scrollTop=0;
    const close=document.getElementById('closeReport'),pdfPreview=document.getElementById('previewPdfReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
    const shareTitle='Gladstone FD Narcotic Inventory Audit Report — '+(r.month||'Monthly')+' — '+reportShareDate(r.auditDate||r.finalizedAt);
    if(close)close.onclick=()=>d.close();
    if(pdfPreview)pdfPreview.onclick=()=>previewRenderedReportPdf(preview,shareTitle);
    if(share)share.onclick=()=>shareRenderedReport(preview,shareTitle);
-   if(print)print.onclick=()=>window.print();
+   if(print)print.onclick=()=>shareRenderedReport(preview,shareTitle);
    requestAnimationFrame(()=>{d.scrollTop=0;preview.scrollTop=0});
  }catch(err){
    preview.innerHTML='<div class="report-loading">Unable to render this report. Close and try again.</div>';
@@ -1653,7 +1705,7 @@ function reportHtml(r){
  sigCard('Medic 1')+sigCard('Medic 2')+sigCard('Medic 3')+sigCard('Safe')+sigCard('Expired')+
  '</div></section>'+
  '<section class="report-attestation"><h2>Final overall controlled-substance audit attestation</h2><p>'+esc(r.attestationText||FINAL_ATTESTATION).replace(/\n/g,'<br>')+'</p><div class="report-final-signature'+(r.isTest?' report-final-signature-explicit':'')+'"><div class="report-signature-label">FINAL CERTIFYING AUDITOR SIGNATURE</div>'+(r.isTest?'<div class="report-final-signature-capture">'+(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':'<div class="report-signature-placeholder"></div>')+'</div>':(r.attestationSignature?'<img src="'+r.attestationSignature+'" alt="Final certifying auditor signature">':''))+'<div class="report-signature-name">'+esc(r.attestationName||'')+(r.attestationEmployeeNumber?' · Employee #'+esc(r.attestationEmployeeNumber):'')+'</div></div></section>'+
- +(Array.isArray(r.incidents)&&r.incidents.length?'<section class="report-incidents"><h2>Discrepancies / incidents</h2>'+r.incidents.map(x=>'<div class="report-amendment-row"><b>'+esc(x.sourceLocation||'Unknown source')+'</b> · '+esc((x.items||[]).map(i=>i.medication+' × '+i.quantity).join(', '))+' · '+esc(x.explanation||'')+(x.supportingDocument?.name?' · Memo: '+esc(x.supportingDocument.name):'')+'</div>').join('')+'</section>':'')+
+ +(Array.isArray(r.incidents)&&r.incidents.length?'<section class="report-incidents"><h2>Discrepancies / incidents</h2>'+r.incidents.map(x=>'<div class="report-amendment-row"><b>'+esc(x.sourceLocation||'Unknown source')+'</b> · '+esc((x.items||[]).map(i=>i.medication+' × '+i.quantity).join(', '))+' · '+esc(x.explanation||'')+(x.memoDescription?' · Memo description: '+esc(x.memoDescription):'')+(x.supportingDocument?.name?' · Memo: '+esc(x.supportingDocument.name):'')+'</div>').join('')+'</section>':'')+
  '<section class="report-notes"><h2>Audit notes</h2><p class="audit-notes-text">'+esc(r.notes||'').replace(/\n/g,'<br>')+'</p>'+(r.usageSummary?'<div class="report-usage-summary">'+esc(r.usageSummary||'').replace(/\n/g,'<br>')+'</div>':'')+'</section>'+
  '<footer class="report-footer">Finalized inventory snapshot'+(recordNo?' · Record #'+esc(recordNo):'')+'</footer>'+
  '</div>';
@@ -1796,6 +1848,10 @@ function bind(){
  const txTypeSelect=document.querySelector('#txForm select[name=type]');
  const txPdfInput=document.getElementById('txSupportingPdf');
  const txPdfHint=document.getElementById('txSupportingPdfHint');
+ const txMemoDescriptionLabel=document.getElementById('txMemoDescriptionLabel');
+ const txMemoDescription=document.getElementById('txMemoDescription');
+ const txDraftBtn=document.getElementById('saveTxDraftBtn');
+ const txSubmitBtn=document.getElementById('saveTxBtn');
  const txNotesLabel=document.getElementById('txNotesLabel');
  const txNotes=document.getElementById('txNotes');
  const txPdfLabel=document.getElementById('txSupportingPdfLabel');
@@ -1811,7 +1867,7 @@ function bind(){
    const received=txTypeSelect?.value==='received';
    const incident=txTypeSelect?.value==='incident';
    const auditIncident=incident&&Boolean(document.getElementById('txAuditContextId')?.value);
-   const required=received||txTypeSelect?.value==='destroyed'||incident;
+   const required=received||txTypeSelect?.value==='destroyed';
    if(txFromLocationText)txFromLocationText.textContent=incident?'Vial source location':'From';
    if(txFromLocationLabel){
      txFromLocationLabel.hidden=received;
@@ -1831,6 +1887,10 @@ function bind(){
    }
    const expired=txTypeSelect?.value==='expired';
    if(txNotesLabel)txNotesLabel.textContent=incident?'Incident / discrepancy explanation':'Reason / notes';
+   if(txMemoDescriptionLabel)txMemoDescriptionLabel.hidden=!incident;
+   if(txMemoDescription)txMemoDescription.required=false;
+   if(txDraftBtn)txDraftBtn.hidden=!incident;
+   if(txSubmitBtn)txSubmitBtn.textContent=incident?'Submit incident':'Save transaction';
    if(txNotes){
      txNotes.required=incident;
      txNotes.placeholder=incident?'Describe what happened, including broken/damaged vial details and circumstances.':'';
@@ -1841,7 +1901,7 @@ function bind(){
      if(expired)txPdfInput.value='';
    }
    if(txPdfHint)txPdfHint.textContent=incident
-     ?'Attach the discrepancy / incident memo PDF. A DEA Form 222 is not required for this incident entry.'
+     ?'Memo PDF is optional while saving a draft, but required before final incident submission. DEA Form 222 is not required.'
      :(required
        ?'DEA Form 222 PDF required for this transaction.'
        :'No DEA Form 222 required for internal redistribution between department inventory sites, including movement into Expired inventory.');
@@ -1849,6 +1909,8 @@ function bind(){
  if(txTypeSelect){txTypeSelect.addEventListener('change',syncTxPdfRequirement);syncTxPdfRequirement();}
  document.getElementById('newTxBtn').onclick=()=>{
    const auditCtx=document.getElementById('txAuditContextId');if(auditCtx)auditCtx.value='';
+   const txId=document.getElementById('txTransactionId');if(txId)txId.value='';
+   const txId=document.getElementById('txTransactionId');if(txId)txId.value='';
    syncTxPdfRequirement();document.getElementById('txDialog').showModal();
  };
  const txDialog=document.getElementById('txDialog');
@@ -1894,8 +1956,29 @@ function bind(){
  }
  if(txRowsHost&&!txRowsHost.children.length)addTxMedicationRow();
 
- document.getElementById('saveTxBtn').onclick=async e=>{e.preventDefault();try{await saveTransaction(new FormData(txForm));txDialog.close();txForm.reset();if(txRowsHost){txRowsHost.innerHTML='';addTxMedicationRow();}[txRecordedSig,txWitnessSig].forEach(c=>{if(c){c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.hasSignature='false';}});syncTxPdfRequirement()}catch(err){alert(err.message)}};
- document.getElementById('activitySearch').oninput=renderActivity;document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;
+ const resetTxAfterSave=()=>{txDialog.close();txForm.reset();const txId=document.getElementById('txTransactionId');if(txId)txId.value='';if(txRowsHost){txRowsHost.innerHTML='';addTxMedicationRow();}[txRecordedSig,txWitnessSig].forEach(c=>{if(c){c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.hasSignature='false';}});syncTxPdfRequirement();};
+ document.getElementById('saveTxBtn').onclick=async e=>{e.preventDefault();try{await saveTransaction(new FormData(txForm),true);resetTxAfterSave()}catch(err){alert(err.message)}};
+ if(txDraftBtn)txDraftBtn.onclick=async e=>{e.preventDefault();try{await saveTransaction(new FormData(txForm),false);resetTxAfterSave()}catch(err){alert(err.message)}};
+ document.getElementById('activitySearch').oninput=renderActivity;
+ document.getElementById('activityList').onclick=async e=>{
+   const btn=e.target.closest('[data-resume-incident]');if(!btn)return;
+   const tx=await getOne('transactions',btn.dataset.resumeIncident);if(!tx)return;
+   txForm.reset();
+   const type=txForm.querySelector('select[name=type]');if(type)type.value='incident';
+   const txId=document.getElementById('txTransactionId');if(txId)txId.value=tx.id;
+   const auditCtx=document.getElementById('txAuditContextId');if(auditCtx)auditCtx.value=tx.auditId||'';
+   const from=txForm.querySelector('select[name=fromLocation]');if(from)from.value=tx.incidentSourceLocation||tx.fromLocation||'';
+   const notes=document.getElementById('txNotes');if(notes)notes.value=tx.notes||'';
+   const memo=document.getElementById('txMemoDescription');if(memo)memo.value=tx.memoDescription||tx.supportingDocument?.description||'';
+   document.getElementById('txRecordedBy').value=tx.recordedBy||'';
+   document.getElementById('txRecordedByEmployeeNumber').value=tx.recordedByEmployeeNumber||'';
+   document.getElementById('txWitness').value=tx.witness||'';
+   document.getElementById('txWitnessEmployeeNumber').value=tx.witnessEmployeeNumber||'';
+   if(txRowsHost){txRowsHost.innerHTML='';(tx.items||[]).forEach(x=>addTxMedicationRow(x.medication,x.quantity));if(!txRowsHost.children.length)addTxMedicationRow();}
+   const restore=(canvas,data)=>{canvas.getContext('2d').clearRect(0,0,canvas.width,canvas.height);canvas.dataset.hasSignature='false';if(!data)return;const img=new Image();img.onload=()=>{canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);canvas.dataset.hasSignature='true';};img.src=data;};
+   restore(txRecordedSig,tx.recordedBySignature);restore(txWitnessSig,tx.witnessSignature);
+   syncTxPdfRequirement();txDialog.showModal();
+ };document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;
  document.getElementById('auditWorkspace').onclick=async e=>{const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open')editAudit(b.dataset.id);if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);renderAudits()}};
  document.getElementById('reportsList').onclick=async e=>{
    const test=e.target.closest('[data-test-report]');
