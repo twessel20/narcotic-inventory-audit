@@ -1813,16 +1813,16 @@ function executiveSummaryHtml(r){
 
  let inventorySentence='';
  if(changed.length){
-   const parts=changed.map(x=>{
+   const parts=[];
+   let missingReason=false;
+   for(const x of changed){
      const amount=Math.abs(x.diff);
      const direction=x.diff>0?'increased':'decreased';
      const reasons=reasonsForChange(x.m,x.diff);
-     const reasonText=reasons.length
-       ?' The recorded reason was '+reasons.join(' and ')+'.'
-       :' No specific reason for this change was documented in the audit data.';
-     return x.m+' '+direction+' by '+amount+' vial'+(amount===1?'':'s')+'.'+reasonText;
-   });
-   inventorySentence='The physical inventory changed from the prior audit. '+parts.join(' ');
+     parts.push(x.m+' '+direction+' by '+amount+' vial'+(amount===1?'':'s')+(reasons.length?' ('+reasons.join('; ')+')':''));
+     if(!reasons.length)missingReason=true;
+   }
+   inventorySentence='The physical inventory changed from the prior audit: '+parts.join('; ')+'.'+(missingReason?' No specific reason was documented for one or more of these inventory changes.':'');
  }else if(comparisonsKnown){
    inventorySentence='The active physical inventory did not show a net change from the prior audit.';
  }else{
