@@ -1392,45 +1392,32 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        (card.querySelector('h2')?.textContent||'').trim().toLowerCase()===t.toLowerCase()
      );
 
-     const pageA=makePage(
-       'Audit Site Certifications - Medic 1 / Medic 2',
-       'pdf-certifications-page pdf-certifications-primary',
-       [byTitle('Medic 1 Certification'),byTitle('Medic 2 Certification')]
-     );
-     pages.push(pageA);
+     const addCertPage=(loc,extraNodes=[])=>{
+       const card=byTitle(loc+' Certification');
+       if(!card)return;
+       clearPdfBreaks(card);
+       card.classList.add('pdf-single-cert-card');
+       pages.push(makePage(
+         loc+' Audit Site Certification',
+         'pdf-certifications-page pdf-single-certification-page pdf-cert-'+loc.toLowerCase().replace(/[^a-z0-9]+/g,'-'),
+         [...extraNodes,card]
+       ));
+     };
 
-     const pageB=makePage(
-       'Audit Site Certifications - Medic 3 / Safe',
-       'pdf-certifications-page pdf-certifications-secondary',
-       []
-     );
+     addCertPage('Medic 1');
+     addCertPage('Medic 2');
+
      const medic3Intro=document.createElement('p');
      medic3Intro.className='pdf-medic3-explainer';
-     medic3Intro.textContent='Medic 3 is the reserve ambulance and functions as a semi-dynamic inventory site. It is maintained as its own separately tracked audit location, while its assigned narcotic inventory is normally secured in the Safe until Medic 3 is placed in service. The Safe serves as the central reserve inventory and is the primary stock used to restock or redistribute controlled substances to the department\'s other tracked inventory sites as needed.';
-     pageB.appendChild(medic3Intro);
-     const wrap=document.createElement('div');
-     wrap.className='pdf-certifications-secondary-wrap';
-     [byTitle('Medic 3 Certification'),byTitle('Safe Certification')]
-       .filter(Boolean)
-       .forEach(card=>{
-         clearPdfBreaks(card);
-         wrap.appendChild(card);
-       });
-     pageB.appendChild(wrap);
-     pages.push(pageB);
+     medic3Intro.textContent='Medic 3 is the reserve ambulance and functions as a semi-dynamic inventory site. It is maintained as its own separately tracked audit location, while its assigned narcotic inventory is normally secured in the Safe until Medic 3 is placed in service.';
+     addCertPage('Medic 3',[medic3Intro]);
 
-     const expiredCard=byTitle('Expired Certification');
-     if(expiredCard){
-       clearPdfBreaks(expiredCard);
-       const expiredIntro=document.createElement('p');
-       expiredIntro.className='pdf-expired-explainer';
-       expiredIntro.textContent='This page documents the physical count, seal verification, auditor Certification, and witness Certification for controlled substances placed in the Expired inventory location during this audit.';
-       pages.push(makePage(
-         'Expired Inventory Certification',
-         'pdf-certifications-page pdf-expired-certification-page',
-         [expiredIntro,expiredCard]
-       ));
-     }
+     addCertPage('Safe');
+
+     const expiredIntro=document.createElement('p');
+     expiredIntro.className='pdf-expired-explainer';
+     expiredIntro.textContent='This page documents the physical count, seal verification, auditor certification, and witness certification for controlled substances placed in the Expired inventory location during this audit.';
+     addCertPage('Expired',[expiredIntro]);
    }
 
    if(attestation){
