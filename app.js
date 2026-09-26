@@ -1163,8 +1163,11 @@ async function saveAuditFromUI(id,finalize){
    const seenDocs=new Set();
    a.supportingDocuments=mergedDocs.filter(d=>{const k=d.storageBucket+'|'+d.storagePath;if(!d.storagePath||seenDocs.has(k))return false;seenDocs.add(k);return true;});
    await put('reports',{...a,id:'report_'+a.id,auditId:a.id});
- }
- await put('audits',a);if(finalize){activeAuditId=null;await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});}await refreshAll();if(finalize)showReport('report_'+a.id);else editAudit(a.id)
+   await put('audits',a);
+   activeAuditId=null;
+   await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});
+   await refreshAll();
+   showReport('report_'+a.id);
    }catch(err){
      alert(err?.message||String(err));
    }finally{
