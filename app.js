@@ -702,19 +702,30 @@ async function editAudit(id){
    const expiredInput=document.querySelector('[data-count-loc="Expired"][data-count-med="'+CSS.escape(med)+'"]');
    if(!sourceInput||!expiredInput)return alert('Unable to locate the audit inventory fields.');
    const available=Number(sourceInput.value||0);
-   const raw=prompt((kind==='damaged'?'Damaged vial':'Expired medication')+' found — quantity to move from '+loc+' to Expired inventory:', '1');
+   const raw=prompt((kind==='damaged'?'Damaged vial':'Expired medication')+' found — quantity:', '1');
    if(raw===null)return;
    const qty=Number(raw);
    if(!Number.isInteger(qty)||qty<1)return alert('Enter a whole-vial quantity of 1 or greater.');
    if(qty>available)return alert('Quantity exceeds the current '+loc+' audit count for '+med+'.');
-   let note='';
+
+   let note='',physicalRetained=true;
    if(kind==='damaged'){
-     const entered=prompt('Briefly describe the damage (optional):','');
-     if(entered===null)return;
-     note=String(entered||'').trim();
+     physicalRetained=confirm('Can the damaged vial still be physically retained and stored in Expired inventory?\n\nOK = Yes, retain it\nCancel = No, vial cannot be physically stored');
+     if(physicalRetained){
+       const entered=prompt('Briefly describe the damage (optional):','');
+       if(entered===null)return;
+       note=String(entered||'').trim();
+     }else{
+       const entered=prompt('Required: explain why the damaged vial cannot be physically retained/stored and what happened to the vial:','');
+       if(entered===null)return;
+       note=String(entered||'').trim();
+       if(!note)return alert('An explanation is required when no physical vial will remain in Expired inventory.');
+     }
    }
+
    sourceInput.value=String(available-qty);
-   expiredInput.value=String(Number(expiredInput.value||0)+qty);
+   if(kind==='expired'||physicalRetained)expiredInput.value=String(Number(expiredInput.value||0)+qty);
+
    collectAuditFromUI(a);
    a.inventoryFindings=Array.isArray(a.inventoryFindings)?a.inventoryFindings:[];
    a.inventoryFindings.push({
@@ -722,7 +733,8 @@ async function editAudit(id){
      type:kind,
      typeLabel:kind==='damaged'?'Damaged vial found during audit':'Expired medication found during audit',
      sourceLocation:loc,
-     destinationLocation:'Expired',
+     destinationLocation:(kind==='damaged'&&!physicalRetained)?'Not physically retained':'Expired',
+     physicalRetained:kind==='damaged'?physicalRetained:true,
      medication:med,
      quantity:qty,
      note,
@@ -734,7 +746,12 @@ async function editAudit(id){
    await put('meta',{id:'activeAudit',auditId:a.id,updatedAt:a.updatedAt});
    updateAuditRouteProgress();
    scheduleAuditAutosave(a.id,true);
-   alert((kind==='damaged'?'Damaged vial':'Expired medication')+' recorded in this audit. '+loc+' decreased by '+qty+' and Expired increased by '+qty+'.');
+
+   if(kind==='damaged'&&!physicalRetained){
+     alert('Damaged vial recorded. '+loc+' decreased by '+qty+'. Expired inventory was NOT increased because no physical vial remains.');
+   }else{
+     alert((kind==='damaged'?'Damaged vial':'Expired medication')+' recorded in this audit. '+loc+' decreased by '+qty+' and Expired increased by '+qty+'.');
+   }
  });
  document.querySelectorAll('[data-audit-incident]').forEach(btn=>btn.onclick=()=>{
    const txForm=document.getElementById('txForm');
@@ -1106,7 +1123,7 @@ function annualSummaryHtml(year,reports){
  '<section><h2>Monthly audit register</h2><table class="report-table"><thead><tr><th>Month</th><th>Audit date</th><th>Auditor</th><th>Administration rows</th><th>Amendments</th></tr></thead><tbody>'+
  sorted.map(r=>'<tr><td>'+esc(r.month||'')+'</td><td>'+esc(reportShareDate(r.auditDate||r.finalizedAt)||'—')+'</td><td>'+esc(r.attestationName||r.auditorName||'—')+'</td><td>'+((r.administrationRows||[]).length)+'</td><td>'+((r.amendments||[]).length)+'</td></tr>').join('')+
  '</tbody></table></section>'+
- (inventoryFindings.length?'<section><h2>Expired / damaged medications found during audits</h2><p class="report-note">These findings were recorded within the live monthly audits and moved from the source audit location into Expired inventory without creating separate inventory transactions.</p><table class="report-table"><thead><tr><th>Month</th><th>Date</th><th>Finding</th><th>Source</th><th>Medication</th><th>Qty</th><th>Notes</th></tr></thead><tbody>'+inventoryFindings.map(x=>'<tr><td>'+esc(x.auditMonth||'')+'</td><td>'+esc(formatDisplayDate(x.recordedAt)||'')+'</td><td>'+esc(x.typeLabel||x.type||'')+'</td><td>'+esc(x.sourceLocation||'')+' → Expired</td><td>'+esc(x.medication||'')+'</td><td>'+esc(x.quantity||'')+'</td><td>'+esc(x.note||'')+'</td></tr>').join('')+'</tbody></table></section>':'')+
+ (inventoryFindings.length?'<section><h2>Expired / damaged medications found during audits</h2><p class="report-note">These findings were recorded within the live monthly audits. Retained items moved into Expired inventory; damaged vials that could not be physically retained were documented without increasing the Expired physical count. No separate inventory transactions were created.</p><table class="report-table"><thead><tr><th>Month</th><th>Date</th><th>Finding</th><th>Source</th><th>Medication</th><th>Qty</th><th>Notes</th></tr></thead><tbody>'+inventoryFindings.map(x=>'<tr><td>'+esc(x.auditMonth||'')+'</td><td>'+esc(formatDisplayDate(x.recordedAt)||'')+'</td><td>'+esc(x.typeLabel||x.type||'')+'</td><td>'+esc(x.sourceLocation||'')+' → '+esc(x.destinationLocation||'Expired')+'</td><td>'+esc(x.medication||'')+'</td><td>'+esc(x.quantity||'')+'</td><td>'+esc((x.physicalRetained===false?'No physical vial retained. ':'')+(x.note||''))+'</td></tr>').join('')+'</tbody></table></section>':'')+
  '<section><h2>Medication detail by month</h2><table class="report-table"><thead><tr><th>Month</th>'+MEDS.map(m=>'<th>'+esc(m)+'</th>').join('')+'</tr></thead><tbody>'+
  sorted.map(r=>'<tr><td>'+esc(r.month||'')+'</td>'+MEDS.map(m=>'<td>'+activeLocs.reduce((n,l)=>n+Number(r.counts?.[l]?.[m]||0),0)+'</td>').join('')+'</tr>').join('')+
  '</tbody></table></section>'+
@@ -1807,7 +1824,7 @@ function reportHtml(r){
  (amendment?'<section class="report-amendment"><h2>Amended inventory record — correction history</h2><p>The table below includes these corrections. Signatures were recorded before these amendments and certify the original record, not the corrected entries.</p>'+amendment+'</section>':'')+
  '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+esc(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
  '<section><h2>Breakaway tag record</h2><table class="report-table"><thead><tr><th>Location</th><th>Tag found / removed</th><th>New tag installed</th></tr></thead><tbody>'+tagRows+'</tbody></table></section>'+
- (Array.isArray(r.inventoryFindings)&&r.inventoryFindings.length?'<section class="report-audit-findings"><h2>Expired / damaged medications found during audit</h2><p class="report-note">These items were identified during the physical audit and moved within the audit from the source location into Expired inventory. No separate inventory transaction was created.</p><table class="report-table"><thead><tr><th>Date</th><th>Finding</th><th>Source</th><th>Medication</th><th>Qty</th><th>Notes</th></tr></thead><tbody>'+r.inventoryFindings.map(x=>'<tr><td>'+esc(formatDisplayDate(x.recordedAt)||'')+'</td><td>'+esc(x.typeLabel||x.type||'')+'</td><td>'+esc(x.sourceLocation||'')+' → Expired</td><td>'+esc(x.medication||'')+'</td><td>'+esc(x.quantity||'')+'</td><td>'+esc(x.note||'')+'</td></tr>').join('')+'</tbody></table></section>':'')+
+ (Array.isArray(r.inventoryFindings)&&r.inventoryFindings.length?'<section class="report-audit-findings"><h2>Expired / damaged medications found during audit</h2><p class="report-note">These items were identified during the physical audit. Retained items were moved from the source location into Expired inventory; damaged vials that could not be physically retained were removed from the source count and documented without increasing the Expired physical count. No separate inventory transaction was created.</p><table class="report-table"><thead><tr><th>Date</th><th>Finding</th><th>Source</th><th>Medication</th><th>Qty</th><th>Notes</th></tr></thead><tbody>'+r.inventoryFindings.map(x=>'<tr><td>'+esc(formatDisplayDate(x.recordedAt)||'')+'</td><td>'+esc(x.typeLabel||x.type||'')+'</td><td>'+esc(x.sourceLocation||'')+' → '+esc(x.destinationLocation||'Expired')+'</td><td>'+esc(x.medication||'')+'</td><td>'+esc(x.quantity||'')+'</td><td>'+esc((x.physicalRetained===false?'No physical vial retained. ':'')+(x.note||''))+'</td></tr>').join('')+'</tbody></table></section>':'')+
  '<section class="report-eso-source"><h2>ESO Narcotic Administration Record</h2><p>Administration activity was imported from the ESO software PDF for this audit period. Physical inventory totals remain based on the manually verified count.</p>'+(sourceDoc?'<p><b>Imported ESO PDF:</b> <u>'+esc(sourceDoc.name)+'</u> — imported '+esc(formatDisplayDate(sourceDoc.uploadedAt)||'')+(sourceDoc.uploadedBy?' by '+esc(sourceDoc.uploadedBy):'')+'</p>':'')+'<p class="report-note">The imported record and calculated vial-use reconciliation are included below.</p></section>'+
  (r.isTest&&Array.isArray(r.administrationRows)&&r.administrationRows.length?
  '<section class="report-imported-admin"><h2>Administration Detail</h2><p class="report-note">Source doses are preserved as imported. Calculated vial use is derived separately using department vial rules.</p>'+
