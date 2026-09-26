@@ -869,19 +869,41 @@ async function enterSignatureLandscape(dialog){
  const mobile=window.matchMedia('(max-width:900px)').matches;
  if(!mobile||!dialog)return;
  dialog.classList.add('signature-landscape-mode');
+
+ const syncLandscapeState=()=>{
+   const landscape=window.innerWidth>window.innerHeight;
+   dialog.classList.toggle('is-landscape',landscape);
+   dialog.classList.toggle('is-portrait',!landscape);
+   const hint=dialog.querySelector('.signature-capture-hint');
+   if(hint)hint.textContent=landscape
+     ?'Landscape signing mode'
+     :'Rotate phone to landscape for the full signing area.';
+ };
+ dialog._signatureOrientationHandler=syncLandscapeState;
+ window.addEventListener('resize',syncLandscapeState,{passive:true});
+ window.addEventListener('orientationchange',syncLandscapeState,{passive:true});
+ if(window.visualViewport)window.visualViewport.addEventListener('resize',syncLandscapeState,{passive:true});
+ syncLandscapeState();
+
  try{
    if(document.fullscreenElement!==dialog&&dialog.requestFullscreen)await dialog.requestFullscreen({navigationUI:'hide'});
  }catch(e){}
  try{
    if(screen.orientation?.lock)await screen.orientation.lock('landscape');
  }catch(e){}
- const hint=dialog.querySelector('.signature-capture-hint');
- if(hint)hint.textContent=(window.innerWidth>window.innerHeight)
-   ?'Landscape signing mode'
-   :'Rotate phone to landscape for the full signing area.';
+ setTimeout(syncLandscapeState,120);
 }
 async function exitSignatureLandscape(dialog){
- if(dialog)dialog.classList.remove('signature-landscape-mode');
+ if(dialog){
+   dialog.classList.remove('signature-landscape-mode','is-landscape','is-portrait');
+   const handler=dialog._signatureOrientationHandler;
+   if(handler){
+     window.removeEventListener('resize',handler);
+     window.removeEventListener('orientationchange',handler);
+     if(window.visualViewport)window.visualViewport.removeEventListener('resize',handler);
+     delete dialog._signatureOrientationHandler;
+   }
+ }
  try{if(screen.orientation?.unlock)screen.orientation.unlock();}catch(e){}
  try{if(document.fullscreenElement===dialog&&document.exitFullscreen)await document.exitFullscreen();}catch(e){}
 }
