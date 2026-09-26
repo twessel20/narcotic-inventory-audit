@@ -1503,16 +1503,67 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        if(safe){
          clearPdfBreaks(safe);
          safe.classList.add('pdf-single-cert-card','pdf-safe-cert');
-         const grid=safe.querySelector('.report-signature-grid');
-         if(grid){
-           grid.style.setProperty('display','grid','important');
-           grid.style.setProperty('grid-template-columns','1fr 1fr','important');
-           grid.style.setProperty('gap','6px','important');
-           grid.style.setProperty('break-inside','avoid','important');
-           grid.style.setProperty('page-break-inside','avoid','important');
-         }
          safe.style.setProperty('break-inside','avoid','important');
          safe.style.setProperty('page-break-inside','avoid','important');
+         safe.style.setProperty('margin','0','important');
+         safe.style.setProperty('padding','5px 6px','important');
+
+         const safeHeading=safe.querySelector('h2');
+         if(safeHeading){
+           safeHeading.style.setProperty('margin','0 0 3px','important');
+           safeHeading.style.setProperty('font-size','.72rem','important');
+           safeHeading.style.setProperty('line-height','1','important');
+         }
+         safe.querySelectorAll('.report-cert-site,.report-cert-statement').forEach(el=>{
+           el.style.setProperty('margin','1px 0 3px','important');
+           el.style.setProperty('font-size','.52rem','important');
+           el.style.setProperty('line-height','1.05','important');
+         });
+
+         const grid=safe.querySelector('.report-signature-grid');
+         if(grid){
+           grid.style.setProperty('display','flex','important');
+           grid.style.setProperty('flex-direction','row','important');
+           grid.style.setProperty('flex-wrap','nowrap','important');
+           grid.style.setProperty('gap','6px','important');
+           grid.style.setProperty('margin-top','3px','important');
+           grid.style.setProperty('width','100%','important');
+           grid.style.setProperty('break-inside','avoid','important');
+           grid.style.setProperty('page-break-inside','avoid','important');
+
+           [...grid.children].forEach(box=>{
+             box.style.setProperty('flex','1 1 0','important');
+             box.style.setProperty('width','calc(50% - 3px)','important');
+             box.style.setProperty('min-width','0','important');
+             box.style.setProperty('min-height','0','important');
+             box.style.setProperty('height','auto','important');
+             box.style.setProperty('margin','0','important');
+             box.style.setProperty('padding','4px 5px','important');
+             box.style.setProperty('break-inside','avoid','important');
+             box.style.setProperty('page-break-inside','avoid','important');
+
+             box.querySelectorAll('.report-signature-site,.report-signature-label').forEach(el=>{
+               el.style.setProperty('margin','0 0 2px','important');
+               el.style.setProperty('font-size','.48rem','important');
+               el.style.setProperty('line-height','1','important');
+             });
+             box.querySelectorAll('img,.report-signature-placeholder').forEach(el=>{
+               el.style.setProperty('display','block','important');
+               el.style.setProperty('width','100%','important');
+               el.style.setProperty('height','28px','important');
+               el.style.setProperty('min-height','28px','important');
+               el.style.setProperty('max-height','28px','important');
+               el.style.setProperty('margin','2px 0 0','important');
+               el.style.setProperty('object-fit','contain','important');
+             });
+             const name=box.querySelector('.report-signature-name');
+             if(name){
+               name.style.setProperty('padding-top','2px','important');
+               name.style.setProperty('font-size','.5rem','important');
+               name.style.setProperty('line-height','1','important');
+             }
+           });
+         }
        }
 
        const medic3Intro=document.createElement('p');
@@ -1622,6 +1673,8 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
          before:['.pdf-packet-page','.pdf-page-start'],
          avoid:[
            '.pdf-certifications-secondary-wrap',
+           '.pdf-safe-cert',
+           '.pdf-medic3-safe-page',
            '.report-signature-box',
            '.report-final-signature',
            '.report-vial-summary',
