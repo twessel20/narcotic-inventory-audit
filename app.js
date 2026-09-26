@@ -1037,13 +1037,18 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      const certPageB=document.createElement('section');
      certPageB.className='pdf-packet-page pdf-certifications-page pdf-certifications-secondary';
      certPageB.innerHTML='<h2 class="pdf-packet-title">Audit Site Certifications — Medic 3 / Safe / Expired</h2>';
+     const secondaryWrap=document.createElement('div');
+     secondaryWrap.className='pdf-certifications-secondary-wrap';
      [certByTitle('Medic 3 Certification'),certByTitle('Safe Certification'),certByTitle('Expired Certification')].filter(Boolean).forEach(card=>{
        clearBreaks(card);
-       certPageB.appendChild(card);
+       card.style.breakInside='auto';
+       card.style.pageBreakInside='auto';
+       secondaryWrap.appendChild(card);
      });
+     certPageB.appendChild(secondaryWrap);
 
      if(certPageA.childElementCount>1)pages.push(certPageA);
-     if(certPageB.childElementCount>1)pages.push(certPageB);
+     if(secondaryWrap.children.length)pages.push(certPageB);
    }
    if(attestationSection){
      const duplicateAttestationTitle=attestationSection.querySelector(':scope > h2');
@@ -1077,8 +1082,9 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      card.classList.remove('pdf-break-before');
      card.style.breakBefore='auto';
      card.style.pageBreakBefore='auto';
-     card.style.breakInside='avoid';
-     card.style.pageBreakInside='avoid';
+     const grouped=!!card.closest('.pdf-certifications-secondary-wrap');
+     card.style.breakInside=grouped?'auto':'avoid';
+     card.style.pageBreakInside=grouped?'auto':'avoid';
    });
 
    const safeName=String(title||'Narcotic Audit Report')
@@ -1117,7 +1123,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        image:{type:'jpeg',quality:0.98},
        html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
-       pagebreak:{mode:['css','legacy'],before:['.pdf-break-before'],avoid:['.report-cert','.report-signature-box','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
+       pagebreak:{mode:['css','legacy'],before:['.pdf-break-before'],avoid:['.pdf-certifications-secondary-wrap','.report-signature-box','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
      })
      .from(clone)
      .toPdf();
