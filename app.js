@@ -1896,10 +1896,11 @@ function bind(){
  const txToLocationSelect=document.querySelector('#txForm select[name=toLocation]');
  const txSourcePharmacy=document.getElementById('txSourcePharmacy');
  const syncTxPdfRequirement=()=>{
-   const received=txTypeSelect?.value==='received';
-   const incident=txTypeSelect?.value==='incident';
+   const selectedType=txTypeSelect?.value||'';
+   const received=selectedType==='received';
+   const incident=selectedType==='incident';
    const auditIncident=incident&&Boolean(document.getElementById('txAuditContextId')?.value);
-   const required=received||txTypeSelect?.value==='destroyed';
+   const required=received||selectedType==='destroyed';
    if(txFromLocationText)txFromLocationText.textContent=incident?'Vial source location':'From';
    if(txFromLocationLabel){
      txFromLocationLabel.hidden=received;
@@ -1922,7 +1923,7 @@ function bind(){
      if(received&&!txSourcePharmacy.value.trim())txSourcePharmacy.value='NKCH Pharmacy';
      if(!received)txSourcePharmacy.value='';
    }
-   const expired=txTypeSelect?.value==='expired';
+   const expired=selectedType==='expired';
    if(txNotesLabel)txNotesLabel.textContent=incident?'Incident / discrepancy explanation':'Reason / notes';
    if(txMemoDescriptionLabel)txMemoDescriptionLabel.hidden=!incident;
    if(txMemoDescription)txMemoDescription.required=false;
