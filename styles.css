@@ -3222,3 +3222,26 @@ body.report-open{overflow:hidden}
   line-height:1.34 !important;
   color:#53687c !important;
 }
+
+
+/* Better vertical balance for Inventory Comparison / Breakaway Tag Record PDF page */
+.pdf-clean-stage .pdf-inventory-tags-page{
+  min-height:9.15in !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+.pdf-clean-stage .pdf-inventory-tags-page > .pdf-packet-title{
+  flex:0 0 auto !important;
+}
+.pdf-clean-stage .pdf-inventory-tags-page > section:first-of-type{
+  margin-top:4px !important;
+  margin-bottom:0 !important;
+}
+.pdf-clean-stage .pdf-inventory-tags-page > section:last-of-type{
+  margin-top:auto !important;
+  margin-bottom:6px !important;
+  padding-top:26px !important;
+}
+.pdf-clean-stage .pdf-inventory-tags-page > section:last-of-type > h2{
+  margin-bottom:9px !important;
+}
