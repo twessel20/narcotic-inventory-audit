@@ -1517,36 +1517,16 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
          }
        }
 
-       const medic3Intro=document.createElement('p');
-       medic3Intro.className='pdf-medic3-explainer';
-       medic3Intro.textContent='Medic 3 is the reserve ambulance and functions as a semi-dynamic inventory site. Its assigned narcotic inventory is normally secured in the Safe until Medic 3 is placed in service.';
-
        const wrap=document.createElement('div');
        wrap.className='pdf-medic3-safe-wrap';
-
-       // Medic 3 / Safe intentionally uses the same PDF layout rules as Medic 1 / Medic 2.
        if(medic3)wrap.appendChild(medic3);
        if(safe)wrap.appendChild(safe);
 
-       const medic3SafePage=document.createElement('section');
-       medic3SafePage.className='pdf-packet-page pdf-certifications-page pdf-medic3-safe-page';
-       medic3SafePage.style.setProperty('break-inside','avoid','important');
-       medic3SafePage.style.setProperty('page-break-inside','avoid','important');
-
-       const medic3SafeContent=document.createElement('div');
-       medic3SafeContent.className='pdf-medic3-safe-content';
-       medic3SafeContent.style.setProperty('break-inside','avoid','important');
-       medic3SafeContent.style.setProperty('page-break-inside','avoid','important');
-
-       const medic3SafeTitle=document.createElement('h2');
-       medic3SafeTitle.className='pdf-packet-title';
-       medic3SafeTitle.textContent='Medic 3 / Safe Audit Site Certifications';
-
-       medic3SafeContent.appendChild(medic3SafeTitle);
-       medic3SafeContent.appendChild(medic3Intro);
-       medic3SafeContent.appendChild(wrap);
-       medic3SafePage.appendChild(medic3SafeContent);
-       pages.push(medic3SafePage);
+       pages.push(makePage(
+         'Medic 3 / Safe Audit Site Certifications',
+         'pdf-certifications-page pdf-medic3-safe-page',
+         [wrap]
+       ));
      }
 
      const expiredIntro=document.createElement('p');
@@ -1640,7 +1620,6 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
          before:['.pdf-packet-page','.pdf-page-start'],
          avoid:[
            '.pdf-certifications-secondary-wrap',
-           '.pdf-medic3-safe-content',
            '.report-signature-box',
            '.report-final-signature',
            '.report-vial-summary',
