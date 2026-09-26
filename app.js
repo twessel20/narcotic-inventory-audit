@@ -790,7 +790,7 @@ function annualSummaryHtml(year,reports){
  '<div class="report-cover-main"><div class="report-cover-kicker">YEAR-END CONTROLLED-SUBSTANCE REVIEW</div><h1>Narcotic Inventory / Audit<br>Annual Summary</h1><div class="report-cover-month">'+year+'</div></div>'+
  '<div class="report-cover-meta"><div><span>Monthly reports included</span><strong>'+reports.length+'</strong></div><div><span>First audit</span><strong>'+esc(reportShareDate(first?.auditDate||first?.finalizedAt)||'—')+'</strong></div><div><span>Last audit</span><strong>'+esc(reportShareDate(last?.auditDate||last?.finalizedAt)||'—')+'</strong></div><div><span>Generated</span><strong>'+esc(formatDisplayDate(new Date()))+'</strong></div></div>'+
  '<div class="report-cover-footer">Gladstone Fire Department · Year-End Narcotic Inventory / Audit Summary</div></section>'+
- '<section class="report-executive-summary"><h2>Year-end executive summary</h2>'+
+ '<section class="report-executive-summary"><h2>Year-end audit summary</h2>'+
  '<p>This summary is calculated from finalized monthly audit reports stored for '+year+'. It does not infer missing months or values.</p>'+
  '<ul>'+
  '<li><b>Finalized monthly audits:</b> '+reports.length+'.</li>'+
@@ -941,7 +941,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    const pages=[cover];
 
    pages.push(makePage(
-     'Finalized Monthly Record / Executive Summary',
+     'Finalized Monthly Record / Audit Summary',
      'pdf-monthly-summary-page',
      [reportTop,metaGrid,blueRule,executive]
    ));
