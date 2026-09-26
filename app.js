@@ -993,13 +993,13 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      pages.push(pageA);
 
      const pageB=makePage(
-       'Audit Site Certifications - Medic 3 / Safe / Expired',
+       'Audit Site Certifications - Medic 3 / Safe',
        'pdf-certifications-page pdf-certifications-secondary',
        []
      );
      const wrap=document.createElement('div');
      wrap.className='pdf-certifications-secondary-wrap';
-     [byTitle('Medic 3 Certification'),byTitle('Safe Certification'),byTitle('Expired Certification')]
+     [byTitle('Medic 3 Certification'),byTitle('Safe Certification')]
        .filter(Boolean)
        .forEach(card=>{
          clearPdfBreaks(card);
@@ -1007,6 +1007,19 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        });
      pageB.appendChild(wrap);
      pages.push(pageB);
+
+     const expiredCard=byTitle('Expired Certification');
+     if(expiredCard){
+       clearPdfBreaks(expiredCard);
+       const expiredIntro=document.createElement('p');
+       expiredIntro.className='pdf-expired-explainer';
+       expiredIntro.textContent='This page documents the physical count, seal verification, auditor Certification, and witness Certification for controlled substances placed in the Expired inventory location during this audit.';
+       pages.push(makePage(
+         'Expired Inventory Certification',
+         'pdf-certifications-page pdf-expired-certification-page',
+         [expiredIntro,expiredCard]
+       ));
+     }
    }
 
    if(attestation){
