@@ -2411,3 +2411,55 @@ body.report-open{overflow:hidden}
   break-before:auto !important;
   page-break-before:auto !important;
 }
+
+
+/* Deterministic PDF packet pagination */
+.pdf-render-stage .pdf-packet-cover{
+  break-before:auto !important;
+  page-break-before:auto !important;
+  break-after:auto !important;
+  page-break-after:auto !important;
+}
+.pdf-render-stage .pdf-packet-page:not(.pdf-packet-cover){
+  break-before:page !important;
+  page-break-before:always !important;
+  break-after:auto !important;
+  page-break-after:auto !important;
+  margin:0 !important;
+  padding:14px 16px !important;
+  border:1px solid #d9e3ea !important;
+  border-radius:11px !important;
+  background:#fff !important;
+  box-sizing:border-box !important;
+}
+.pdf-render-stage .pdf-packet-title{
+  margin:-14px -16px 14px !important;
+  padding:10px 14px 9px !important;
+  border-bottom:2px solid #123a5a !important;
+  background:#f6f9fb !important;
+  color:#123a5a !important;
+  font-size:1.08rem !important;
+  line-height:1.2 !important;
+  font-weight:900 !important;
+}
+.pdf-render-stage .pdf-packet-page > section{
+  break-before:auto !important;
+  page-break-before:auto !important;
+  break-after:auto !important;
+  page-break-after:auto !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page > section,
+.pdf-render-stage .pdf-eso-record-page > section,
+.pdf-render-stage .pdf-transactions-page > section,
+.pdf-render-stage .pdf-certifications-page > section,
+.pdf-render-stage .pdf-attestation-page > section,
+.pdf-render-stage .pdf-notes-page > section{
+  margin:10px 0 16px !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page .report-inventory{
+  font-size:.74rem !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page .report-inventory th,
+.pdf-render-stage .pdf-inventory-tags-page .report-inventory td{
+  padding:5px 6px !important;
+}
