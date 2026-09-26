@@ -1881,12 +1881,16 @@ function bind(){
  if(txRecordedSig){
    setupCanvas(txRecordedSig,'');
    const b=document.getElementById('expandTxRecordedSignature');
+   const clear=document.getElementById('clearTxRecordedSignature');
    if(b)b.onclick=()=>openStandaloneSignatureCapture(txRecordedSig,'Recorded-by signature');
+   if(clear)clear.onclick=()=>{txRecordedSig.getContext('2d').clearRect(0,0,txRecordedSig.width,txRecordedSig.height);txRecordedSig.dataset.hasSignature='false';};
  }
  if(txWitnessSig){
    setupCanvas(txWitnessSig,'');
    const b=document.getElementById('expandTxWitnessSignature');
+   const clear=document.getElementById('clearTxWitnessSignature');
    if(b)b.onclick=()=>openStandaloneSignatureCapture(txWitnessSig,'Witness signature');
+   if(clear)clear.onclick=()=>{txWitnessSig.getContext('2d').clearRect(0,0,txWitnessSig.width,txWitnessSig.height);txWitnessSig.dataset.hasSignature='false';};
  }
  if(txRowsHost&&!txRowsHost.children.length)addTxMedicationRow();
 
