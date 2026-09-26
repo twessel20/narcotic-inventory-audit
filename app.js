@@ -924,6 +924,14 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    el.style.maxHeight='42px';
  });
  clone.querySelectorAll('.report-table').forEach(el=>{el.style.minWidth='0';el.style.width='100%';});
+ const vialSection=clone.querySelector('.pdf-vial-section');
+ if(vialSection){
+   vialSection.classList.add('pdf-break-before');
+   vialSection.style.breakBefore='page';
+   vialSection.style.pageBreakBefore='always';
+   vialSection.style.breakInside='avoid';
+   vialSection.style.pageBreakInside='avoid';
+ }
  clone.querySelectorAll('.report-cert,.report-attestation,.report-notes,.report-vial-summary,.report-final-signature').forEach(el=>{
    el.style.breakInside='avoid';
    el.style.pageBreakInside='avoid';
@@ -1369,11 +1377,11 @@ function reportHtml(r){
  '<section><h2>Breakaway tag record</h2><table class="report-table"><thead><tr><th>Location</th><th>Tag found / removed</th><th>New tag installed</th></tr></thead><tbody>'+tagRows+'</tbody></table></section>'+
  '<section><h2>Narcotic usage exports</h2><p>Reference documents only. Monthly inventory totals are the manually verified physical counts; usage exports do not calculate expected counts or variances.</p>'+(sourceDoc?'<p><u>'+esc(sourceDoc.name)+'</u> — uploaded '+esc(sourceDoc.uploadedAt||'')+(sourceDoc.uploadedBy?' by '+esc(sourceDoc.uploadedBy):'')+'</p>':'')+'<p class="report-note">Uploaded PDFs are separate supporting documents; open each attachment to print its contents.</p></section>'+
  (r.isTest&&Array.isArray(r.administrationRows)&&r.administrationRows.length?
- '<section class="report-imported-admin"><h2>Imported narcotic administrations</h2><p class="report-note">Source doses are shown as imported. Vial use below is calculated from the department vial rules for reconciliation.</p>'+
+ '<section class="report-imported-admin pdf-break-before"><h2>Imported narcotic administrations</h2><p class="report-note">Source doses are shown as imported. Vial use below is calculated from the department vial rules for reconciliation.</p>'+
  '<table class="report-table"><thead><tr><th>Date</th><th>Report</th><th>Provider</th><th>Medication</th><th>Dose</th><th>Unit</th></tr></thead><tbody>'+
  r.administrationRows.map(x=>'<tr><td>'+esc(formatAdminDate(x.date))+'</td><td>'+esc(x.report)+'</td><td>'+esc(x.provider)+'</td><td>'+esc(x.medication)+'</td><td><b>'+esc(x.dose)+' '+esc(adminDoseUnit(x.medication))+'</b></td><td>'+esc(String(x.unit||'').replace(/^M([123])$/,'Medic $1'))+'</td></tr>').join('')+
  '</tbody></table>'+
- '<div class="report-usage-summary report-vial-summary"><div class="report-vial-summary-title">Calculated vial use by provider</div>'+
+ '<div class="report-usage-summary report-vial-summary pdf-vial-section"><div class="report-vial-summary-title">Calculated vial use by provider</div>'+
  providerVialData(r.administrationRows).providers.map(([provider,items])=>{
    const total=items.reduce((n,x)=>n+x.vials,0);
    const breakdown=new Map();
