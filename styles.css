@@ -5138,3 +5138,75 @@ body.report-open{overflow:hidden}
   font-size:.46rem!important;
   line-height:1!important;
 }
+
+
+/* v170 compact signature fields in generated PDF only */
+.pdf-clean-stage .pdf-certifications-page .report-signature-grid,
+.pdf-clean-stage .pdf-expired-certification-page .report-signature-grid{
+  gap:5px!important;
+  margin-top:4px!important;
+}
+
+.pdf-clean-stage .pdf-certifications-page .report-signature-box,
+.pdf-clean-stage .pdf-expired-certification-page .report-signature-box{
+  min-height:0!important;
+  height:auto!important;
+  margin:0 0 4px!important;
+  padding:4px 6px!important;
+  border-radius:6px!important;
+  box-sizing:border-box!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+
+.pdf-clean-stage .pdf-certifications-page .report-signature-site,
+.pdf-clean-stage .pdf-expired-certification-page .report-signature-site{
+  margin:0 0 2px!important;
+  font-size:.54rem!important;
+  line-height:1.05!important;
+}
+
+.pdf-clean-stage .pdf-certifications-page .report-signature-label,
+.pdf-clean-stage .pdf-expired-certification-page .report-signature-label{
+  margin:0!important;
+  font-size:.5rem!important;
+  line-height:1!important;
+}
+
+.pdf-clean-stage .pdf-certifications-page .report-signature-box img,
+.pdf-clean-stage .pdf-certifications-page .report-signature-placeholder,
+.pdf-clean-stage .pdf-expired-certification-page .report-signature-box img,
+.pdf-clean-stage .pdf-expired-certification-page .report-signature-placeholder{
+  display:block!important;
+  width:100%!important;
+  height:24px!important;
+  min-height:24px!important;
+  max-height:24px!important;
+  margin:2px 0 0!important;
+  object-fit:contain!important;
+  object-position:left center!important;
+  border-bottom:1px solid #8795a0!important;
+}
+
+.pdf-clean-stage .pdf-certifications-page .report-signature-name,
+.pdf-clean-stage .pdf-expired-certification-page .report-signature-name{
+  padding-top:3px!important;
+  margin:0!important;
+  font-size:.54rem!important;
+  line-height:1.05!important;
+}
+
+/* Final auditor signature should also be compact in generated packets */
+.pdf-clean-stage .pdf-attestation-page .report-final-signature{
+  min-height:0!important;
+  height:auto!important;
+  padding:6px 8px!important;
+}
+.pdf-clean-stage .pdf-attestation-page .report-final-signature img,
+.pdf-clean-stage .pdf-attestation-page .report-final-signature .report-signature-placeholder,
+.pdf-clean-stage .pdf-attestation-page .report-final-signature-capture{
+  height:34px!important;
+  min-height:34px!important;
+  max-height:34px!important;
+  margin-top:3px!important;
+}
