@@ -1926,7 +1926,11 @@ function bind(){
      txPharmacySourceLabel.style.display=received?'':'none';
    }
    if(txToLocationText)txToLocationText.textContent='To';
-   if(txToLocationLabel)txToLocationLabel.hidden=received||incident||destroyed;
+   if(txToLocationLabel){
+     const hideTo=received||incident||destroyed;
+     txToLocationLabel.hidden=hideTo;
+     txToLocationLabel.style.display=hideTo?'none':'';
+   }
    if(txToLocationSelect){
      txToLocationSelect.disabled=incident||destroyed;
      if(received)txToLocationSelect.value='Safe';
