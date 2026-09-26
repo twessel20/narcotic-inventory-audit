@@ -3420,3 +3420,66 @@ body.report-open{overflow:hidden}
 .pdf-clean-stage .report-blue-rule{
   border-top-color:var(--pdf-blue) !important;
 }
+
+
+/* Descriptor shading system - match Audit Summary visual language */
+.pdf-clean-stage .report-meta-grid > div,
+.pdf-clean-stage .pdf-medic3-explainer,
+.pdf-clean-stage .pdf-expired-explainer,
+.pdf-clean-stage .pdf-transactions-page .report-note,
+.pdf-clean-stage .report-vial-explainer,
+.pdf-clean-stage .pdf-eso-record-page .report-eso-source p,
+.pdf-clean-stage .report-cert-statement,
+.pdf-clean-stage .report-cert-site,
+.pdf-clean-stage .report-signature-label,
+.pdf-clean-stage .report-signature-site{
+  background:var(--pdf-blue-softer) !important;
+  border:1px solid var(--pdf-line-soft) !important;
+  border-radius:6px !important;
+}
+
+/* Metadata descriptors */
+.pdf-clean-stage .report-meta-grid > div{
+  padding:6px 8px !important;
+  min-height:34px !important;
+}
+.pdf-clean-stage .report-meta-grid > div b{
+  color:var(--pdf-navy) !important;
+}
+
+/* Narrative descriptor/callout text */
+.pdf-clean-stage .pdf-medic3-explainer,
+.pdf-clean-stage .pdf-expired-explainer,
+.pdf-clean-stage .pdf-transactions-page .report-note,
+.pdf-clean-stage .report-vial-explainer,
+.pdf-clean-stage .pdf-eso-record-page .report-eso-source p{
+  padding:7px 9px !important;
+  color:var(--pdf-muted) !important;
+}
+.pdf-clean-stage .pdf-eso-record-page .report-eso-source p + p{
+  margin-top:6px !important;
+}
+
+/* Certification descriptors */
+.pdf-clean-stage .report-cert-site{
+  padding:4px 6px !important;
+  color:var(--pdf-navy) !important;
+}
+.pdf-clean-stage .report-cert-statement{
+  padding:5px 6px !important;
+  color:var(--pdf-muted) !important;
+}
+.pdf-clean-stage .report-signature-label,
+.pdf-clean-stage .report-signature-site{
+  display:inline-block !important;
+  padding:3px 5px !important;
+  color:var(--pdf-navy) !important;
+}
+
+/* Keep real content areas clean */
+.pdf-clean-stage .report-signature-box,
+.pdf-clean-stage .report-final-signature,
+.pdf-clean-stage .report-table td,
+.pdf-clean-stage .report-vial-row{
+  background:#fff !important;
+}
