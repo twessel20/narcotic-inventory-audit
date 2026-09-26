@@ -2330,3 +2330,38 @@ body.report-open{overflow:hidden}
   padding:6px 10px !important;
   font-size:.96rem !important;
 }
+
+
+/* Formal audit packet PDF: every major section gets its own page */
+.pdf-render-stage .pdf-section-page{
+  break-before:page !important;
+  page-break-before:always !important;
+}
+.pdf-render-stage .pdf-section-page:first-of-type{
+  break-before:page !important;
+  page-break-before:always !important;
+}
+.pdf-render-stage .pdf-report-section,
+.pdf-render-stage .pdf-standalone-section{
+  margin:0 !important;
+  padding:14px 16px !important;
+  border:1px solid #d9e3ea !important;
+  border-radius:11px !important;
+  background:#fff !important;
+  box-sizing:border-box !important;
+}
+.pdf-render-stage .pdf-report-section > h2,
+.pdf-render-stage .pdf-standalone-section > .report-vial-summary-title{
+  margin:-14px -16px 14px !important;
+  padding:10px 14px 9px !important;
+  border-bottom:2px solid #123a5a !important;
+  background:#f6f9fb !important;
+  color:#123a5a !important;
+  font-size:1.08rem !important;
+  line-height:1.2 !important;
+  font-weight:900 !important;
+}
+.pdf-render-stage .pdf-report-section > h2::after{
+  content:"";
+  display:block;
+}
