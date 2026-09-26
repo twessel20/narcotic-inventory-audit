@@ -377,7 +377,7 @@ async function renderAudits(){
  let rows=await getAll('audits');
  const drafts=rows.filter(a=>String(a.status||'draft').toLowerCase()==='draft');
  drafts.sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
- document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-actions"><div><span class="kicker">MONTHLY CONTROLLED-SUBSTANCE AUDIT</span><strong>Audit workspace</strong></div><button type="button" class="primary" data-audit-start>Start Audit</button></div>'+(drafts.length?'<div class="notice">Audit drafts autosave to the live department database. You can leave this location and resume the same audit from another authorized device.</div>':'')+(drafts.length?drafts.map(auditSkeleton).join(''):'<div class="card empty">No monthly audit is currently in progress. Select Start Audit to begin.</div>')
+ document.getElementById('auditWorkspace').innerHTML=(drafts.length?'<div class="notice">Audit drafts autosave to the live department database. You can leave this location and resume the same audit from another authorized device.</div>':'')+(drafts.length?drafts.map(auditSkeleton).join(''):'<div class="card empty">No monthly audit is currently in progress.</div>')
 }
 
 async function startAudit(){
@@ -2213,7 +2213,7 @@ function bind(){
    restore(txRecordedSig,tx.recordedBySignature);restore(txWitnessSig,tx.witnessSignature);
    syncTxPdfRequirement();txDialog.showModal();
  };document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;const startAuditHomeBtn=document.getElementById('startAuditHomeBtn');if(startAuditHomeBtn)startAuditHomeBtn.onclick=startAudit;
- document.getElementById('auditWorkspace').onclick=async e=>{const start=e.target.closest('[data-audit-start]');if(start){await startAudit();return}const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open')editAudit(b.dataset.id);if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);renderAudits()}};
+ document.getElementById('auditWorkspace').onclick=async e=>{const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open')editAudit(b.dataset.id);if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);renderAudits()}};
  document.getElementById('reportsList').onclick=async e=>{
    const test=e.target.closest('[data-test-report]');
    if(test){await showTestReport();return}
