@@ -5800,3 +5800,58 @@ body.report-open{overflow:hidden}
   font-size:.44rem!important;
   line-height:1!important;
 }
+
+/* v194 keep Safe certification completely on Medic 3 / Safe PDF page */
+.pdf-clean-stage .pdf-medic3-safe-page{
+  overflow:hidden!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert{
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+  padding:3px 4px!important;
+  margin:0!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-grid{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:5px!important;
+  margin-top:2px!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-box{
+  min-height:0!important;
+  height:64px!important;
+  padding:3px 4px!important;
+  margin:0!important;
+  overflow:hidden!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-site{
+  margin:0 0 2px!important;
+  font-size:.48rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-label{
+  margin:0!important;
+  font-size:.46rem!important;
+  line-height:1!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-box img,
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-placeholder{
+  height:24px!important;
+  min-height:24px!important;
+  max-height:24px!important;
+  margin:2px 0 0!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-safe-cert .report-signature-name{
+  display:block!important;
+  padding-top:2px!important;
+  margin:0!important;
+  font-size:.5rem!important;
+  line-height:1!important;
+  white-space:nowrap!important;
+  overflow:hidden!important;
+  text-overflow:ellipsis!important;
+}
