@@ -4926,3 +4926,62 @@ body.report-open{overflow:hidden}
     min-height:46px;
   }
 }
+
+
+/* v167 Medic 3 + Safe certification page */
+.pdf-clean-stage .pdf-medic3-safe-page{
+  padding:8px 10px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-packet-title{
+  margin:-8px -10px 6px!important;
+  padding:6px 8px!important;
+  font-size:.9rem!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-explainer{
+  margin:0 0 6px!important;
+  font-size:.68rem!important;
+  line-height:1.2!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap{
+  display:grid!important;
+  grid-template-columns:1fr 1fr!important;
+  gap:8px!important;
+  width:100%!important;
+  align-items:start!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-cert{
+  margin:0!important;
+  padding:6px!important;
+  break-inside:avoid!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-cert h2{
+  margin:0 0 3px!important;
+  font-size:.74rem!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-cert-site,
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-cert-statement,
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-site{
+  margin:2px 0!important;
+  font-size:.52rem!important;
+  line-height:1.08!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-grid{
+  display:block!important;
+  margin-top:3px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-box{
+  margin:0 0 4px!important;
+  padding:4px 5px!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-box img,
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-placeholder{
+  height:26px!important;
+  max-height:26px!important;
+  margin:2px 0 0!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-wrap .report-signature-name{
+  padding-top:2px!important;
+  font-size:.52rem!important;
+  line-height:1.05!important;
+}
