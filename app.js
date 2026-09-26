@@ -1525,13 +1525,10 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
            const boxes=[...grid.querySelectorAll(':scope > .report-signature-box')];
            const auditorBox=boxes.find(box=>(box.querySelector('.report-signature-label')?.textContent||'').toUpperCase().includes('AUDITOR'));
            const witnessBox=boxes.find(box=>(box.querySelector('.report-signature-label')?.textContent||'').toUpperCase().includes('WITNESS'));
-           if(auditorBox){
-             auditorBox.style.setProperty('order','1','important');
-             grid.appendChild(auditorBox);
-           }
-           if(witnessBox){
-             witnessBox.style.setProperty('order','2','important');
-             grid.appendChild(witnessBox);
+           if(auditorBox&&witnessBox){
+             auditorBox.style.removeProperty('order');
+             witnessBox.style.removeProperty('order');
+             grid.replaceChildren(auditorBox,witnessBox);
            }
            grid.style.setProperty('display','flex','important');
            grid.style.setProperty('flex-direction','row','important');
