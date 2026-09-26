@@ -1062,25 +1062,26 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    for(let page=1;page<=totalPages;page++){
      pdf.setPage(page);
 
-     // Cover page intentionally has no repeating document header.
+     // Cover page intentionally has no repeating footer.
      if(page===1)continue;
+
+     const footerY=10.78;
+     pdf.setDrawColor(217,227,234);
+     pdf.setLineWidth(0.006);
+     pdf.line(0.35,10.62,8.15,10.62);
 
      pdf.setFont('helvetica','normal');
      pdf.setTextColor(74,94,108);
-     pdf.setFontSize(7.5);
-     pdf.text(headerTitle,0.35,0.25);
-     pdf.text('Page '+page+' of '+totalPages,8.15,0.25,{align:'right'});
+     pdf.setFontSize(7.2);
+     pdf.text(headerTitle,0.35,footerY);
+     pdf.text('Page '+page+' of '+totalPages,8.15,footerY,{align:'right'});
 
      if(!sectionStartPages.has(page)){
        pdf.setFont('helvetica','bold');
        pdf.setTextColor(31,96,142);
        pdf.setFontSize(7);
-       pdf.text('CONTINUED',4.25,0.25,{align:'center'});
+       pdf.text('CONTINUED',4.25,footerY,{align:'center'});
      }
-
-     pdf.setDrawColor(217,227,234);
-     pdf.setLineWidth(0.006);
-     pdf.line(0.35,0.32,8.15,0.32);
    }
 
    const pdfBlob=pdf.output('blob');
