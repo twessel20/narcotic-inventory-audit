@@ -4301,3 +4301,105 @@ body.report-open{overflow:hidden}
   color:#1f5f88;
   font-weight:700;
 }
+
+
+/* v153 definitive desktop audit layout */
+@media (min-width:901px){
+  .unit-audit-card .unit-compact-grid{
+    display:grid!important;
+    grid-template-columns:1fr!important;
+    gap:0!important;
+  }
+
+  .unit-audit-card .seal-panel,
+  .unit-audit-card .inventory-panel,
+  .unit-audit-card .certification-panel{
+    grid-column:1!important;
+    grid-row:auto!important;
+    width:100%!important;
+    border-left:0!important;
+    border-right:0!important;
+  }
+
+  .unit-audit-card .seal-panel{
+    padding:14px 18px!important;
+    background:#fff;
+  }
+
+  .unit-audit-card .seal-panel .tag-entry-fields{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(220px,360px))!important;
+    gap:14px!important;
+    justify-content:start;
+  }
+
+  .unit-audit-card .inventory-panel{
+    padding:16px 18px 18px!important;
+    background:#fbfcfd;
+  }
+
+  .unit-audit-card .unit-med-list{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:12px!important;
+  }
+
+  .unit-audit-card .certification-panel{
+    padding:16px 18px 18px!important;
+    background:#fff;
+    border-top:1px solid #e3eaf0!important;
+  }
+
+  .unit-audit-card .certification-panel > h4{
+    margin-bottom:12px!important;
+  }
+
+  .unit-audit-card .signature-person-grid{
+    display:grid!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    gap:22px!important;
+  }
+
+  .unit-audit-card .signature-person-grid > div{
+    min-width:0!important;
+    padding:14px!important;
+    border:1px solid #d9e3ea;
+    border-radius:12px;
+    background:#fbfcfd;
+  }
+
+  .unit-audit-card .auditor-id-grid{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) 150px!important;
+    gap:10px!important;
+  }
+
+  .unit-audit-card .signature-label-row{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:12px!important;
+    margin-top:10px!important;
+  }
+
+  .unit-audit-card .signature-label-row .button-row{
+    display:flex!important;
+    gap:8px!important;
+    flex-wrap:nowrap!important;
+  }
+
+  .unit-audit-card .embedded-signature canvas{
+    width:100%!important;
+    height:130px!important;
+    margin-top:6px!important;
+  }
+}
+
+@media (min-width:901px) and (max-width:1180px){
+  .unit-audit-card .unit-med-list{
+    grid-template-columns:1fr!important;
+  }
+  .unit-audit-card .signature-person-grid{
+    grid-template-columns:1fr!important;
+  }
+}
