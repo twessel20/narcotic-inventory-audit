@@ -2579,3 +2579,20 @@ body.report-open{overflow:hidden}
   font-size:.65rem !important;
   line-height:1.1 !important;
 }
+
+
+/* Remove blank page after cover: cover ends naturally, first content page does not force another break */
+.pdf-render-stage .pdf-packet-cover{
+  break-before:auto !important;
+  page-break-before:auto !important;
+  break-after:page !important;
+  page-break-after:always !important;
+}
+.pdf-render-stage .pdf-packet-cover + .pdf-packet-page{
+  break-before:auto !important;
+  page-break-before:auto !important;
+}
+.pdf-render-stage .pdf-packet-page:not(.pdf-packet-cover):not(.pdf-packet-cover + .pdf-packet-page){
+  break-before:page !important;
+  page-break-before:always !important;
+}
