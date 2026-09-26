@@ -2795,3 +2795,67 @@ body.report-open{overflow:hidden}
   font-size:.48rem !important;
   line-height:1 !important;
 }
+
+
+/* Restore clean Inventory Comparison / Breakaway Tag Record PDF layout */
+.pdf-render-stage .pdf-inventory-tags-page{
+  display:block !important;
+  padding:12px 14px !important;
+  overflow:visible !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page > .pdf-packet-title{
+  margin:-12px -14px 12px !important;
+  padding:9px 12px 8px !important;
+  font-size:1rem !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page > section{
+  display:block !important;
+  width:100% !important;
+  margin:0 0 14px !important;
+  padding:0 !important;
+  border:0 !important;
+  background:#fff !important;
+  overflow:visible !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page > section > h2{
+  display:block !important;
+  margin:0 0 7px !important;
+  padding:5px 0 !important;
+  font-size:.9rem !important;
+  line-height:1.15 !important;
+  color:#172838 !important;
+  background:transparent !important;
+  border-bottom:1px solid #d9e3ea !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page .report-table{
+  width:100% !important;
+  min-width:0 !important;
+  table-layout:fixed !important;
+  border-collapse:separate !important;
+  font-size:.72rem !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page .report-table th,
+.pdf-render-stage .pdf-inventory-tags-page .report-table td{
+  padding:5px 5px !important;
+  line-height:1.18 !important;
+  white-space:normal !important;
+  word-break:normal !important;
+  overflow-wrap:anywhere !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page .report-inventory th:first-child,
+.pdf-render-stage .pdf-inventory-tags-page .report-inventory td:first-child{
+  width:16% !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page .report-inventory th small{
+  display:block !important;
+  font-size:.53rem !important;
+  line-height:1.05 !important;
+  margin-top:2px !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page .report-inventory td:not(:first-child),
+.pdf-render-stage .pdf-inventory-tags-page .report-inventory th:not(:first-child){
+  text-align:center !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page section:last-child{
+  margin-bottom:0 !important;
+}
