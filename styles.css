@@ -3981,3 +3981,112 @@ body.report-open{overflow:hidden}
     width:100%;
   }
 }
+
+
+/* Live audit finding workflow — responsive cleanup */
+.unit-med-row.compact{
+  grid-template-columns:minmax(150px,1.45fr) 70px 96px minmax(118px,.85fr) minmax(118px,.85fr);
+  align-items:center;
+}
+.audit-finding-btn,
+.audit-incident-btn{
+  width:100%;
+  min-height:40px;
+  padding:7px 9px;
+  font-size:12px;
+  font-weight:750;
+  line-height:1.15;
+  white-space:normal;
+}
+.audit-finding-btn{
+  background:#fff7df;
+  border-color:#c49a3a;
+  color:#765b19;
+}
+.audit-finding-dialog{
+  width:min(560px,calc(100vw - 24px));
+  max-height:90dvh;
+}
+.audit-finding-dialog .dialog-form{
+  min-width:0;
+}
+#auditFindingImpact{
+  margin:0;
+  font-weight:750;
+}
+
+@media(max-width:900px){
+  .unit-med-row.compact{
+    grid-template-columns:minmax(0,1fr) 64px 92px;
+    gap:8px;
+  }
+  .unit-med-row.compact .audit-finding-btn,
+  .unit-med-row.compact .audit-incident-btn{
+    grid-column:auto;
+  }
+}
+
+@media(max-width:700px){
+  .inventory-panel{
+    padding-left:10px;
+    padding-right:10px;
+  }
+  .unit-med-row.compact{
+    grid-template-columns:minmax(0,1fr) 68px 92px;
+    gap:7px;
+    padding:10px;
+  }
+  .unit-med-row.compact .unit-med-name{
+    grid-column:1 / -1;
+    font-size:.95rem;
+    margin-bottom:2px;
+  }
+  .unit-med-row.compact .unit-prior{
+    grid-column:1;
+  }
+  .unit-med-row.compact .unit-current{
+    grid-column:2 / 4;
+  }
+  .unit-med-row.compact .audit-finding-btn{
+    grid-column:1 / 3;
+  }
+  .unit-med-row.compact .audit-incident-btn{
+    grid-column:3;
+  }
+  .audit-finding-btn,
+  .audit-incident-btn{
+    min-height:44px;
+    font-size:12px;
+  }
+  .audit-finding-dialog{
+    width:100vw;
+    max-width:none;
+    height:100dvh;
+    max-height:100dvh;
+    margin:0;
+    border:0;
+    border-radius:0;
+  }
+  .audit-finding-dialog .dialog-form{
+    min-height:100dvh;
+    display:flex;
+    flex-direction:column;
+  }
+  .audit-finding-dialog .form-grid{
+    grid-template-columns:1fr;
+    flex:1;
+    align-content:start;
+  }
+  .audit-finding-dialog input,
+  .audit-finding-dialog select,
+  .audit-finding-dialog textarea{
+    min-height:48px;
+    font-size:16px;
+  }
+  .audit-finding-dialog .dialog-actions{
+    position:sticky;
+    bottom:0;
+    background:var(--panel,#fff);
+    padding-bottom:calc(10px + env(safe-area-inset-bottom));
+  }
+}
