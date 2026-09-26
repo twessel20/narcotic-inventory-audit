@@ -1496,7 +1496,8 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        medic3Intro.textContent='Medic 3 is the reserve ambulance and functions as a semi-dynamic inventory site. Its assigned narcotic inventory is normally secured in the Safe until Medic 3 is placed in service.';
        const wrap=document.createElement('div');
        wrap.className='pdf-medic3-safe-wrap';
-       [medic3,safe].filter(Boolean).forEach(card=>wrap.appendChild(card));
+       if(medic3){medic3.style.order='1';medic3.classList.add('pdf-medic3-cert');wrap.appendChild(medic3);}
+       if(safe){safe.style.order='2';safe.classList.add('pdf-safe-cert');wrap.appendChild(safe);}
        pages.push(makePage(
          'Medic 3 / Safe Audit Site Certifications',
          'pdf-certifications-page pdf-medic3-safe-page',
