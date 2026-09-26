@@ -1017,7 +1017,11 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      pages.push(makePage('Amended Inventory Record / Correction History','pdf-amendment-page',[amendment]));
    }
    pages.push(inventoryPage,esoPage);
-   if(txSection)pages.push(makePage('Transactions in the Audit Reporting Period','pdf-transactions-page',[txSection]));
+   if(txSection){
+     const duplicateTxTitle=txSection.querySelector(':scope > h2');
+     if(duplicateTxTitle)duplicateTxTitle.remove();
+     pages.push(makePage('Transactions in the Audit Reporting Period','pdf-transactions-page',[txSection]));
+   }
    if(signatureSection){
      const certCards=[...signatureSection.querySelectorAll('.report-cert')];
      const certByTitle=title=>certCards.find(card=>(card.querySelector('h2')?.textContent||'').trim().toLowerCase()===title.toLowerCase());
@@ -1451,7 +1455,7 @@ function reportHtml(r){
  '<table class="report-table"><thead><tr><th>Date</th><th>Report</th><th>Provider</th><th>Medication</th><th>Dose</th><th>Unit</th></tr></thead><tbody>'+
  r.administrationRows.map(x=>'<tr><td>'+esc(formatAdminDate(x.date))+'</td><td>'+esc(x.report)+'</td><td>'+esc(x.provider)+'</td><td>'+esc(x.medication)+'</td><td><b>'+esc(x.dose)+' '+esc(adminDoseUnit(x.medication))+'</b></td><td>'+esc(String(x.unit||'').replace(/^M([123])$/,'Medic $1'))+'</td></tr>').join('')+
  '</tbody></table>'+
- '<div class="report-usage-summary report-vial-summary pdf-vial-section"><div class="report-vial-summary-title">Calculated Vial Use</div>'+
+ '<div class="report-usage-summary report-vial-summary pdf-vial-section"><div class="report-vial-summary-title">Calculated Vial Use</div><p class="report-vial-explainer">Calculated vial use converts the imported ESO administration doses into estimated whole-vial usage using the department vial-size rules. This is a reconciliation reference only and does not change the manually verified physical inventory count.</p>'+
  providerVialData(r.administrationRows).providers.map(([provider,items])=>{
    const total=items.reduce((n,x)=>n+x.vials,0);
    const breakdown=new Map();
@@ -1463,7 +1467,7 @@ function reportHtml(r){
    const detail=[...breakdown.values()].map(x=>esc(x.medication)+' — '+x.vials+' × '+esc(x.strength)+' vial'+(x.vials===1?'':'s')).join('<br>');
    return '<div class="report-vial-row report-vial-row-detailed"><div class="report-vial-provider"><strong>'+esc(provider)+'</strong><span>'+detail+'</span></div><div class="report-vial-count">'+total+' vial'+(total===1?'':'s')+'</div></div>';
  }).join('')+
- '<div class="report-vial-total"><span>Total calculated vials</span><strong>'+providerVialData(r.administrationRows).total+'</strong></div></div></section>':'')+'<section><h2>Transactions in the audit reporting period</h2><table class="report-table report-transactions"><thead><tr><th>Date</th><th>Action</th><th>Medication</th><th>Qty</th><th>Movement</th><th>Vendor / incident / lot</th></tr></thead><tbody>'+txRows+'</tbody></table></section>'+
+ '<div class="report-vial-total"><span>Total calculated vials</span><strong>'+providerVialData(r.administrationRows).total+'</strong></div></div></section>':'')+'<section class="report-transactions-section"><h2>Transactions in the audit reporting period</h2><p class="report-note">This table lists recorded controlled-substance movements or adjustments during the audit period, such as receipts, transfers, waste, destruction, or other documented inventory activity. These entries provide context for inventory changes but do not replace the physical count.</p><table class="report-table report-transactions"><thead><tr><th>Date</th><th>Action</th><th>Medication</th><th>Qty</th><th>Movement</th><th>Vendor / incident / lot</th></tr></thead><tbody>'+txRows+'</tbody></table></section>'+
  '<section class="report-signature-section"><h2>Audit site Certifications</h2><div class="report-signature-section-grid">'+
  sigCard('Medic 1')+sigCard('Medic 2')+sigCard('Medic 3')+sigCard('Safe')+sigCard('Expired')+
  '</div></section>'+
