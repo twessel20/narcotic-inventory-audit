@@ -155,17 +155,54 @@ async function renderInventory(){
  totals.innerHTML=MEDS.map(m=>{const t=['Medic 1','Medic 2','Medic 3','Safe'].reduce((a,l)=>a+b[l][m],0);return '<div class="total-row"><div><b>'+m+'</b><small>Medic 1 + Medic 2 + Medic 3 + Safe</small></div><strong>'+t+'</strong></div>'}).join('');
 }
 
-async function renderActivity(){const q=(document.getElementById('activitySearch')?.value||'').toLowerCase();let rows=await getAll('transactions');rows.sort((a,b)=>b.timestamp.localeCompare(a.timestamp));if(q)rows=rows.filter(r=>JSON.stringify(r).toLowerCase().includes(q));document.getElementById('activityList').innerHTML=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+' · '+esc(r.medication)+' · '+esc(r.quantity)+'</strong><div>'+esc(r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy):'')+(r.reference?' · Ref '+esc(r.reference):'')+'</div>'+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+'</div>').join(''):'<div class="empty">No activity recorded yet.</div>'}
+async function renderActivity(){
+ const q=(document.getElementById('activitySearch')?.value||'').toLowerCase();
+ let rows=await getAll('transactions');
+ rows.sort((a,b)=>String(b.timestamp||'').localeCompare(String(a.timestamp||'')));
+ if(q)rows=rows.filter(r=>JSON.stringify(r).toLowerCase().includes(q));
+ document.getElementById('activityList').innerHTML=rows.length?rows.map(r=>{
+   const items=Array.isArray(r.items)&&r.items.length?r.items:[{medication:r.medication,quantity:r.quantity}];
+   const itemText=items.map(x=>esc(x.medication)+' × '+esc(x.quantity)).join(' · ');
+   return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+'</strong><div>'+itemText+'</div><div>'+esc(r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy):'')+(r.witness?' · Witness '+esc(r.witness):'')+(r.reference?' · Ref '+esc(r.reference):'')+'</div>'+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+'</div>';
+ }).join(''):'<div class="empty">No activity recorded yet.</div>';
+}
 
 async function saveTransaction(fd){
  if(!requireCloudAuth())throw new Error('Sign in is required for live inventory changes.');
- const type=fd.get('type'), med=fd.get('medication'), qty=Number(fd.get('quantity')||0), from=fd.get('fromLocation'), to=fd.get('toLocation');
+
+ const type=fd.get('type');
+ const from=fd.get('fromLocation');
+ const to=fd.get('toLocation');
+ const meds=fd.getAll('txMedication');
+ const qtys=fd.getAll('txQuantity');
+ const items=meds.map((med,i)=>({medication:String(med||''),quantity:Number(qtys[i]||0)})).filter(x=>x.medication&&x.quantity>0);
+ if(!items.length)throw new Error('Add at least one medication with a quantity greater than zero.');
+
+ const recordedBy=String(fd.get('recordedBy')||'').trim();
+ const witness=String(fd.get('witness')||'').trim();
+ const recordedCanvas=document.getElementById('txRecordedSignature');
+ const witnessCanvas=document.getElementById('txWitnessSignature');
+ if(!recordedBy)throw new Error('Enter the person recording the transaction.');
+ if(!witness)throw new Error('Enter the witness.');
+ if(recordedCanvas?.dataset.hasSignature!=='true')throw new Error('Recorded-by signature is required.');
+ if(witnessCanvas?.dataset.hasSignature!=='true')throw new Error('Witness signature is required.');
+
  const supportFile=fd.get('supportingPdf');
  const requires222=type==='received'||type==='destroyed';
-
  if(requires222){
    if(!(supportFile instanceof File)||!supportFile.size)throw new Error('Attach the required DEA Form 222 PDF before saving this transaction.');
    if(supportFile.type!=='application/pdf'&&!/\.pdf$/i.test(supportFile.name))throw new Error('DEA Form 222 must be attached as a PDF.');
+ }
+
+ if(type==='adjustment'&&!to)throw new Error('Choose the location being counted.');
+ if(type==='received'&&!to)throw new Error('Choose the receiving location.');
+ if((type==='expired'||type==='destroyed')&&!from)throw new Error('Choose the source location.');
+
+ const b=await balances();
+ if(type==='expired'||type==='destroyed'){
+   for(const item of items){
+     if(Number(b[from]?.[item.medication]||0)<item.quantity)throw new Error(item.medication+' quantity exceeds the current '+from+' balance.');
+   }
  }
 
  const txId=uid('tx');
@@ -190,37 +227,49 @@ async function saveTransaction(fd){
    };
  }
 
- const b=await balances();
- if(type==='adjustment'){
-   if(!to)throw new Error('Choose the location being counted.');
-   await setBalance(to,med,qty);
- }else if(type==='received'){
-   if(!to)throw new Error('Choose the receiving location.');
-   await setBalance(to,med,b[to][med]+qty);
- }else if(type==='transfer'||type==='expired'){
-   const dest=type==='expired'?'Expired':to;
-   if(!from||!dest)throw new Error('Choose source and destination.');
-   if(b[from][med]<qty)throw new Error('Quantity exceeds current source balance.');
-   await setBalance(from,med,b[from][med]-qty);await setBalance(dest,med,b[dest][med]+qty);
- }else if(type==='destroyed'||type==='waste'){
-   if(!from)throw new Error('Choose the source location.');
-   if(b[from][med]<qty)throw new Error('Quantity exceeds current source balance.');
-   await setBalance(from,med,b[from][med]-qty);
+ // Apply inventory changes only after the full transaction validates.
+ for(const item of items){
+   const med=item.medication,qty=item.quantity;
+   if(type==='adjustment'){
+     await setBalance(to,med,qty);
+   }else if(type==='received'){
+     await setBalance(to,med,Number(b[to]?.[med]||0)+qty);
+     b[to][med]=Number(b[to]?.[med]||0)+qty;
+   }else if(type==='expired'){
+     await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
+     await setBalance('Expired',med,Number(b.Expired?.[med]||0)+qty);
+     b[from][med]=Number(b[from]?.[med]||0)-qty;
+     b.Expired[med]=Number(b.Expired?.[med]||0)+qty;
+   }else if(type==='destroyed'){
+     await setBalance(from,med,Number(b[from]?.[med]||0)-qty);
+     b[from][med]=Number(b[from]?.[med]||0)-qty;
+   }
  }
- const labels={adjustment:'Physical count / adjustment',transfer:'Transfer',received:'Received / restock',expired:'Moved to expired',destroyed:'Destroyed / transferred out',waste:'Waste'};
+
+ const labels={
+   adjustment:'Physical count / adjustment',
+   received:'Received / restock',
+   expired:'Moved to expired',
+   destroyed:'Destroyed / transferred out'
+ };
+
  await put('transactions',{
    id:txId,
    timestamp:nowISO(),
    type,
    typeLabel:labels[type],
-   medication:med,
-   quantity:qty,
+   items,
+   medications:items,
+   medication:items.length===1?items[0].medication:'Multiple medications',
+   quantity:items.reduce((n,x)=>n+x.quantity,0),
    fromLocation:from,
    toLocation:type==='expired'?'Expired':to,
    reference:fd.get('reference')||'',
    notes:fd.get('notes')||'',
-   recordedBy:fd.get('recordedBy')||'',
-   witness:fd.get('witness')||'',
+   recordedBy,
+   witness,
+   recordedBySignature:recordedCanvas.toDataURL(),
+   witnessSignature:witnessCanvas.toDataURL(),
    supportingDocument
  });
  await refreshAll();
@@ -1649,7 +1698,20 @@ async function exportActivity(){let rows=await getAll('transactions');const cols
 
 async function renderStats(){const [tx,aud,rep,arc]=await Promise.all(['transactions','audits','reports','legacyArchive'].map(getAll));document.getElementById('storageStats').innerHTML=[['Activity entries',tx.length],['Audit drafts',aud.filter(x=>x.status!=='finalized').length],['Finalized reports',rep.length],['Migration archives',arc.length]].map(x=>'<div class="stat"><strong>'+x[1]+'</strong>'+x[0]+'</div>').join('');const m=await getOne('meta','migration');if(m)document.getElementById('migrationStatus').textContent='Last migration import: '+fmtDate(m.importedAt)}
 async function refreshAll(){await Promise.all([renderInventory(),renderActivity(),renderAudits(),renderReports(),renderStats()])}
-function fillSelects(){document.querySelector('select[name=medication]').innerHTML=MEDS.map(x=>'<option>'+x+'</option>').join('');['fromLocation','toLocation'].forEach(n=>document.querySelector('select[name='+n+']').innerHTML='<option value="">—</option>'+LOCS.map(x=>'<option>'+x+'</option>').join(''))}
+function txMedicationRowHtml(med='',qty=''){
+ const options=MEDS.map(x=>'<option value="'+esc(x)+'" '+(x===med?'selected':'')+'>'+esc(x)+'</option>').join('');
+ return '<div class="tx-med-row"><label>Medication<select name="txMedication" required>'+options+'</select></label><label>Quantity<input name="txQuantity" type="number" step="1" min="1" inputmode="numeric" required value="'+esc(qty)+'"></label><button type="button" class="remove-tx-med">Remove</button></div>';
+}
+function addTxMedicationRow(med='',qty=''){
+ const host=document.getElementById('txMedicationRows');
+ if(host)host.insertAdjacentHTML('beforeend',txMedicationRowHtml(med,qty));
+}
+function fillSelects(){
+ ['fromLocation','toLocation'].forEach(n=>{
+   const el=document.querySelector('select[name='+n+']');
+   if(el)el.innerHTML='<option value="">—</option>'+LOCS.map(x=>'<option>'+x+'</option>').join('');
+ });
+}
 function bind(){
  document.querySelectorAll('.tabs button').forEach(b=>b.onclick=async()=>{
    const leavingOpenAudit=activeAuditId&&document.getElementById('auditMonth')&&b.dataset.tab!=='audit';
@@ -1681,6 +1743,8 @@ function bind(){
  const closeTx=()=>{
    if(txDialog?.open)txDialog.close('cancel');
    txForm?.reset();
+   if(txRowsHost){txRowsHost.innerHTML='';addTxMedicationRow();}
+   [txRecordedSig,txWitnessSig].forEach(c=>{if(c){c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.hasSignature='false';}});
    syncTxPdfRequirement();
  };
  const closeTxBtn=document.getElementById('closeTxDialog');
@@ -1688,7 +1752,31 @@ function bind(){
  if(closeTxBtn)closeTxBtn.onclick=closeTx;
  if(cancelTxBtn)cancelTxBtn.onclick=closeTx;
  if(txDialog)txDialog.addEventListener('cancel',e=>{e.preventDefault();closeTx();});
- document.getElementById('saveTxBtn').onclick=async e=>{e.preventDefault();try{await saveTransaction(new FormData(txForm));txDialog.close();txForm.reset();syncTxPdfRequirement()}catch(err){alert(err.message)}};
+ const txRowsHost=document.getElementById('txMedicationRows');
+ const addTxMedBtn=document.getElementById('addTxMedication');
+ const txRecordedSig=document.getElementById('txRecordedSignature');
+ const txWitnessSig=document.getElementById('txWitnessSignature');
+ if(addTxMedBtn)addTxMedBtn.onclick=()=>addTxMedicationRow();
+ if(txRowsHost)txRowsHost.onclick=e=>{
+   const remove=e.target.closest('.remove-tx-med');
+   if(!remove)return;
+   const rows=txRowsHost.querySelectorAll('.tx-med-row');
+   if(rows.length<=1)return;
+   remove.closest('.tx-med-row')?.remove();
+ };
+ if(txRecordedSig){
+   setupCanvas(txRecordedSig,'');
+   const b=document.getElementById('expandTxRecordedSignature');
+   if(b)b.onclick=()=>openStandaloneSignatureCapture(txRecordedSig,'Recorded-by signature');
+ }
+ if(txWitnessSig){
+   setupCanvas(txWitnessSig,'');
+   const b=document.getElementById('expandTxWitnessSignature');
+   if(b)b.onclick=()=>openStandaloneSignatureCapture(txWitnessSig,'Witness signature');
+ }
+ if(txRowsHost&&!txRowsHost.children.length)addTxMedicationRow();
+
+ document.getElementById('saveTxBtn').onclick=async e=>{e.preventDefault();try{await saveTransaction(new FormData(txForm));txDialog.close();txForm.reset();if(txRowsHost){txRowsHost.innerHTML='';addTxMedicationRow();}[txRecordedSig,txWitnessSig].forEach(c=>{if(c){c.getContext('2d').clearRect(0,0,c.width,c.height);c.dataset.hasSignature='false';}});syncTxPdfRequirement()}catch(err){alert(err.message)}};
  document.getElementById('activitySearch').oninput=renderActivity;document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;
  document.getElementById('auditWorkspace').onclick=async e=>{const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open')editAudit(b.dataset.id);if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);renderAudits()}};
  document.getElementById('reportsList').onclick=async e=>{
