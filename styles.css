@@ -3895,3 +3895,33 @@ body.report-open{overflow:hidden}
   padding:12px;
   background:#fff;
 }
+
+
+/* Signature action button emphasis */
+#clearTxRecordedSignature,
+#clearTxWitnessSignature,
+#signatureCaptureClear{
+  background:#fff1f0;
+  border-color:#c96a63;
+  color:#8f2f2a;
+  font-weight:700;
+}
+#clearTxRecordedSignature:hover,
+#clearTxWitnessSignature:hover,
+#signatureCaptureClear:hover{
+  background:#ffe6e3;
+}
+
+#expandTxRecordedSignature,
+#expandTxWitnessSignature,
+#signatureCaptureSave{
+  background:#eaf4fb;
+  border-color:#4f8fba;
+  color:#1f5f88;
+  font-weight:700;
+}
+#expandTxRecordedSignature:hover,
+#expandTxWitnessSignature:hover,
+#signatureCaptureSave:hover{
+  background:#dceef9;
+}
