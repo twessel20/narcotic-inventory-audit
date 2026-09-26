@@ -1581,58 +1581,21 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        const wrap=document.createElement('div');
        wrap.className='pdf-medic3-safe-wrap';
 
-       // On mobile PDF generation, place Medic 3 and Safe side-by-side.
-       // This materially shortens the page so neither Safe signature can orphan.
+       // On mobile PDF generation, keep Medic 3 and Safe side-by-side.
+       // The detailed visual sizing is handled by the PDF stylesheet so both columns stay balanced.
        if(window.matchMedia('(max-width:700px)').matches){
          wrap.style.setProperty('display','flex','important');
          wrap.style.setProperty('flex-direction','row','important');
          wrap.style.setProperty('flex-wrap','nowrap','important');
-         wrap.style.setProperty('gap','8px','important');
+         wrap.style.setProperty('gap','12px','important');
          wrap.style.setProperty('width','100%','important');
-         wrap.style.setProperty('align-items','flex-start','important');
-
+         wrap.style.setProperty('align-items','stretch','important');
          [medic3,safe].filter(Boolean).forEach(card=>{
            card.style.setProperty('flex','1 1 0','important');
-           card.style.setProperty('width','calc(50% - 4px)','important');
-           card.style.setProperty('max-width','calc(50% - 4px)','important');
+           card.style.setProperty('width','calc(50% - 6px)','important');
+           card.style.setProperty('max-width','calc(50% - 6px)','important');
            card.style.setProperty('min-width','0','important');
            card.style.setProperty('margin','0','important');
-           card.style.setProperty('padding','5px','important');
-
-           const h=card.querySelector('h2');
-           if(h){
-             h.style.setProperty('font-size','.68rem','important');
-             h.style.setProperty('margin','0 0 2px','important');
-             h.style.setProperty('line-height','1','important');
-           }
-           card.querySelectorAll('.report-cert-site,.report-cert-statement').forEach(el=>{
-             el.style.setProperty('font-size','.48rem','important');
-             el.style.setProperty('line-height','1.04','important');
-             el.style.setProperty('margin','1px 0 3px','important');
-           });
-           const grid=card.querySelector('.report-signature-grid');
-           if(grid){
-             grid.style.setProperty('display','grid','important');
-             grid.style.setProperty('grid-template-columns','1fr','important');
-             grid.style.setProperty('gap','4px','important');
-             grid.style.setProperty('margin-top','3px','important');
-             [...grid.children].forEach(box=>{
-               box.style.setProperty('margin','0','important');
-               box.style.setProperty('padding','3px 4px','important');
-               box.style.setProperty('min-height','0','important');
-               box.querySelectorAll('img,.report-signature-placeholder').forEach(el=>{
-                 el.style.setProperty('height','24px','important');
-                 el.style.setProperty('min-height','24px','important');
-                 el.style.setProperty('max-height','24px','important');
-                 el.style.setProperty('margin','1px 0 0','important');
-               });
-               const name=box.querySelector('.report-signature-name');
-               if(name){
-                 name.style.setProperty('font-size','.46rem','important');
-                 name.style.setProperty('padding-top','1px','important');
-               }
-             });
-           }
          });
        }
 
