@@ -4678,3 +4678,133 @@ body.report-open{overflow:hidden}
   font-size:.82rem !important;
   line-height:1.38 !important;
 }
+
+
+/* v164 definitive audit signature layout */
+.unit-audit-card .certification-panel .signature-box{
+  width:100%;
+  min-width:0;
+  padding:0!important;
+  background:transparent!important;
+}
+
+.unit-audit-card .certification-panel .signature-person-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:18px!important;
+  width:100%!important;
+}
+
+.unit-audit-card .certification-panel .signature-person-grid > div{
+  min-width:0!important;
+  display:flex!important;
+  flex-direction:column!important;
+  padding:14px!important;
+  border:1px solid #d9e3ea!important;
+  border-radius:12px!important;
+  background:#fbfcfd!important;
+  overflow:hidden!important;
+}
+
+.unit-audit-card .certification-panel .auditor-id-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) 150px!important;
+  gap:10px!important;
+  width:100%!important;
+}
+
+.unit-audit-card .certification-panel .auditor-id-grid label{
+  min-width:0!important;
+  width:100%!important;
+}
+
+.unit-audit-card .certification-panel .auditor-id-grid input{
+  width:100%!important;
+  min-width:0!important;
+  box-sizing:border-box!important;
+}
+
+.unit-audit-card .certification-panel .signature-label-row{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:10px!important;
+  align-items:center!important;
+  margin:10px 0 6px!important;
+  min-width:0!important;
+}
+
+.unit-audit-card .certification-panel .signature-label{
+  min-width:0!important;
+  margin:0!important;
+}
+
+.unit-audit-card .certification-panel .signature-label-row .button-row{
+  display:flex!important;
+  gap:8px!important;
+  flex-wrap:nowrap!important;
+  align-items:center!important;
+}
+
+.unit-audit-card .certification-panel .signature-label-row button{
+  min-height:38px!important;
+  padding:7px 10px!important;
+  white-space:nowrap!important;
+  flex:0 0 auto!important;
+}
+
+.unit-audit-card .certification-panel canvas{
+  display:block!important;
+  width:100%!important;
+  max-width:100%!important;
+  min-width:0!important;
+  height:130px!important;
+  box-sizing:border-box!important;
+  background:#fff!important;
+  border:1.5px dashed #b8c8d6!important;
+  border-radius:8px!important;
+}
+
+@media(max-width:1180px){
+  .unit-audit-card .certification-panel .signature-person-grid{
+    grid-template-columns:1fr!important;
+  }
+}
+
+@media(max-width:700px){
+  .unit-audit-card .certification-panel{
+    padding:12px!important;
+  }
+
+  .unit-audit-card .certification-panel .signature-person-grid{
+    gap:12px!important;
+  }
+
+  .unit-audit-card .certification-panel .signature-person-grid > div{
+    padding:12px!important;
+  }
+
+  .unit-audit-card .certification-panel .auditor-id-grid{
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+
+  .unit-audit-card .certification-panel .signature-label-row{
+    grid-template-columns:1fr!important;
+    gap:8px!important;
+  }
+
+  .unit-audit-card .certification-panel .signature-label-row .button-row{
+    display:grid!important;
+    grid-template-columns:1fr 1fr!important;
+    width:100%!important;
+  }
+
+  .unit-audit-card .certification-panel .signature-label-row button{
+    width:100%!important;
+    min-height:44px!important;
+  }
+
+  .unit-audit-card .certification-panel canvas{
+    height:150px!important;
+  }
+}
