@@ -1045,7 +1045,11 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      if(certPageA.childElementCount>1)pages.push(certPageA);
      if(certPageB.childElementCount>1)pages.push(certPageB);
    }
-   if(attestationSection)pages.push(makePage('Final Controlled-Substance Audit Attestation','pdf-attestation-page',[attestationSection]));
+   if(attestationSection){
+     const duplicateAttestationTitle=attestationSection.querySelector(':scope > h2');
+     if(duplicateAttestationTitle)duplicateAttestationTitle.remove();
+     pages.push(makePage('Final Controlled-Substance Audit Attestation','pdf-attestation-page',[attestationSection]));
+   }
    if(notesSection||reportFooter)pages.push(makePage('Audit Notes / Final Record','pdf-notes-page',[notesSection,reportFooter]));
 
    clone.replaceChildren(...pages.filter(p=>p && (p===cover || p.childElementCount>1)));
@@ -1113,7 +1117,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        image:{type:'jpeg',quality:0.98},
        html2canvas:{scale:1.6,useCORS:true,backgroundColor:'#ffffff',logging:false,scrollX:0,scrollY:0},
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
-       pagebreak:{mode:['css','legacy'],before:['.pdf-packet-page:not(.pdf-packet-cover)','.pdf-break-before'],avoid:['.report-cert','.report-signature-box','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
+       pagebreak:{mode:['css','legacy'],before:['.pdf-break-before'],avoid:['.report-cert','.report-signature-box','.report-final-signature','.report-vial-summary','.report-vial-row','.report-meta-grid','.report-top']}
      })
      .from(clone)
      .toPdf();
