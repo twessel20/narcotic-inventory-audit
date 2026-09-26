@@ -183,11 +183,15 @@ async function saveTransaction(fd){
  if(!items.length)throw new Error('Add at least one medication with a quantity greater than zero.');
 
  const recordedBy=String(fd.get('recordedBy')||'').trim();
+ const recordedByEmployeeNumber=String(fd.get('recordedByEmployeeNumber')||'').trim();
  const witness=String(fd.get('witness')||'').trim();
+ const witnessEmployeeNumber=String(fd.get('witnessEmployeeNumber')||'').trim();
  const recordedCanvas=document.getElementById('txRecordedSignature');
  const witnessCanvas=document.getElementById('txWitnessSignature');
- if(!recordedBy)throw new Error('Enter the person recording the transaction.');
+ if(!recordedBy)throw new Error('Enter the employee recording the transaction.');
+ if(!recordedByEmployeeNumber)throw new Error('Enter the recorded-by employee number.');
  if(!witness)throw new Error('Enter the witness.');
+ if(!witnessEmployeeNumber)throw new Error('Enter the witness employee number.');
  if(recordedCanvas?.dataset.hasSignature!=='true')throw new Error('Recorded-by signature is required.');
  if(witnessCanvas?.dataset.hasSignature!=='true')throw new Error('Witness signature is required.');
 
@@ -281,7 +285,9 @@ async function saveTransaction(fd){
    toLocation:type==='expired'?'Expired':(type==='incident'?'':destination),
    notes:fd.get('notes')||'',
    recordedBy,
+   recordedByEmployeeNumber,
    witness,
+   witnessEmployeeNumber,
    recordedBySignature:recordedCanvas.toDataURL(),
    witnessSignature:witnessCanvas.toDataURL(),
    supportingDocument
@@ -298,7 +304,9 @@ async function saveTransaction(fd){
        items,
        explanation:txRecord.notes,
        recordedBy,
+       recordedByEmployeeNumber,
        witness,
+       witnessEmployeeNumber,
        supportingDocument,
        reconciliationMode:'audit_physical_count'
      });
