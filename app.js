@@ -398,7 +398,7 @@ function unitAuditSection(a,loc,index){
  '<div class="unit-audit-head compact-head"><div><span class="kicker">LOCATION '+(index+1)+' OF '+LOCS.length+'</span><h3>'+esc(loc)+'</h3></div><span class="unit-step-badge">'+esc(loc)+'</span></div>'+
  '<div class="unit-compact-grid">'+
  '<div class="unit-compact-panel seal-panel"><h4>Seals</h4><div class="tag-entry-fields seal-pair"><label>Tag found / removed<input inputmode="numeric" autocomplete="off" placeholder="Tag #" data-tag-loc="'+loc+'" data-tag-kind="foundRemoved" aria-label="'+loc+' tag found or removed" value="'+esc(tag.foundRemoved||'')+'"></label><label>New tag installed<input inputmode="numeric" autocomplete="off" placeholder="Tag #" data-tag-loc="'+loc+'" data-tag-kind="newInstalled" aria-label="'+loc+' new tag installed" value="'+esc(tag.newInstalled||'')+'"></label></div></div>'+
- '<div class="unit-compact-panel inventory-panel"><div class="inventory-panel-head"><h4>Physical inventory</h4><span class="inventory-panel-help">Count each vial physically present at this location.</span></div><div class="unit-med-table-head"><span>Medication</span><span>Last</span><span>Current</span><span>Actions</span></div><div class="unit-med-list">'+medRows+'</div></div>'+
+ '<div class="unit-compact-panel inventory-panel"><div class="inventory-panel-head"><h4>Physical inventory</h4><span class="inventory-panel-help">Count each vial physically present at this location.</span></div><div class="unit-med-list">'+medRows+'</div></div>'+
  '<div class="unit-compact-panel Certification-panel"><h4>Certification</h4>'+sigBlock(loc,sig,true)+'</div>'+
  '</div></section>';
 }
