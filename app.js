@@ -400,7 +400,7 @@ async function startAudit(){
  const b=await balances(),reports=await getAll('reports');const d=new Date(),month=d.toLocaleString(undefined,{month:'long',year:'numeric'});
  reports.sort((x,y)=>String(y.finalizedAt||y.updatedAt||y.createdAt||'').localeCompare(String(x.finalizedAt||x.updatedAt||x.createdAt||'')));
  const previous=reports[0]||null;
- const counts={},priorCounts={},openingCounts={};LOCS.forEach(l=>{counts[l]={};priorCounts[l]={};openingCounts[l]={};MEDS.forEach(m=>{counts[l][m]=b[l][m];openingCounts[l][m]=b[l][m];priorCounts[l][m]=previous?.counts?.[l]?.[m]??null})});
+ const counts={},priorCounts={},openingCounts={};LOCS.forEach(l=>{counts[l]={};priorCounts[l]={};openingCounts[l]={};MEDS.forEach(m=>{counts[l][m]=null;openingCounts[l][m]=b[l][m];priorCounts[l][m]=previous?.counts?.[l]?.[m]??null})});
  const localDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
  const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,openingCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],incidents:[],inventoryFindings:[],signatures:{},auditorName:'',auditorEmployeeNumber:'',attestationText:FINAL_ATTESTATION,attestationName:'',attestationEmployeeNumber:'',attestationAccepted:false};
  await put('audits',a);await put('meta',{id:'activeAudit',auditId:a.id,updatedAt:nowISO()});await editAudit(a.id)
@@ -408,7 +408,7 @@ async function startAudit(){
 function unitAuditSection(a,loc,index){
  const tag=a.breakawayTags?.[loc]||{},savedSig=a.signatures?.[loc]||{};
  const sig={...savedSig,signer:savedSig.signer||a.auditorName||'',employeeNumber:savedSig.employeeNumber||a.auditorEmployeeNumber||''};
- const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];const findingBtn=loc==='Expired'?'':'<button type="button" class="audit-finding-btn" data-audit-finding data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Record audit finding</button>';return '<div class="unit-med-row compact"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current"><span>Current</span><input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+Number(a.counts?.[loc]?.[m]||0)+'"></label><div class="unit-med-actions">'+findingBtn+'<button type="button" class="audit-incident-btn" data-audit-incident data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Discrepancy / incident</button></div></div>'}).join('');
+ const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];const findingBtn=loc==='Expired'?'':'<button type="button" class="audit-finding-btn" data-audit-finding data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Record audit finding</button>';return '<div class="unit-med-row compact"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current"><span>Current</span><input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+((a.counts?.[loc]?.[m]===null||a.counts?.[loc]?.[m]===undefined)?'':Number(a.counts[loc][m]))+'" required></label><div class="unit-med-actions">'+findingBtn+'<button type="button" class="audit-incident-btn" data-audit-incident data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Discrepancy / incident</button></div></div>'}).join('');
  return '<section class="audit-card unit-audit-card compact-unit" data-unit-section="'+esc(loc)+'">'+
  '<div class="unit-audit-head compact-head"><div><span class="kicker">LOCATION '+(index+1)+' OF '+LOCS.length+'</span><h3>'+esc(loc)+'</h3></div><span class="unit-step-badge">'+esc(loc)+'</span></div>'+
  '<div class="unit-compact-grid">'+
@@ -1001,7 +1001,7 @@ function collectAuditFromUI(a){
  a.dateRangeEnd=document.getElementById('auditEnd').value;
  a.usageSummary=document.getElementById('usageSummary').value;
  a.notes=document.getElementById('auditNotes').value;
- document.querySelectorAll('[data-count-loc]').forEach(i=>{a.counts??={};a.counts[i.dataset.countLoc]??={};a.counts[i.dataset.countLoc][i.dataset.countMed]=Number(i.value||0)});
+ document.querySelectorAll('[data-count-loc]').forEach(i=>{a.counts??={};a.counts[i.dataset.countLoc]??={};a.counts[i.dataset.countLoc][i.dataset.countMed]=i.value===''?null:Number(i.value)});
  a.breakawayTags??={};document.querySelectorAll('[data-tag-loc]').forEach(i=>{a.breakawayTags[i.dataset.tagLoc]??={};a.breakawayTags[i.dataset.tagLoc][i.dataset.tagKind]=i.value.trim()});
  a.attestationText=a.attestationText||FINAL_ATTESTATION;
  a.signatures={};
@@ -1050,6 +1050,13 @@ async function saveAuditFromUI(id,finalize){
    const auditIncidents=Array.isArray(a.incidents)?a.incidents:[];
    const incompleteIncident=auditIncidents.find(x=>x.status!=='submitted'||!x.supportingDocument?.storagePath);
    if(incompleteIncident)return alert('All audit discrepancies / incidents must be submitted with an attached memo before the audit can be finalized.');
+   for(const loc of LOCS){
+     for(const med of MEDS){
+       const count=a.counts?.[loc]?.[med];
+       if(count===null||count===undefined||count==='')return alert('Enter the physical count for '+med+' at '+loc+' before finalizing.');
+       if(!Number.isInteger(Number(count))||Number(count)<0)return alert('Enter a whole-vial physical count of zero or greater for '+med+' at '+loc+'.');
+     }
+   }
    if(!a.dateRangeStart||!a.dateRangeEnd)return alert('Audit period start and end dates are required before finalizing.');
    if(a.dateRangeStart>a.dateRangeEnd)return alert('Audit period start date cannot be after the end date.');
    if(!a.auditorName?.trim())return alert('Auditor name is required in Audit Details.');
