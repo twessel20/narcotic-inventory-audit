@@ -1404,8 +1404,20 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        ));
      };
 
-     addCertPage('Medic 1');
-     addCertPage('Medic 2');
+     const medic1=byTitle('Medic 1 Certification');
+     const medic2=byTitle('Medic 2 Certification');
+     if(medic1||medic2){
+       if(medic1){clearPdfBreaks(medic1);medic1.classList.add('pdf-single-cert-card');}
+       if(medic2){clearPdfBreaks(medic2);medic2.classList.add('pdf-single-cert-card');}
+       const wrap=document.createElement('div');
+       wrap.className='pdf-medic1-medic2-wrap';
+       [medic1,medic2].filter(Boolean).forEach(card=>wrap.appendChild(card));
+       pages.push(makePage(
+         'Medic 1 / Medic 2 Audit Site Certifications',
+         'pdf-certifications-page pdf-medic1-medic2-page',
+         [wrap]
+       ));
+     }
 
      const medic3=byTitle('Medic 3 Certification');
      const safe=byTitle('Safe Certification');
