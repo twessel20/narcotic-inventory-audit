@@ -2660,3 +2660,87 @@ body.report-open{overflow:hidden}
   font-size:.56rem !important;
   line-height:1 !important;
 }
+
+
+/* Definitive one-page layout for Medic 3 / Safe / Expired certifications */
+.pdf-render-stage .pdf-certifications-secondary{
+  height:auto !important;
+  max-height:none !important;
+  overflow:visible !important;
+  display:grid !important;
+  grid-template-columns:repeat(3,minmax(0,1fr)) !important;
+  grid-template-rows:auto 1fr !important;
+  column-gap:7px !important;
+  row-gap:6px !important;
+  padding:8px 9px !important;
+  box-sizing:border-box !important;
+}
+.pdf-render-stage .pdf-certifications-secondary > .pdf-packet-title{
+  grid-column:1 / -1 !important;
+  margin:-8px -9px 4px !important;
+  padding:6px 8px 5px !important;
+  font-size:.82rem !important;
+  line-height:1.05 !important;
+}
+.pdf-render-stage .pdf-certifications-secondary > .report-cert{
+  width:auto !important;
+  height:auto !important;
+  min-height:0 !important;
+  margin:0 !important;
+  padding:5px 6px !important;
+  box-sizing:border-box !important;
+  overflow:hidden !important;
+  break-inside:avoid !important;
+  page-break-inside:avoid !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-cert h2{
+  margin:0 0 3px !important;
+  font-size:.72rem !important;
+  line-height:1.05 !important;
+  text-align:center !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-cert-site{
+  margin:1px 0 2px !important;
+  font-size:.52rem !important;
+  line-height:1 !important;
+  text-align:center !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-cert-statement{
+  margin:2px 0 4px !important;
+  font-size:.51rem !important;
+  line-height:1.1 !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-grid{
+  display:block !important;
+  margin-top:3px !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-box{
+  margin:0 0 4px !important;
+  padding:4px 5px 3px !important;
+  border-radius:6px !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-site{
+  font-size:.48rem !important;
+  line-height:1 !important;
+  margin:0 0 2px !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-label{
+  font-size:.48rem !important;
+  line-height:1 !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-box img{
+  height:28px !important;
+  max-height:28px !important;
+  width:100% !important;
+  object-fit:contain !important;
+  margin:2px 0 0 !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-placeholder{
+  height:28px !important;
+  margin:2px 0 0 !important;
+}
+.pdf-render-stage .pdf-certifications-secondary .report-signature-name{
+  padding-top:2px !important;
+  font-size:.5rem !important;
+  line-height:1.05 !important;
+}
