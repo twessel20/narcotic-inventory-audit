@@ -6048,3 +6048,398 @@ body.report-open{overflow:hidden}
   font-size:.44rem!important;
   line-height:1!important;
 }
+
+
+/* v207 mobile audit form cleanup */
+@media(max-width:700px){
+  #audit.tab-panel{
+    overflow-x:hidden;
+  }
+
+  #audit .section-head{
+    align-items:stretch;
+    gap:10px;
+  }
+
+  #audit .section-head > div:first-child{
+    min-width:0;
+  }
+
+  #audit .section-head h2{
+    margin-bottom:0;
+  }
+
+  #audit .section-head > button{
+    width:100%;
+    min-height:44px;
+  }
+
+  .audit-workspace-shell{
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    overflow:visible!important;
+  }
+
+  .audit-route{
+    display:flex!important;
+    width:100%!important;
+    max-width:100%!important;
+    gap:6px!important;
+    padding:7px!important;
+    margin:0 0 8px!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+  }
+  .audit-route::-webkit-scrollbar{display:none}
+  .audit-route-title{display:none!important}
+  .audit-route a{
+    flex:0 0 auto!important;
+    width:auto!important;
+    min-width:max-content!important;
+    padding:8px 10px!important;
+    border-radius:999px!important;
+    white-space:nowrap!important;
+  }
+
+  .audit-step-card{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    overflow:visible!important;
+  }
+
+  .audit-step-card:not(.active-step){
+    display:none!important;
+  }
+
+  .audit-step-card.active-step{
+    display:block!important;
+  }
+
+  .audit-card,
+  .audit-hero,
+  .admin-import-card,
+  .audit-section-card,
+  .unit-audit-card,
+  .compact-unit{
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    margin:0!important;
+    border-radius:12px!important;
+    overflow:hidden!important;
+  }
+
+  .audit-hero,
+  .admin-import-card,
+  .audit-section-card{
+    padding:12px!important;
+  }
+
+  .audit-header{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:10px!important;
+    align-items:start!important;
+  }
+
+  .audit-header > div{
+    min-width:0!important;
+  }
+
+  .audit-header button{
+    width:100%!important;
+    min-height:44px!important;
+  }
+
+  .audit-meta-grid,
+  .final-auditor-grid,
+  .form-grid{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:10px!important;
+    width:100%!important;
+  }
+
+  .audit-meta-grid label,
+  .final-auditor-grid label,
+  .audit-section-card label{
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  .audit-meta-grid input,
+  .audit-meta-grid select,
+  .audit-section-card input,
+  .audit-section-card select,
+  .audit-section-card textarea,
+  .final-auditor-grid input{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    font-size:16px!important;
+  }
+
+  .compact-head{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:8px!important;
+    padding:10px!important;
+  }
+
+  .compact-head > div{
+    min-width:0!important;
+  }
+
+  .compact-head h3{
+    margin:0!important;
+    overflow-wrap:anywhere;
+  }
+
+  .unit-step-badge{
+    flex:0 0 auto!important;
+    max-width:42%!important;
+    white-space:normal!important;
+    text-align:right!important;
+  }
+
+  .unit-compact-grid{
+    display:block!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  .unit-compact-panel{
+    width:100%!important;
+    min-width:0!important;
+    padding:10px!important;
+    border-left:0!important;
+    border-right:0!important;
+    border-bottom:1px solid #e3eaf0!important;
+  }
+
+  .unit-compact-panel:last-child{
+    border-bottom:0!important;
+  }
+
+  .compact-unit .seal-panel .tag-entry-fields.seal-pair{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+  }
+
+  .compact-unit .seal-panel .tag-entry-fields label,
+  .compact-unit .seal-panel .tag-entry-fields input{
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  .inventory-panel-head{
+    margin-bottom:8px!important;
+  }
+
+  .unit-med-list{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+  }
+
+  .unit-med-row.compact{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    grid-template-areas:
+      "name name"
+      "last current"
+      "finding incident"!important;
+    gap:8px!important;
+    padding:10px!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    align-items:end!important;
+    border:1px solid #d9e3ea!important;
+    border-radius:10px!important;
+    background:#fff!important;
+  }
+
+  .unit-med-row.compact .unit-med-name{
+    grid-area:name!important;
+    font-size:.95rem!important;
+    margin:0!important;
+    min-width:0!important;
+  }
+
+  .unit-med-row.compact .unit-prior{
+    grid-area:last!important;
+    min-width:0!important;
+    text-align:left!important;
+    align-items:stretch!important;
+  }
+
+  .unit-med-row.compact .unit-current{
+    grid-area:current!important;
+    min-width:0!important;
+    width:100%!important;
+  }
+
+  .unit-med-row.compact .unit-current input{
+    width:100%!important;
+    min-height:44px!important;
+    padding:8px!important;
+    text-align:center!important;
+    font-size:16px!important;
+  }
+
+  .unit-med-row.compact .audit-finding-btn{
+    grid-area:finding!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  .unit-med-row.compact .audit-incident-btn{
+    grid-area:incident!important;
+    width:100%!important;
+    min-width:0!important;
+  }
+
+  .audit-finding-btn,
+  .audit-incident-btn{
+    min-height:44px!important;
+    white-space:normal!important;
+  }
+
+  .audit-signature-cards{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:10px!important;
+  }
+
+  .audit-signature-card{
+    width:100%!important;
+    min-width:0!important;
+    padding:10px!important;
+  }
+
+  .audit-signature-card-head{
+    display:block!important;
+  }
+
+  .audit-signature-card-head span{
+    display:block!important;
+    margin-top:2px!important;
+  }
+
+  .audit-signature-fields{
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:8px!important;
+  }
+
+  .audit-signature-fields input{
+    min-height:44px!important;
+    font-size:16px!important;
+  }
+
+  .audit-signature-canvas-wrap canvas{
+    width:100%!important;
+    height:120px!important;
+  }
+
+  .audit-signature-actions{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+    gap:8px!important;
+  }
+
+  .audit-signature-actions button{
+    min-width:0!important;
+    min-height:44px!important;
+    padding:8px!important;
+  }
+
+  .mobile-card-nav{
+    position:sticky!important;
+    bottom:0!important;
+    z-index:20!important;
+    display:grid!important;
+    grid-template-columns:auto minmax(0,1fr) auto!important;
+    gap:8px!important;
+    align-items:center!important;
+    width:calc(100% + 20px)!important;
+    margin:12px -10px -10px!important;
+    padding:8px 10px calc(8px + env(safe-area-inset-bottom))!important;
+    background:rgba(255,255,255,.97)!important;
+    border-top:1px solid #d9e3ea!important;
+    box-shadow:0 -3px 12px rgba(0,0,0,.08)!important;
+  }
+
+  .mobile-card-nav button{
+    min-height:42px!important;
+    padding:7px 10px!important;
+    white-space:nowrap!important;
+  }
+
+  .mobile-card-progress{
+    min-width:0!important;
+    text-align:center!important;
+  }
+
+  .mobile-card-progress strong,
+  .mobile-card-progress span{
+    display:block!important;
+    overflow:hidden!important;
+    text-overflow:ellipsis!important;
+    white-space:nowrap!important;
+  }
+}
+
+@media(max-width:430px){
+  #audit{
+    padding-left:8px!important;
+    padding-right:8px!important;
+  }
+
+  .audit-hero,
+  .admin-import-card,
+  .audit-section-card,
+  .unit-compact-panel,
+  .compact-head{
+    padding-left:9px!important;
+    padding-right:9px!important;
+  }
+
+  .unit-med-row.compact{
+    grid-template-columns:minmax(0,1fr)!important;
+    grid-template-areas:
+      "name"
+      "last"
+      "current"
+      "finding"
+      "incident"!important;
+  }
+
+  .unit-prior{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+  }
+
+  .audit-signature-actions{
+    grid-template-columns:1fr!important;
+  }
+
+  .mobile-card-nav{
+    grid-template-columns:1fr 1fr!important;
+  }
+
+  .mobile-card-progress{
+    grid-column:1 / -1!important;
+    grid-row:1!important;
+  }
+
+  #auditStepPrev{grid-column:1!important;grid-row:2!important}
+  #auditStepNext{grid-column:2!important;grid-row:2!important}
+}
