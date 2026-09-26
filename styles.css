@@ -2463,3 +2463,53 @@ body.report-open{overflow:hidden}
 .pdf-render-stage .pdf-inventory-tags-page .report-inventory td{
   padding:5px 6px !important;
 }
+
+
+/* Reduce repeated wording inside grouped PDF packet pages */
+.pdf-render-stage .pdf-eso-record-page > .report-eso-source > h2{
+  display:none !important;
+}
+.pdf-render-stage .pdf-eso-record-page > .report-imported-admin > h2{
+  margin-top:2px !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page > section > h2{
+  font-size:.92rem !important;
+}
+.pdf-render-stage .pdf-certifications-page{
+  padding:12px 14px !important;
+}
+.pdf-render-stage .pdf-certifications-page .report-cert{
+  margin:0 0 10px !important;
+  padding:9px 10px !important;
+  break-inside:avoid-page !important;
+  page-break-inside:avoid !important;
+}
+.pdf-render-stage .pdf-certifications-page .report-cert h2{
+  margin:0 0 6px !important;
+  font-size:.96rem !important;
+}
+.pdf-render-stage .pdf-certifications-page .report-cert p{
+  margin:4px 0 !important;
+  font-size:.78rem !important;
+  line-height:1.25 !important;
+}
+.pdf-render-stage .pdf-certifications-page .report-signature-grid{
+  gap:10px !important;
+  margin-top:6px !important;
+}
+.pdf-render-stage .pdf-certifications-page .report-signature-box{
+  padding:8px 10px !important;
+}
+.pdf-render-stage .pdf-certifications-page .report-signature-box img{
+  height:40px !important;
+  max-height:40px !important;
+  margin-top:4px !important;
+}
+.pdf-render-stage .pdf-certifications-page .report-signature-placeholder{
+  height:40px !important;
+  margin-top:4px !important;
+}
+.pdf-render-stage .pdf-certifications-page .report-signature-name{
+  padding-top:4px !important;
+  font-size:.78rem !important;
+}
