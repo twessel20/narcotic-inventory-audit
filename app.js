@@ -999,7 +999,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      );
      const medic3Intro=document.createElement('p');
      medic3Intro.className='pdf-medic3-explainer';
-     medic3Intro.textContent='Medic 3 is the reserve ambulance and functions as a semi-dynamic inventory site. It is maintained as its own separately tracked audit location, while its assigned narcotic inventory is normally secured in the Safe until Medic 3 is placed in service.';
+     medic3Intro.textContent='Medic 3 is the reserve ambulance and functions as a semi-dynamic inventory site. It is maintained as its own separately tracked audit location, while its assigned narcotic inventory is normally secured in the Safe until Medic 3 is placed in service. The Safe serves as the central reserve inventory and is the primary stock used to restock or redistribute controlled substances to the department\'s other tracked inventory sites as needed.';
      pageB.appendChild(medic3Intro);
      const wrap=document.createElement('div');
      wrap.className='pdf-certifications-secondary-wrap';
