@@ -2365,3 +2365,49 @@ body.report-open{overflow:hidden}
   content:"";
   display:block;
 }
+
+
+/* Compound PDF packet pages */
+.pdf-render-stage .report-cover-page{
+  break-before:auto !important;
+  page-break-before:auto !important;
+}
+.pdf-render-stage .pdf-monthly-summary-page,
+.pdf-render-stage .pdf-inventory-tags-page,
+.pdf-render-stage .pdf-eso-record-page{
+  break-before:page !important;
+  page-break-before:always !important;
+}
+.pdf-render-stage .pdf-monthly-summary-page > .report-top{
+  margin-top:2px !important;
+}
+.pdf-render-stage .pdf-monthly-summary-page > .report-executive-summary{
+  margin-top:14px !important;
+  padding:12px 14px !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page > section,
+.pdf-render-stage .pdf-eso-record-page > section{
+  border:0 !important;
+  border-radius:0 !important;
+  padding:0 !important;
+  margin:12px 0 18px !important;
+  background:#fff !important;
+}
+.pdf-render-stage .pdf-inventory-tags-page > section > h2,
+.pdf-render-stage .pdf-eso-record-page > section > h2{
+  margin:0 0 8px !important;
+  padding:6px 0 !important;
+  background:transparent !important;
+  border-bottom:1px solid #d9e3ea !important;
+  color:#172838 !important;
+  font-size:.95rem !important;
+}
+.pdf-render-stage .pdf-eso-record-page .report-imported-admin{
+  break-before:auto !important;
+  page-break-before:auto !important;
+}
+.pdf-render-stage .pdf-eso-record-page .report-vial-summary{
+  margin-top:14px !important;
+  break-before:auto !important;
+  page-break-before:auto !important;
+}
