@@ -102,15 +102,23 @@ async function subscribeRealtime(){
      await refreshAll();
    }).subscribe();
 }
+function digitsOnly(v=''){return String(v??'').replace(/\D+/g,'')}
+function signedInEmployeeNumber(){return digitsOnly(cloudSession?.user?.user_metadata?.employee_number||'')}
 function updateAccountUI(){
  const btn=document.getElementById('accountBtn');if(!btn)return;
- btn.textContent=cloudSession?.user?.email||'Sign in';
+ const emp=signedInEmployeeNumber();
+ btn.textContent=cloudSession?.user?.email?(cloudSession.user.email+(emp?' · #'+emp:'')):'Sign in';
  document.body.classList.toggle('cloud-authenticated',!!cloudSession);
 }
 async function initCloud(){
  if(!window.supabase)return;
  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY,{auth:{persistSession:true,autoRefreshToken:true}});
- const {data}=await sb.auth.getSession();cloudSession=data.session||null;updateAccountUI();
+ const {data}=await sb.auth.getSession();cloudSession=data.session||null;
+ if(cloudSession&&!signedInEmployeeNumber()){
+   await sb.auth.signOut();
+   cloudSession=null;
+ }
+ updateAccountUI();
  sb.auth.onAuthStateChange(async(_event,session)=>{
    cloudSession=session||null;updateAccountUI();
    if(cloudSession){
@@ -122,7 +130,8 @@ async function initCloud(){
  if(cloudSession){await flushPendingWrites();await pullCloudRecords();await flushPendingWrites();await subscribeRealtime()}
 }
 function requireCloudAuth(){
- if(cloudSession)return true;
+ if(cloudSession&&signedInEmployeeNumber())return true;
+ if(cloudSession&&!signedInEmployeeNumber())sb?.auth?.signOut();
  document.getElementById('authDialog')?.showModal();
  return false;
 }
@@ -150,6 +159,40 @@ function formatDisplayDate(v){
  return s;
 }
 function fmtDate(v){return formatDisplayDate(v)}
+function enforceIntegerInputBehavior(root=document){
+ const inputs=root.querySelectorAll?.('input[type="number"],input[inputmode="numeric"],input[data-integer-only]')||[];
+ inputs.forEach(input=>{
+   input.setAttribute('inputmode','numeric');
+   input.setAttribute('data-integer-only','');
+   if(input.type==='number')input.setAttribute('step','1');
+   else input.setAttribute('pattern','[0-9]*');
+ });
+}
+document.addEventListener('beforeinput',e=>{
+ const input=e.target;
+ if(!(input instanceof HTMLInputElement)||!input.matches('[data-integer-only]'))return;
+ if(e.inputType==='insertText'&&e.data&&!/^\d+$/.test(e.data))e.preventDefault();
+});
+document.addEventListener('input',e=>{
+ const input=e.target;
+ if(!(input instanceof HTMLInputElement)||!input.matches('[data-integer-only]'))return;
+ const cleaned=digitsOnly(input.value);
+ if(input.value!==cleaned)input.value=cleaned;
+});
+const integerObserver=new MutationObserver(records=>{
+ for(const record of records){
+   for(const node of record.addedNodes){
+     if(node instanceof Element){
+       if(node.matches?.('input'))enforceIntegerInputBehavior(node.parentElement||document);
+       else enforceIntegerInputBehavior(node);
+     }
+   }
+ }
+});
+document.addEventListener('DOMContentLoaded',()=>{
+ enforceIntegerInputBehavior(document);
+ integerObserver.observe(document.body,{childList:true,subtree:true});
+});
 function monthTextToValue(v=''){
  const m=String(v).trim().match(/^([A-Za-z]+)\s+(\d{4})$/);
  if(!m)return '';
@@ -429,7 +472,8 @@ async function startAudit(){
  const previous=reports[0]||null;
  const counts={},priorCounts={},openingCounts={};LOCS.forEach(l=>{counts[l]={};priorCounts[l]={};openingCounts[l]={};MEDS.forEach(m=>{counts[l][m]=null;openingCounts[l][m]=b[l][m];priorCounts[l][m]=previous?.counts?.[l]?.[m]??null})});
  const localDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
- const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,openingCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],incidents:[],inventoryFindings:[],signatures:{},auditorName:'',auditorEmployeeNumber:'',attestationText:FINAL_ATTESTATION,attestationName:'',attestationEmployeeNumber:'',attestationAccepted:false};
+ const signedInEmp=signedInEmployeeNumber();
+ const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,openingCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],incidents:[],inventoryFindings:[],signatures:{},auditorName:'',auditorEmployeeNumber:signedInEmp,attestationText:FINAL_ATTESTATION,attestationName:'',attestationEmployeeNumber:signedInEmp,attestationAccepted:false};
  await put('audits',a);await put('meta',{id:'activeAudit',auditId:a.id,updatedAt:nowISO()});await editAudit(a.id)
 }
 function unitAuditSection(a,loc,index){
@@ -445,8 +489,8 @@ function unitAuditSection(a,loc,index){
  '</div></section>';
 }
 function sigBlock(loc,s={},embedded=false){return '<div class="signature-box audit-signature-block'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="audit-signature-cards">'+
-'<section class="audit-signature-card auditor-card"><div class="audit-signature-card-head"><strong>Auditor</strong><span>Certification signature</span></div><div class="audit-signature-fields"><label>Name<input placeholder="Full name" data-signer value="'+esc(s.signer||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-employee-number value="'+esc(s.employeeNumber||'')+'"></label></div><div class="audit-signature-canvas-wrap"><canvas width="500" height="150" data-canvas></canvas></div><div class="audit-signature-actions"><button type="button" class="clear-signature-btn" data-clear-signature="auditor">Clear</button><button type="button" class="expand-signature" data-expand-signature="auditor">Open larger</button></div></section>'+
-'<section class="audit-signature-card witness-card"><div class="audit-signature-card-head"><strong>Witness</strong><span>Certification signature</span></div><div class="audit-signature-fields"><label>Name<input placeholder="Full name" data-witness value="'+esc(s.witness||'')+'"></label><label>Employee number<input placeholder="Employee #" inputmode="numeric" autocomplete="off" data-witness-employee-number value="'+esc(s.witnessEmployeeNumber||'')+'"></label></div><div class="audit-signature-canvas-wrap"><canvas width="500" height="150" data-witness-canvas></canvas></div><div class="audit-signature-actions"><button type="button" class="clear-signature-btn" data-clear-signature="witness">Clear</button><button type="button" class="expand-signature" data-expand-signature="witness">Open larger</button></div></section>'+
+'<section class="audit-signature-card auditor-card"><div class="audit-signature-card-head"><strong>Auditor</strong><span>Certification signature</span></div><div class="audit-signature-fields"><label>Name<input placeholder="Full name" data-signer required value="'+esc(s.signer||'')+'"></label><label>Employee number<input placeholder="Employee #" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-integer-only data-employee-number required value="'+esc(s.employeeNumber||'')+'"></label></div><div class="audit-signature-canvas-wrap"><canvas width="500" height="150" data-canvas></canvas></div><div class="audit-signature-actions"><button type="button" class="clear-signature-btn" data-clear-signature="auditor">Clear</button><button type="button" class="expand-signature" data-expand-signature="auditor">Open larger</button></div></section>'+
+'<section class="audit-signature-card witness-card"><div class="audit-signature-card-head"><strong>Witness</strong><span>Certification signature</span></div><div class="audit-signature-fields"><label>Name<input placeholder="Full name" data-witness required value="'+esc(s.witness||'')+'"></label><label>Employee number<input placeholder="Employee #" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-integer-only data-witness-employee-number required value="'+esc(s.witnessEmployeeNumber||'')+'"></label></div><div class="audit-signature-canvas-wrap"><canvas width="500" height="150" data-witness-canvas></canvas></div><div class="audit-signature-actions"><button type="button" class="clear-signature-btn" data-clear-signature="witness">Clear</button><button type="button" class="expand-signature" data-expand-signature="witness">Open larger</button></div></section>'+
 '</div></div>'}
 function adminDoseUnit(medication=''){
  const m=String(medication).toLowerCase();
@@ -700,11 +744,11 @@ async function editAudit(id){
  '<a href="#" data-step-target="'+(LOCS.length+2)+'" data-route-section="notes"><span class="route-label">Notes</span></a>'+
  '<a href="#" data-step-target="'+(LOCS.length+3)+'" data-route-section="final"><span class="route-label">Final</span></a>'+
  '</div>'+
- '<div class="audit-step-card active-step" data-audit-step="0" data-step-title="Audit details"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div class="audit-header-meta"><span id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</span><span class="audit-status-chip">'+esc(a.status||'draft')+'</span></div></div><button id="backAudits" class="audit-back-btn">Back to drafts</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label class="audit-primary-auditor">Auditor name<input id="auditAuditorName" placeholder="Full name" autocomplete="name" value="'+esc(a.auditorName||a.attestationName||'')+'"></label><label class="audit-primary-auditor">Employee number<input id="auditAuditorEmployeeNumber" placeholder="Employee #" inputmode="numeric" autocomplete="off" value="'+esc(a.auditorEmployeeNumber||a.attestationEmployeeNumber||'')+'"></label><div class="audit-period-heading"><strong>Audit period</strong><span>Enter the exact date range covered by this audit.</span></div><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div></div>'+
+ '<div class="audit-step-card active-step" data-audit-step="0" data-step-title="Audit details"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div class="audit-header-meta"><span id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</span><span class="audit-status-chip">'+esc(a.status||'draft')+'</span></div></div><button id="backAudits" class="audit-back-btn">Back to drafts</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label class="audit-primary-auditor">Auditor name<input id="auditAuditorName" placeholder="Full name" autocomplete="name" value="'+esc(a.auditorName||a.attestationName||'')+'"></label><label class="audit-primary-auditor">Employee number<input id="auditAuditorEmployeeNumber" placeholder="Employee #" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-integer-only required value="'+esc(a.auditorEmployeeNumber||a.attestationEmployeeNumber||signedInEmployeeNumber()||'')+'"></label><div class="audit-period-heading"><strong>Audit period</strong><span>Enter the exact date range covered by this audit.</span></div><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div></div>'+
  '<div class="audit-step-card" data-audit-step="1" data-step-title="Administration import">'+administrationImportSection(a)+'</div>'+
  LOCS.map((l,i)=>'<div class="audit-step-card" data-audit-step="'+(i+2)+'" data-step-title="'+esc(l)+'" id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+
  '<div class="audit-step-card" data-audit-step="'+(LOCS.length+2)+'" data-step-title="Audit notes"><div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div></div>'+
- '<div class="audit-step-card" data-audit-step="'+(LOCS.length+3)+'" data-step-title="Final Certification"><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><div class="final-auditor-grid"><label class="final-signer-label">Final auditor name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||a.auditorName||'')+'"></label><label class="final-signer-label">Employee number<input id="attestEmployeeNumber" placeholder="Employee #" inputmode="numeric" value="'+esc(a.attestationEmployeeNumber||a.auditorEmployeeNumber||'')+'"></label></div><div class="final-signature-block"><div class="signature-label-row"><div class="signature-label">Final auditor signature</div><div class="button-row"><button type="button" id="clearFinalSignature">Clear</button><button type="button" class="expand-signature" id="expandFinalSignature">Open larger</button></div></div><canvas id="finalSignatureCanvas" width="500" height="150"></canvas></div><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>'+
+ '<div class="audit-step-card" data-audit-step="'+(LOCS.length+3)+'" data-step-title="Final Certification"><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><div class="final-auditor-grid"><label class="final-signer-label">Final auditor name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||a.auditorName||'')+'"></label><label class="final-signer-label">Employee number<input id="attestEmployeeNumber" placeholder="Employee #" type="text" inputmode="numeric" pattern="[0-9]*" data-integer-only required value="'+esc(a.attestationEmployeeNumber||a.auditorEmployeeNumber||signedInEmployeeNumber()||'')+'"></label></div><div class="final-signature-block"><div class="signature-label-row"><div class="signature-label">Final auditor signature</div><div class="button-row"><button type="button" id="clearFinalSignature">Clear</button><button type="button" class="expand-signature" id="expandFinalSignature">Open larger</button></div></div><canvas id="finalSignatureCanvas" width="500" height="150"></canvas></div><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>'+
  '<div class="mobile-card-nav" aria-label="Audit section navigation"><button type="button" id="auditStepPrev">Sections</button><div class="mobile-card-progress"><strong id="auditStepTitle"></strong><span id="auditStepCount"></span></div><button type="button" class="primary" id="auditStepNext">Next section</button></div>'+
  '</div>';
  document.getElementById('backAudits').onclick=async()=>{
@@ -2322,7 +2366,7 @@ async function renderStats(){const [tx,aud,rep,arc]=await Promise.all(['transact
 async function refreshAll(){await Promise.all([renderInventory(),renderActivity(),renderAudits(),renderReports(),renderStats()])}
 function txMedicationRowHtml(med='',qty=''){
  const options=MEDS.map(x=>'<option value="'+esc(x)+'" '+(x===med?'selected':'')+'>'+esc(x)+'</option>').join('');
- return '<div class="tx-med-row"><label>Medication<select name="txMedication" required>'+options+'</select></label><label>Quantity<input name="txQuantity" type="number" step="1" min="1" inputmode="numeric" required value="'+esc(qty)+'"></label><button type="button" class="remove-tx-med">Remove</button></div>';
+ return '<div class="tx-med-row"><label>Medication<select name="txMedication" required>'+options+'</select></label><label>Quantity<input name="txQuantity" type="number" step="1" min="1" inputmode="numeric" data-integer-only required value="'+esc(qty)+'"></label><button type="button" class="remove-tx-med">Remove</button></div>';
 }
 function addTxMedicationRow(med='',qty=''){
  const host=document.getElementById('txMedicationRows');
@@ -2470,6 +2514,8 @@ function bind(){
  document.getElementById('newTxBtn').onclick=()=>{
    const auditCtx=document.getElementById('txAuditContextId');if(auditCtx)auditCtx.value='';
    const txId=document.getElementById('txTransactionId');if(txId)txId.value='';
+   const recordedEmp=document.getElementById('txRecordedByEmployeeNumber');
+   if(recordedEmp&&!recordedEmp.value)recordedEmp.value=signedInEmployeeNumber();
    syncTxPdfRequirement();document.getElementById('txDialog').showModal();
  };
  const txDialog=document.getElementById('txDialog');
@@ -2548,16 +2594,54 @@ function bind(){
  };
  document.getElementById('exportBtn').onclick=exportBackup;document.getElementById('importBtn').onclick=()=>{if(requireCloudAuth())document.getElementById('importFile').click()};document.getElementById('importFile').onchange=async e=>{if(!e.target.files[0])return;try{await importBackup(e.target.files[0]);await flushPendingWrites()}catch(err){alert(err.message)}};
  const authDialog=document.getElementById('authDialog'),authForm=document.getElementById('authForm'),authMsg=document.getElementById('authMessage');
+ const authEmployee=document.getElementById('authEmployeeNumber');
  document.getElementById('accountBtn').onclick=async()=>{if(cloudSession){if(confirm('Sign out of the live narcotic database?'))await sb.auth.signOut()}else authDialog.showModal()};
- authForm.onsubmit=async e=>{e.preventDefault();authMsg.hidden=true;const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;const {error}=await sb.auth.signInWithPassword({email,password});if(error){authMsg.textContent=error.message;authMsg.hidden=false}else authDialog.close()};
- document.getElementById('createAccountBtn').onclick=async()=>{authMsg.hidden=true;const email=document.getElementById('authEmail').value.trim(),password=document.getElementById('authPassword').value;if(!email||password.length<8){authMsg.textContent='Enter a valid email and a password of at least 8 characters.';authMsg.hidden=false;return}const {data,error}=await sb.auth.signUp({email,password});authMsg.textContent=error?error.message:(data.session?'Account created and signed in.':'Account created. Check your email if confirmation is required, then sign in.');authMsg.hidden=false;if(data.session)setTimeout(()=>authDialog.close(),700)};
+ authForm.onsubmit=async e=>{
+   e.preventDefault();authMsg.hidden=true;
+   const email=document.getElementById('authEmail').value.trim();
+   const password=document.getElementById('authPassword').value;
+   const employeeNumber=digitsOnly(authEmployee?.value||'');
+   if(!employeeNumber){authMsg.textContent='Employee number is required.';authMsg.hidden=false;return}
+   const {data,error}=await sb.auth.signInWithPassword({email,password});
+   if(error){authMsg.textContent=error.message;authMsg.hidden=false;return}
+   const stored=digitsOnly(data.user?.user_metadata?.employee_number||'');
+   if(stored&&stored!==employeeNumber){
+     await sb.auth.signOut();
+     authMsg.textContent='Employee number does not match this account.';
+     authMsg.hidden=false;
+     return;
+   }
+   if(!stored){
+     const {error:updateError}=await sb.auth.updateUser({data:{employee_number:employeeNumber}});
+     if(updateError){
+       await sb.auth.signOut();
+       authMsg.textContent='Could not associate the employee number with this account. '+updateError.message;
+       authMsg.hidden=false;
+       return;
+     }
+   }
+   authDialog.close();
+ };
+ document.getElementById('createAccountBtn').onclick=async()=>{
+   authMsg.hidden=true;
+   const email=document.getElementById('authEmail').value.trim();
+   const password=document.getElementById('authPassword').value;
+   const employeeNumber=digitsOnly(authEmployee?.value||'');
+   if(!email||password.length<8||!employeeNumber){
+     authMsg.textContent='Enter a valid email, employee number, and a password of at least 8 characters.';
+     authMsg.hidden=false;return;
+   }
+   const {data,error}=await sb.auth.signUp({email,password,options:{data:{employee_number:employeeNumber}}});
+   authMsg.textContent=error?error.message:(data.session?'Account created and signed in.':'Account created. Check your email if confirmation is required, then sign in.');
+   authMsg.hidden=false;if(data.session)setTimeout(()=>authDialog.close(),700);
+ };
  const status=async()=>{const el=document.getElementById('offlineBadge');if(navigator.onLine){el.textContent=cloudSession?'Live sync':'Online · sign in';el.style.background=cloudSession?'#1f6e4d':'#31566f';await flushPendingWrites()}else{el.textContent='Offline · queued';el.style.background='#7a4a1f'}};window.addEventListener('online',status);window.addEventListener('offline',status);status()
 }
 window.addEventListener('pagehide',()=>{if(activeAuditId)scheduleAuditAutosave(activeAuditId)});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeAuditId)flushAuditAutosave()});
 (async()=>{await openDB();await initCloud();await seedInventory();fillSelects();bind();await refreshAll();if(!cloudSession)setTimeout(()=>document.getElementById('authDialog')?.showModal(),300);const active=await getOne('meta','activeAudit');if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20260926-219',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20260930-221',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
