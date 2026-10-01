@@ -1511,15 +1511,50 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
  const executive=clone.querySelector('.report-executive-summary');
 
  const isMonthlyPacket=!!(cover&&reportTop&&metaGrid&&executive);
+ let packetMonth='';
+ let packetDateRange='';
+ let packetLogoSrc='';
+ let runningHeaderLogoData='';
 
  if(isMonthlyPacket){
+   packetMonth=(cover.querySelector('.report-cover-month')?.textContent||'Monthly Audit').trim();
+   const rangeCell=[...cover.querySelectorAll('.cover-meta-cell')].find(cell=>
+     (cell.querySelector('span')?.textContent||'').trim().toLowerCase()==='audit date range'
+   );
+   packetDateRange=(rangeCell?.querySelector('strong')?.textContent||'').trim();
+   packetLogoSrc=cover.querySelector('.report-cover-brand img')?.src||reportTop.querySelector('img')?.src||'';
+   if(packetLogoSrc){
+     try{
+       const logoResponse=await fetch(packetLogoSrc,{mode:'cors',cache:'force-cache'});
+       if(logoResponse.ok){
+         const logoBlob=await logoResponse.blob();
+         runningHeaderLogoData=await new Promise((resolve,reject)=>{
+           const reader=new FileReader();
+           reader.onload=()=>resolve(String(reader.result||''));
+           reader.onerror=()=>reject(reader.error);
+           reader.readAsDataURL(logoBlob);
+         });
+       }
+     }catch(err){
+       console.warn('PDF running-header logo could not be embedded.',err);
+     }
+   }
+
    const findSection=label=>[...clone.querySelectorAll('section')].find(s=>
      (s.querySelector(':scope > h2')?.textContent||'').trim().toLowerCase()===label.toLowerCase()
    );
    const makePage=(pageTitle,className,nodes=[])=>{
      const page=document.createElement('section');
      page.className='pdf-packet-page '+className;
-     page.innerHTML='<h2 class="pdf-packet-title">'+pageTitle+'</h2>';
+     page.innerHTML=
+       '<div class="pdf-packet-header">'+
+         '<div class="pdf-packet-header-brand">'+
+           (packetLogoSrc?'<img src="'+packetLogoSrc+'" alt="Gladstone Fire Department patch">':'')+
+           '<div><strong>Gladstone Fire Department</strong><span>Narcotic Inventory / Audit Report</span></div>'+
+         '</div>'+
+         '<div class="pdf-packet-header-meta"><strong>'+esc(packetMonth||'Monthly Audit')+'</strong><span>'+esc(packetDateRange||'')+'</span></div>'+
+       '</div>'+
+       '<h2 class="pdf-packet-title">'+pageTitle+'</h2>';
      nodes.filter(Boolean).forEach(node=>{
        clearPdfBreaks(node);
        page.appendChild(node);
@@ -1543,6 +1578,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    const signatures=clone.querySelector('.report-signature-section');
    const attestation=clone.querySelector('.report-attestation');
    const notes=clone.querySelector('.report-notes');
+   const incidents=clone.querySelector('.report-incidents');
    const finalRecordFooter=clone.querySelector('.report-footer');
 
    clearPdfBreaks(cover);
@@ -1560,9 +1596,9 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    const pages=[cover];
 
    pages.push(makePage(
-     'Finalized Monthly Record / Audit Summary',
+     'Executive Summary',
      'pdf-monthly-summary-page',
-     [reportTop,metaGrid,blueRule,executive]
+     [metaGrid,blueRule,executive]
    ));
 
    if(amendment){
@@ -1644,21 +1680,22 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      addCertPage('Expired',[expiredIntro]);
    }
 
+   if(notes||incidents||finalRecordFooter){
+     removeOwnHeading(incidents);
+     removeOwnHeading(notes);
+     pages.push(makePage(
+       'Audit Notes / Discrepancies / Final Record',
+       'pdf-notes-page',
+       [incidents,notes,finalRecordFooter]
+     ));
+   }
+
    if(attestation){
      removeOwnHeading(attestation);
      pages.push(makePage(
        'Final Controlled-Substance Audit Attestation',
-       'pdf-attestation-page',
+       'pdf-attestation-page pdf-final-packet-page',
        [attestation]
-     ));
-   }
-
-   if(notes||finalRecordFooter){
-     removeOwnHeading(notes);
-     pages.push(makePage(
-       'Audit Notes / Final Record',
-       'pdf-notes-page',
-       [notes,finalRecordFooter]
      ));
    }
 
@@ -1752,6 +1789,24 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    for(let page=1;page<=totalPages;page++){
      pdf.setPage(page);
      if(page===1&&isMonthlyPacket)continue;
+
+     if(isMonthlyPacket&&page>1){
+       if(runningHeaderLogoData){
+         try{pdf.addImage(runningHeaderLogoData,'JPEG',0.35,0.055,0.20,0.20);}catch(err){}
+       }
+       pdf.setFont('helvetica','bold');
+       pdf.setTextColor(18,58,90);
+       pdf.setFontSize(6.8);
+       pdf.text('GLADSTONE FIRE DEPARTMENT · NARCOTIC INVENTORY / AUDIT REPORT',0.62,0.13);
+       pdf.setFont('helvetica','normal');
+       pdf.setTextColor(74,94,108);
+       pdf.setFontSize(5.8);
+       if(packetMonth)pdf.text(packetMonth,0.62,0.23);
+       if(packetDateRange)pdf.text(packetDateRange,8.15,0.18,{align:'right'});
+       pdf.setDrawColor(217,227,234);
+       pdf.setLineWidth(0.006);
+       pdf.line(0.35,0.31,8.15,0.31);
+     }
 
      const y=10.78;
      pdf.setDrawColor(217,227,234);
