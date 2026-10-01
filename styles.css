@@ -7126,3 +7126,116 @@ body.report-open{overflow:hidden}
     color:#31566f!important;
   }
 }
+
+
+/* v220 monthly PDF packet hierarchy + running identification */
+.pdf-clean-stage .pdf-packet-header{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:16px!important;
+  margin:-12px -14px 10px!important;
+  padding:8px 10px 7px!important;
+  border-bottom:1px solid #d9e3ea!important;
+  background:#fff!important;
+  box-sizing:border-box!important;
+}
+.pdf-clean-stage .pdf-packet-header-brand{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  min-width:0!important;
+}
+.pdf-clean-stage .pdf-packet-header-brand img{
+  width:34px!important;
+  height:34px!important;
+  flex:0 0 34px!important;
+  object-fit:contain!important;
+}
+.pdf-clean-stage .pdf-packet-header-brand div{
+  display:flex!important;
+  flex-direction:column!important;
+  min-width:0!important;
+}
+.pdf-clean-stage .pdf-packet-header-brand strong{
+  color:#123a5a!important;
+  font-size:.72rem!important;
+  line-height:1.08!important;
+  text-transform:uppercase!important;
+  letter-spacing:.03em!important;
+}
+.pdf-clean-stage .pdf-packet-header-brand span{
+  margin-top:2px!important;
+  color:#53687c!important;
+  font-size:.61rem!important;
+  line-height:1.08!important;
+}
+.pdf-clean-stage .pdf-packet-header-meta{
+  display:flex!important;
+  flex-direction:column!important;
+  align-items:flex-end!important;
+  text-align:right!important;
+  max-width:46%!important;
+}
+.pdf-clean-stage .pdf-packet-header-meta strong{
+  color:#172838!important;
+  font-size:.69rem!important;
+  line-height:1.1!important;
+}
+.pdf-clean-stage .pdf-packet-header-meta span{
+  margin-top:2px!important;
+  color:#53687c!important;
+  font-size:.59rem!important;
+  line-height:1.12!important;
+}
+.pdf-clean-stage .pdf-packet-page > .pdf-packet-title{
+  margin:0 0 12px!important;
+  padding:0 0 7px!important;
+  background:transparent!important;
+  border-bottom:2px solid #123a5a!important;
+  color:#123a5a!important;
+  font-size:1.02rem!important;
+  line-height:1.16!important;
+}
+.pdf-clean-stage .pdf-monthly-summary-page .report-meta-grid{
+  margin-top:0!important;
+}
+.pdf-clean-stage .report-implementation-note{
+  margin:12px 0 0!important;
+  padding:10px 12px!important;
+  border:1px solid #c9d8e3!important;
+  border-radius:7px!important;
+  background:#f5f9fc!important;
+  color:#304b60!important;
+  font-size:.76rem!important;
+  line-height:1.36!important;
+}
+.pdf-clean-stage .report-implementation-note strong{
+  color:#123a5a!important;
+}
+.pdf-clean-stage .pdf-notes-page .report-notes,
+.pdf-clean-stage .pdf-notes-page .report-incidents{
+  break-inside:avoid-page!important;
+  page-break-inside:avoid!important;
+}
+.pdf-clean-stage .pdf-final-packet-page{
+  min-height:9.35in!important;
+  box-sizing:border-box!important;
+}
+.pdf-clean-stage .pdf-final-packet-page .report-attestation{
+  min-height:8.35in!important;
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  margin:0!important;
+}
+.pdf-clean-stage .pdf-final-packet-page .report-attestation p{
+  max-width:6.65in!important;
+  margin:0 auto 28px!important;
+  font-size:.92rem!important;
+  line-height:1.55!important;
+}
+.pdf-clean-stage .pdf-final-packet-page .report-final-signature{
+  width:min(5.7in,100%)!important;
+  margin:0 auto!important;
+}
