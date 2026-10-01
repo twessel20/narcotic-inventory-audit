@@ -10,7 +10,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" type="image/jpeg" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
   <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
-  <link rel="stylesheet" href="styles.css?v=20260930-220">
+  <link rel="stylesheet" href="styles.css?v=20260930-221">
 </head>
 <body>
   <header class="app-header">
@@ -227,6 +227,7 @@
       <div class="dialog-head"><div><span class="kicker">SECURE LIVE DATA</span><h2>Department sign in</h2></div></div>
       <p class="meta">Sign in to save and resume the same live narcotic audit from any authorized device or location.</p>
       <label>Email<input id="authEmail" type="email" autocomplete="username" required></label>
+      <label>Employee number<input id="authEmployeeNumber" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-integer-only required></label>
       <label>Password<input id="authPassword" type="password" autocomplete="current-password" minlength="8" required></label>
       <div id="authMessage" class="notice" hidden></div>
       <div class="dialog-actions">
@@ -242,12 +243,12 @@
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
   <script>
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('./sw.js?v=20260930-220',{updateViaCache:'none'})
+    navigator.serviceWorker.register('./sw.js?v=20260930-221',{updateViaCache:'none'})
       .then(reg=>{reg.update();if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});})
       .catch(()=>{});
   }
 </script>
   <script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
-  <script src="app.js?v=20260930-220"></script>
+  <script src="app.js?v=20260930-221"></script>
 </body>
 </html>
