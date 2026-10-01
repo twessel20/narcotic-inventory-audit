@@ -2128,10 +2128,24 @@ function newReportFrontMatterHtml(r){
  try{cover=reportCoverPageHtml(r)}catch(err){console.error('Report cover failed',err)}
  return cover;
 }
+function isInitialImplementationAudit(r){
+ const month=String(r?.month||'').trim().toLowerCase();
+ if(month==='august 2026')return true;
+ const raw=String(r?.auditDate||r?.finalizedAt||r?.createdAt||'');
+ return /^2026-08(?:-|T|$)/.test(raw);
+}
+function initialImplementationExplainerHtml(r){
+ if(!isInitialImplementationAudit(r))return '';
+ return '<div class="report-implementation-note"><strong>Implementation note — August 2026:</strong> This was the first audit completed in this application. Because the application was implemented after prior audit activity had already occurred, it could not reliably reconstruct or account for audits and inventory counts completed before implementation. Prior-audit comparison values may therefore be unavailable or incomplete in this report. This August 2026 audit establishes the application baseline for subsequent monthly comparisons.</div>';
+}
 function newReportSummaryHtml(r){
- try{return executiveSummaryHtml(r)}catch(err){
+ try{
+   const summary=executiveSummaryHtml(r);
+   const note=initialImplementationExplainerHtml(r);
+   return note?summary.replace('</section>',note+'</section>'):summary;
+ }catch(err){
    console.error('Executive summary failed',err);
-   return '<section class="report-executive-summary simple-summary paragraph-summary pdf-executive-page"><h2>Audit Summary</h2><p>The summary could not be calculated from this preview. The detailed audit sections below remain available and unchanged.</p></section>';
+   return '<section class="report-executive-summary simple-summary paragraph-summary pdf-executive-page"><h2>Audit Summary</h2><p>The summary could not be calculated from this preview. The detailed audit sections below remain available and unchanged.</p>'+initialImplementationExplainerHtml(r)+'</section>';
  }
 }
 
