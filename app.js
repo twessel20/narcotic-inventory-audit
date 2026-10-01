@@ -103,6 +103,7 @@ async function subscribeRealtime(){
    }).subscribe();
 }
 function digitsOnly(v=''){return String(v??'').replace(/\D+/g,'')}
+function validEmployeeNumber(v=''){const raw=String(v??'').trim();return /^\d+$/.test(raw)}
 function signedInEmployeeNumber(){return digitsOnly(cloudSession?.user?.user_metadata?.employee_number||'')}
 function updateAccountUI(){
  const btn=document.getElementById('accountBtn');if(!btn)return;
@@ -271,9 +272,9 @@ async function saveTransaction(fd,finalSubmit=true){
  const requireCompletedSignatures=type!=='incident'||finalSubmit;
  if(requireCompletedSignatures){
    if(!recordedBy)throw new Error('Enter the employee recording the transaction.');
-   if(!recordedByEmployeeNumber)throw new Error('Enter the recorded-by employee number.');
+   if(!validEmployeeNumber(recordedByEmployeeNumber))throw new Error('Enter a valid recorded-by employee number using digits only.');
    if(!witness)throw new Error('Enter the witness.');
-   if(!witnessEmployeeNumber)throw new Error('Enter the witness employee number.');
+   if(!validEmployeeNumber(witnessEmployeeNumber))throw new Error('Enter a valid witness employee number using digits only.');
    if(recordedCanvas?.dataset.hasSignature!=='true')throw new Error('Recorded-by signature is required.');
    if(witnessCanvas?.dataset.hasSignature!=='true')throw new Error('Witness signature is required.');
  }
@@ -1184,15 +1185,15 @@ async function saveAuditFromUI(id,finalize){
    if(!a.dateRangeStart||!a.dateRangeEnd)return alert('Audit period start and end dates are required before finalizing.');
    if(a.dateRangeStart>a.dateRangeEnd)return alert('Audit period start date cannot be after the end date.');
    if(!a.auditorName?.trim())return alert('Auditor name is required in Audit Details.');
-   if(!a.auditorEmployeeNumber?.trim())return alert('Auditor employee number is required in Audit Details.');
+   if(!validEmployeeNumber(a.auditorEmployeeNumber))return alert('A valid auditor employee number using digits only is required in Audit Details.');
    if(!a.attestationAccepted||!a.attestationName.trim())return alert('Final attestation and auditor name are required.');
-   if(!a.attestationEmployeeNumber?.trim())return alert('Final auditor employee number is required.');
+   if(!validEmployeeNumber(a.attestationEmployeeNumber))return alert('A valid final auditor employee number using digits only is required.');
    if(!a.attestationSignature) return alert('Final auditor signature is required.');
    for(const loc of LOCS){
      if(!a.signatures[loc]?.signer?.trim())return alert('Auditor name is required for '+loc+'.');
-     if(!a.signatures[loc]?.employeeNumber?.trim())return alert('Auditor employee number is required for '+loc+'.');
+     if(!validEmployeeNumber(a.signatures[loc]?.employeeNumber))return alert('A valid auditor employee number using digits only is required for '+loc+'.');
      if(!a.signatures[loc]?.witness?.trim())return alert('Witness name is required for '+loc+'.');
-     if(!a.signatures[loc]?.witnessEmployeeNumber?.trim())return alert('Witness employee number is required for '+loc+'.');
+     if(!validEmployeeNumber(a.signatures[loc]?.witnessEmployeeNumber))return alert('A valid witness employee number using digits only is required for '+loc+'.');
      if(!a.signatures[loc]?.signature)return alert('Auditor signature is required for '+loc+'.');
      if(!a.signatures[loc]?.witnessSignature)return alert('Witness signature is required for '+loc+'.');
    }
