@@ -106,9 +106,11 @@ function digitsOnly(v=''){return String(v??'').replace(/\D+/g,'')}
 function validEmployeeNumber(v=''){const raw=String(v??'').trim();return /^\d+$/.test(raw)}
 function signedInEmployeeNumber(){return digitsOnly(cloudSession?.user?.user_metadata?.employee_number||'')}
 function updateAccountUI(){
- const btn=document.getElementById('accountBtn');if(!btn)return;
+ const btn=document.getElementById('accountBtn');
+ const logoffBtn=document.getElementById('logoffBtn');
  const emp=signedInEmployeeNumber();
- btn.textContent=cloudSession?.user?.email?(cloudSession.user.email+(emp?' · #'+emp:'')):'Sign in';
+ if(btn)btn.textContent=cloudSession?.user?.email?(cloudSession.user.email+(emp?' · #'+emp:'')):'Sign in';
+ if(logoffBtn)logoffBtn.hidden=!cloudSession;
  document.body.classList.toggle('cloud-authenticated',!!cloudSession);
 }
 async function initCloud(){
@@ -2596,7 +2598,23 @@ function bind(){
  document.getElementById('exportBtn').onclick=exportBackup;document.getElementById('importBtn').onclick=()=>{if(requireCloudAuth())document.getElementById('importFile').click()};document.getElementById('importFile').onchange=async e=>{if(!e.target.files[0])return;try{await importBackup(e.target.files[0]);await flushPendingWrites()}catch(err){alert(err.message)}};
  const authDialog=document.getElementById('authDialog'),authForm=document.getElementById('authForm'),authMsg=document.getElementById('authMessage');
  const authEmployee=document.getElementById('authEmployeeNumber');
- document.getElementById('accountBtn').onclick=async()=>{if(cloudSession){if(confirm('Sign out of the live narcotic database?'))await sb.auth.signOut()}else authDialog.showModal()};
+ document.getElementById('accountBtn').onclick=async()=>{if(!cloudSession)authDialog.showModal()};
+ const logoffBtn=document.getElementById('logoffBtn');
+ if(logoffBtn)logoffBtn.onclick=async()=>{
+   if(!cloudSession)return;
+   if(!confirm('Log off of the narcotic inventory app? Saved audit data will not be deleted.'))return;
+   if(activeAuditId)await flushAuditAutosave();
+   if(realtimeChannel){try{await sb.removeChannel(realtimeChannel)}catch(e){}realtimeChannel=null}
+   await sb.auth.signOut();
+   cloudSession=null;
+   updateAccountUI();
+   if(activeAuditId){
+     activeAuditId=null;
+     await putLocal('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});
+   }
+   await renderAudits();
+   authDialog.showModal();
+ };
  authForm.onsubmit=async e=>{
    e.preventDefault();authMsg.hidden=true;
    const email=document.getElementById('authEmail').value.trim();
@@ -2642,7 +2660,7 @@ window.addEventListener('pagehide',()=>{if(activeAuditId)scheduleAuditAutosave(a
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeAuditId)flushAuditAutosave()});
 (async()=>{await openDB();await initCloud();await seedInventory();fillSelects();bind();await refreshAll();if(!cloudSession)setTimeout(()=>document.getElementById('authDialog')?.showModal(),300);const active=await getOne('meta','activeAudit');if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20260930-221',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20260930-222',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
