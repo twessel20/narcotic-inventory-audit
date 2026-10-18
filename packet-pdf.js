@@ -68,6 +68,21 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     }
     if(bytes[0]===0xff && bytes[1]===0xd8)return doc.embedJpg(bytes);
     if(bytes[0]===0x89 && bytes[1]===0x50)return doc.embedPng(bytes);
+    // The synthetic test-report signatures are SVG. Rasterize them for
+    // pdf-lib while preserving the signed report's original source values.
+    if(/^data:image\/svg\+xml/i.test(src)){
+      const img=new Image();
+      await new Promise((resolve,reject)=>{
+        img.onload=resolve;img.onerror=()=>reject(new Error('Unable to load an audit SVG signature.'));
+        img.src=src;
+      });
+      const canvas=document.createElement('canvas');
+      canvas.width=Math.max(1,img.naturalWidth||900);
+      canvas.height=Math.max(1,img.naturalHeight||260);
+      canvas.getContext('2d').drawImage(img,0,0,canvas.width,canvas.height);
+      return doc.embedPng(Uint8Array.from(atob(canvas.toDataURL('image/png').split(',')[1]),
+        c=>c.charCodeAt(0)));
+    }
     throw new Error('Unsupported audit signature or patch image format.');
   }
   const patch=await imageFromSrc(sheet.querySelector('.report-top img')?.src ||
@@ -119,9 +134,13 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     imageFit(page,patch,L,PH-61,31,31);
     page.drawText('NARCOTIC INVENTORY AUDIT REPORT',
       {x:L+39,y:PH-35,size:9.0,font:bold,color:colors.ink});
-    page.drawText('Gladstone Fire Department  |  Record #'+safeText(recordNumber||'--'),
-      {x:L+39,y:PH-48,size:7.6,font:regular,color:colors.muted});
-    const right1=safeText(auditPeriod||auditMonth),right2='Audit: '+safeText(auditDate||'Not recorded');
+    const subline=isAnnualSummary?'Gladstone Fire Department  |  Year-end summary':
+      isMonthlySummary?'Gladstone Fire Department  |  Monthly summary':
+      'Gladstone Fire Department  |  Record #'+safeText(recordNumber||'--');
+    page.drawText(subline,{x:L+39,y:PH-48,size:7.6,font:regular,color:colors.muted});
+    const right1=safeText(auditPeriod||auditMonth);
+    const right2=isAnnualSummary?'FINALIZED AUDIT YEAR':isMonthlySummary?
+      'Audit: '+safeText(auditDate||'Not recorded'):'Audit: '+safeText(auditDate||'Not recorded');
     const rr=wrap(right1,bold,7.7,180)[0];
     page.drawText(rr,{x:R-bold.widthOfTextAtSize(rr,7.7),y:PH-35,size:7.7,font:bold,color:colors.ink});
     page.drawText(right2,{x:R-regular.widthOfTextAtSize(right2,7.5),y:PH-47,
@@ -505,7 +524,9 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
   }
   for(let i=0;i<pageInfo.length;i++){
     const {page:p}=pageInfo[i];
-    const textFooter='Gladstone Fire/EMS  |  Record #'+safeText(recordNumber||'--')+
+    const footerType=isAnnualSummary?'Annual summary':isMonthlySummary?'Monthly summary':
+      'Record #'+safeText(recordNumber||'--');
+    const textFooter='Gladstone Fire/EMS  |  '+footerType+
       '  |  '+safeText(auditPeriod||auditMonth);
     p.drawLine({start:{x:L,y:55},end:{x:R,y:55},color:colors.rule,thickness:.55});
     p.drawText(textFooter,{x:(PW-regular.widthOfTextAtSize(textFooter,7))/2,y:42,
