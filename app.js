@@ -16,6 +16,35 @@ let auditExitInFlight=false;
 let transactionSaveInFlight=false;
 let lastCloudWrite='local';
 
+// Heavy PDF tools are loaded on first use, not while opening the audit app.
+const optionalScriptPromises=new Map();
+function loadOptionalScript(url){
+ if(optionalScriptPromises.has(url))return optionalScriptPromises.get(url);
+ const task=new Promise((resolve,reject)=>{
+   const script=document.createElement('script');
+   script.src=url;script.async=true;
+   script.onload=()=>resolve();
+   script.onerror=()=>reject(new Error('Unable to load the PDF tool. Check your connection and try again.'));
+   document.head.appendChild(script);
+ });
+ optionalScriptPromises.set(url,task);
+ task.catch(()=>optionalScriptPromises.delete(url));
+ return task;
+}
+async function ensurePdfReader(){
+ if(!window.pdfjsLib)await loadOptionalScript('https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js');
+ if(!window.pdfjsLib)throw new Error('PDF reader is unavailable.');
+ window.pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+}
+async function ensurePdfWriter(){
+ if(!window.html2pdf)await loadOptionalScript('https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js');
+ if(!window.html2pdf)throw new Error('PDF generator is unavailable.');
+}
+async function ensurePdfMerger(){
+ if(!window.PDFLib?.PDFDocument)await loadOptionalScript('https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js');
+ if(!window.PDFLib?.PDFDocument)throw new Error('PDF packet merger is unavailable.');
+}
+
 function uid(prefix='id'){return prefix+'_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,8)}
 function nowISO(){return new Date().toISOString()}
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
@@ -66,9 +95,11 @@ function localRecordIsNewer(local,remote){
  const lv=recordVersion(local),rv=recordVersion(remote);
  return Boolean(local&&lv&&rv&&lv>rv);
 }
-async function pullCloudRecords(){
+async function pullCloudRecords(onlyStore=null){
  if(!sb||!cloudSession)return;
- const {data,error}=await sb.from('app_records').select('store,id,data,updated_at');
+ let request=sb.from('app_records').select('store,id,data,updated_at');
+ if(onlyStore)request=request.eq('store',onlyStore);
+ const {data,error}=await request;
  if(error)throw error;
  for(const r of data||[]){
    if(!CLOUD_STORES.has(r.store)||!r.data)continue;
@@ -127,6 +158,9 @@ async function initCloud(){
  updateAccountUI();
  sb.auth.onAuthStateChange(async(_event,session)=>{
    cloudSession=session||null;updateAccountUI();
+   // getSession() already initializes a persisted login. INITIAL_SESSION events
+   // must not trigger another expensive download of every signature/report.
+   if(_event==='INITIAL_SESSION'||_event==='TOKEN_REFRESHED')return;
    if(cloudSession){
      await flushPendingWrites();await pullCloudRecords();await flushPendingWrites();await subscribeRealtime();
      if(activeAuditId&&document.getElementById('auditMonth'))await Promise.all([renderInventory(),renderActivity(),renderReports(),renderStats()]);
@@ -571,7 +605,7 @@ async function startAudit(){
      activateAuditTab();
      return;
    }
-   if(navigator.onLine){await flushPendingWrites();await pullCloudRecords();}
+   if(navigator.onLine){await flushPendingWrites();await pullCloudRecords('audits');}
    const drafts=unfinishedAudits(await getAll('audits'));
    if(drafts.length){activateAuditTab();await editAudit(drafts[0].id);return;}
    if(!navigator.onLine){
@@ -722,7 +756,7 @@ function administrationImportSection(a){
 async function sha256Buffer(buf){const hash=await crypto.subtle.digest('SHA-256',buf);return [...new Uint8Array(hash)].map(b=>b.toString(16).padStart(2,'0')).join('')}
 function safeStorageName(name='document.pdf'){return String(name).replace(/[^a-zA-Z0-9._-]+/g,'_').slice(-120)||'document.pdf'}
 async function extractPdfTranscript(file){
- if(!window.pdfjsLib)throw new Error('PDF reader is still loading. Refresh the app and try again.');
+ await ensurePdfReader();
  const buf=await file.arrayBuffer();
  const pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
  const pages=[];
@@ -1648,7 +1682,7 @@ function uniqueSupportingDocuments(docs=[]){
 async function appendSupportingPdfs(baseBlob,docs=[]){
  const unique=uniqueSupportingDocuments(docs);
  if(!unique.length)return baseBlob;
- if(!window.PDFLib?.PDFDocument)throw new Error('PDF packet merger is not available.');
+ await ensurePdfMerger();
  const merged=await window.PDFLib.PDFDocument.load(await baseBlob.arrayBuffer());
  for(const doc of unique){
    const bucket=doc.storageBucket||'audit-supporting-docs';
@@ -1664,7 +1698,7 @@ async function appendSupportingPdfs(baseBlob,docs=[]){
 async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit Report'){
  const sheet=preview?.querySelector('.report-sheet');
  if(!sheet)throw new Error('Report preview is not ready yet.');
- if(!window.html2pdf)throw new Error('PDF generator is not available.');
+ await ensurePdfWriter();
 
  const clone=sheet.cloneNode(true);
  clone.querySelector('.report-toolbar')?.remove();
@@ -2138,6 +2172,7 @@ async function previewRenderedReportPdf(preview,title){
    if(name)name.textContent=result.safeName+'.pdf';
 
    const mobile=window.matchMedia('(max-width:700px)').matches;
+   if(mobile){try{await ensurePdfReader()}catch(error){console.warn('Mobile PDF preview will use browser viewer',error);}}
    pages.innerHTML='';
    if(mobile&&window.pdfjsLib){
      frame.hidden=true;
@@ -2895,9 +2930,21 @@ function bind(){
 }
 window.addEventListener('pagehide',()=>{if(activeAuditId)scheduleAuditAutosave(activeAuditId)});
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeAuditId)flushAuditAutosave()});
-(async()=>{await openDB();await initCloud();await seedInventory();fillSelects();bind();await refreshAll();if(!cloudSession)setTimeout(()=>document.getElementById('authDialog')?.showModal(),300);const active=await getOne('meta','activeAudit');if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}if('serviceWorker'in navigator){
+(async()=>{
+ await openDB();
+ fillSelects();bind();
+ // Present the cached dashboard and available drafts immediately while the
+ // latest live cloud records synchronize. No audit data is mutated.
+ await Promise.all([renderInventory(),renderAudits()]);
+ await initCloud();
+ await seedInventory();
+ await refreshAll();
+ if(!cloudSession)setTimeout(()=>document.getElementById('authDialog')?.showModal(),300);
+ const active=await getOne('meta','activeAudit');
+ if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}
+ if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-229',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-230',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
