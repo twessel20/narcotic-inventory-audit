@@ -677,79 +677,124 @@ function actualAdministrationPreview(rows=[]){
  sorted.map(r=>'<div class="admin-actual-row"><span data-label="Date">'+esc(formatAdminDate(r.date))+'</span><span data-label="Report">'+esc(r.report)+'</span><span data-label="Provider">'+esc(r.provider)+'</span><span data-label="Medication">'+esc(r.medication)+'</span><span data-label="Dose"><b>'+esc(r.dose)+' '+esc(adminDoseUnit(r.medication))+'</b></span><span data-label="Unit">'+esc(String(r.unit||'').replace(/^M([123])$/,'M$1'))+'</span></div>').join('')+
  '</div></details>';
 }
-function providerVialData(rows=[]){
+function administrationGroupKey(row){
+ return [row.date,row.report,row.medication,row.unit].join('|');
+}
+function groupedAdministrations(rows=[]){
  const groups=new Map();
- for(const r of rows||[]){
-   const key=[r.date,r.report,r.medication,r.unit].join('|');
-   const g=groups.get(key)||{...r,totalDose:0,providers:[]};
-   g.totalDose+=Number(r.dose||0);
-   if(r.provider&&!g.providers.includes(r.provider))g.providers.push(r.provider);
-   groups.set(key,g);
+ for(const row of rows||[]){
+   const key=administrationGroupKey(row);
+   const group=groups.get(key)||{...row,key,totalDose:0,doses:[],providers:[]};
+   const dose=Number(row.dose);
+   group.totalDose+=Number.isFinite(dose)?dose:0;
+   group.doses.push(dose);
+   if(row.provider&&!group.providers.includes(row.provider))group.providers.push(row.provider);
+   groups.set(key,group);
  }
- const byProvider=new Map();
- for(const g of groups.values()){
-   const vial=administrationVialCount(g.medication,g.totalDose);
-   const provider=(g.providers?.length?g.providers:[g.provider]).filter(Boolean).join(' / ')||'Unknown provider';
+ return [...groups.values()];
+}
+function providerVialData(rows=[],overrides={}){
+ const byProvider=new Map(),pending=[];
+ for(const group of groupedAdministrations(rows)){
+   const override=overrides?.[group.key]||null;
+   const result=administrationVialCount(group.medication,group.totalDose,group.doses,override);
+   const provider=(group.providers.length?group.providers:[group.provider]).filter(Boolean).join(' / ')||'Unknown provider';
+   const item={
+     key:group.key,date:formatAdminDate(group.date),report:group.report,
+     medication:group.medication,dose:group.totalDose,
+     doses:group.doses,doseUnit:adminDoseUnit(group.medication),
+     unit:String(group.unit||'').replace(/^M([123])$/,'Medic $1'),
+     strength:result.strength,vials:result.count,
+     pending:result.needsReview,confirmed:result.confirmed,
+     vial2:result.vial2??0,vial5:result.vial5??0
+   };
+   if(result.needsReview)pending.push(item);
    if(!byProvider.has(provider))byProvider.set(provider,[]);
-   byProvider.get(provider).push({
-     date:formatAdminDate(g.date),
-     report:g.report,
-     medication:g.medication,
-     dose:g.totalDose,
-     doseUnit:adminDoseUnit(g.medication),
-     unit:String(g.unit||'').replace(/^M([123])$/,'Medic $1'),
-     strength:vial.strength,
-     vials:vial.count
-   });
+   byProvider.get(provider).push(item);
  }
  const providers=[...byProvider.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
- const total=providers.reduce((n,[,items])=>n+items.reduce((s,x)=>s+x.vials,0),0);
- return {providers,total};
+ const allItems=providers.flatMap(([,items])=>items);
+ return {providers,total:pending.length?null:allItems.reduce((n,item)=>n+item.vials,0),pending,items:allItems};
 }
-function providerVialSummary(rows=[]){
- const data=providerVialData(rows);
+function providerVialSummary(rows=[],overrides={}){
+ const data=providerVialData(rows,overrides);
  if(!data.providers.length)return '';
  const content=data.providers.map(([provider,items])=>{
-   const total=items.reduce((n,x)=>n+x.vials,0);
+   const unresolved=items.some(item=>item.pending);
+   const total=unresolved?null:items.reduce((n,item)=>n+item.vials,0);
    const medTotals=new Map();
-   for(const x of items){
-     const key=x.medication+'|'+x.strength;
-     medTotals.set(key,(medTotals.get(key)||0)+x.vials);
+   const add=(med,strength,n)=>{
+     if(!n)return;
+     const k=med+'|'+strength;
+     medTotals.set(k,(medTotals.get(k)||0)+n);
+   };
+   for(const item of items){
+     if(item.pending){add(item.medication,'Needs confirmation',1);continue;}
+     if(item.medication==='Versed'){add('Versed','2 mg',item.vial2);add('Versed','5 mg',item.vial5);}
+     else add(item.medication,item.strength,item.vials);
    }
-   const medSummary=[...medTotals.entries()].map(([key,count])=>{
+   const medSummary=[...medTotals.entries()].map(([key,n])=>{
      const [med,strength]=key.split('|');
-     return med+' '+strength+': '+count;
+     return strength==='Needs confirmation'?med+': needs confirmation':med+' '+strength+': '+n+' vial'+(n===1?'':'s');
    }).join(' · ');
-   const detailRows=items.sort((a,b)=>a.date.localeCompare(b.date)||String(a.report).localeCompare(String(b.report))).map(x=>
+   const details=items.slice().sort((a,b)=>a.date.localeCompare(b.date)||String(a.report).localeCompare(String(b.report))).map(item=>
      '<div class="provider-vial-detail-row">'+
-       '<div><strong>'+esc(x.date)+'</strong><span>'+esc(x.report)+' · '+esc(x.unit)+'</span></div>'+
-       '<div><strong>'+esc(x.medication)+' — '+esc(x.dose)+' '+esc(x.doseUnit)+' given</strong><span>'+x.vials+' vial'+(x.vials===1?'':'s')+' used · '+esc(x.strength)+' vial</span></div>'+
-       '<div class="provider-vial-calc">'+x.vials+' vial'+(x.vials===1?'':'s')+'</div>'+
-     '</div>'
+       '<div><strong>'+esc(item.date)+'</strong><span>'+esc(item.report)+' · '+esc(item.unit)+'</span></div>'+
+       '<div><strong>'+esc(item.medication)+' — '+esc(item.dose)+' '+esc(item.doseUnit)+' given</strong><span>'+
+       (item.pending?'Needs manual vial confirmation':esc(item.strength)+' · '+item.vials+' vial'+(item.vials===1?'':'s'))+'</span></div>'+
+       '<div class="provider-vial-calc">'+(item.pending?'Review':item.vials+' vial'+(item.vials===1?'':'s'))+'</div></div>'
    ).join('');
-   return '<details class="provider-vial-provider">'+
-     '<summary><div><strong>'+esc(provider)+'</strong><span>'+esc(medSummary)+'</span></div><div class="provider-vial-total">'+total+' vial'+(total===1?'':'s')+'</div></summary>'+
-     '<div class="provider-vial-detail-list">'+detailRows+'</div>'+
-   '</details>';
+   return '<details class="provider-vial-provider"><summary><div><strong>'+esc(provider)+'</strong><span>'+
+     esc(medSummary)+
+     '</span></div><div class="provider-vial-total">'+(total===null?'Review':total+' vial'+(total===1?'':'s'))+
+     '</div></summary><div class="provider-vial-detail-list">'+details+'</div></details>';
  }).join('');
  return '<details class="admin-detail-block"><summary>View vials by provider</summary><div class="provider-vial-list">'+content+'</div></details>';
 }
-function administrationImportStats(rows=[]){
- const vialData=providerVialData(rows);
+function administrationImportStats(rows=[],overrides={}){
+ const data=providerVialData(rows,overrides);
  const providers=new Set((rows||[]).map(r=>String(r.provider||'').trim()).filter(Boolean));
- return {administrations:(rows||[]).length,vials:vialData.total,providers:providers.size};
+ return {administrations:(rows||[]).length,vials:data.total,providers:providers.size,pending:data.pending.length};
+}
+function versedReviewHtml(rows=[],overrides={}){
+ const data=providerVialData(rows,overrides);
+ const versed=data.items.filter(item=>item.medication==='Versed');
+ if(!versed.length)return '';
+ const groups=versed.map(item=>{
+   const key=esc(item.key),pending=item.pending;
+   return '<div class="versed-review-row" data-versed-key="'+key+'">'+
+     '<div class="versed-review-head"><strong>'+esc(item.report)+' · '+esc(item.unit)+'</strong><span>'+
+     esc(item.date)+' · '+esc(item.doses.join(' + '))+' mg = '+item.dose+' mg</span></div>'+
+     '<div class="versed-review-current">'+
+     (pending?'Needs confirmation':item.vials+' vial'+(item.vials===1?'':'s')+' · '+esc(item.strength)+(item.confirmed?' · Manually confirmed':' · Derived from dose entries'))+'</div>'+
+     '<div class="versed-review-actions">'+
+     '<label>2 mg vials<input type="number" min="0" step="1" inputmode="numeric" data-versed-2="'+key+'" value="'+(pending?'':item.vial2)+'"></label>'+
+     '<label>5 mg vials<input type="number" min="0" step="1" inputmode="numeric" data-versed-5="'+key+'" value="'+(pending?'':item.vial5)+'"></label>'+
+     '<button type="button" data-versed-confirm="'+key+'">Confirm vials</button></div>'+
+     '</div>';
+ }).join('');
+ return '<div class="versed-reconciliation"><h4>Versed vial reconciliation</h4>'+
+ '<p>Each documented 2 mg or 5 mg administration is counted as its recorded vial size. If dose entries do not identify the vials, confirm the actual numbers below. This does not change physical inventory.</p>'+
+ (data.pending.length?'<div class="versed-reconciliation-warning">Some vial counts need confirmation before finalizing.</div>':'')+
+ groups+'</div>';
 }
 function administrationImportSection(a){
  const docs=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
- const latest=docs.length?docs[docs.length-1]:null;
- const rows=a.administrationRows||latest?.administrationRows||[];
- const stats=administrationImportStats(rows);
+ const latest=[...docs].reverse().find(d=>Array.isArray(d.administrationRows));
+ const rows=Array.isArray(a.administrationRows)?a.administrationRows:latest?.administrationRows||[];
+ const overrides=a.vialOverrides||{};
+ const stats=administrationImportStats(rows,overrides);
+ if(latest?.transcript)a.usageSummary=buildAdministrationSummary(latest.transcript,latest.name||'PDF',overrides);
  return '<details class="audit-card admin-import-card compact-admin-import mobile-collapsible-admin" open>'+
  '<summary class="admin-import-summarybar"><div><span class="kicker">ADMINISTRATION RECORDS</span><h3>Administration import</h3></div><span class="admin-collapse-label">Show / hide</span></summary>'+
  '<div class="admin-import-body">'+
- '<div class="admin-import-top"><div id="adminImportStatus" class="admin-import-status">'+(latest?'Imported: '+esc(latest.name||'PDF'):'No administration PDF imported yet.')+'</div><div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">Import Administration PDF</button><input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div></div>'+
- (rows.length?'<div class="admin-import-summary"><div><strong>'+stats.administrations+'</strong><span>Administrations</span></div><div><strong>'+stats.vials+'</strong><span>Calculated vials</span></div><div><strong>'+stats.providers+'</strong><span>Providers</span></div></div>':'')+
- actualAdministrationPreview(rows)+providerVialSummary(rows)+
+ '<div class="admin-import-top"><div id="adminImportStatus" class="admin-import-status">'+(latest?'Imported: '+esc(latest.name||'PDF'):'No administration PDF imported yet.')+'</div><div class="admin-import-actions"><button type="button" id="uploadAdminPdf" class="primary">'+(latest?'Replace Administration PDF':'Import Administration PDF')+'</button>'+
+ (latest?'<button type="button" id="undoAdminImport">Undo last import</button>':'')+
+ '<input id="adminPdfFile" type="file" accept="application/pdf,.pdf" hidden></div></div>'+
+ (rows.length?'<div class="admin-import-summary"><div><strong>'+stats.administrations+'</strong><span>Dose entries</span></div><div class="admin-total-vials"><strong>'+(stats.vials===null?'Pending confirmation':stats.vials)+'</strong><span>TOTAL VIALS ADMINISTERED · ENTIRE AUDIT</span></div><div><strong>'+stats.providers+'</strong><span>Providers</span></div></div>':'')+
+ (stats.pending?'<p class="admin-review-banner">'+stats.pending+' Versed administration group'+(stats.pending===1?'':'s')+' need vial confirmation. Provider totals and the overall count will remain pending until reviewed.</p>':'')+
+ actualAdministrationPreview(rows)+versedReviewHtml(rows,overrides)+providerVialSummary(rows,overrides)+
+ (rows.length?'<div class="admin-import-grand-total"><span>All providers combined — total vials administered</span><strong>'+(stats.vials===null?'Pending confirmation':stats.vials+' vials')+'</strong></div>':'')+
  '<textarea id="usageSummary" hidden>'+esc(a.usageSummary||'')+'</textarea>'+
  '</div></details>';
 }
@@ -789,45 +834,45 @@ function parseAdministrationRows(transcript){
  }
  return rows;
 }
-function administrationVialCount(medication,totalDose){
- if(medication==='Fentanyl')return {count:Math.max(1,Math.ceil(totalDose/100)),strength:'100 mcg'};
+function administrationVialCount(medication,totalDose,doses=[],override=null){
  if(medication==='Versed'){
-   if(totalDose>0&&totalDose%5===0)return {count:Math.max(1,totalDose/5),strength:'5 mg'};
-   if(totalDose>0&&totalDose%2===0)return {count:Math.max(1,totalDose/2),strength:'2 mg'};
-   return {count:Math.max(1,Math.ceil(totalDose/2)),strength:'2 mg'};
+   if(override&&Number.isInteger(override.vial2)&&Number.isInteger(override.vial5)
+     &&override.vial2>=0&&override.vial5>=0
+     &&override.vial2+override.vial5>0
+     &&override.vial2*2+override.vial5*5>=totalDose){
+     return {count:override.vial2+override.vial5,vial2:override.vial2,vial5:override.vial5,
+       strength:override.vial2+' × 2 mg + '+override.vial5+' × 5 mg',needsReview:false,confirmed:true};
+   }
+   const exact=doses.length&&doses.every(d=>d===2||d===5);
+   if(!exact)return {count:null,strength:'Unconfirmed 2 mg / 5 mg vial mix',needsReview:true,confirmed:false};
+   const vial2=doses.filter(d=>d===2).length,vial5=doses.filter(d=>d===5).length;
+   return {count:vial2+vial5,vial2,vial5,
+     strength:vial2+' × 2 mg + '+vial5+' × 5 mg',needsReview:false,confirmed:false};
  }
- if(medication==='Ketamine')return {count:Math.max(1,Math.ceil(totalDose/500)),strength:'500 mg'};
- if(medication==='Morphine')return {count:Math.max(1,Math.ceil(totalDose/10)),strength:'10 mg'};
- return {count:1,strength:''};
+ if(medication==='Fentanyl')return {count:Math.max(1,Math.ceil(totalDose/100)),strength:'100 mcg',needsReview:false};
+ if(medication==='Ketamine')return {count:Math.max(1,Math.ceil(totalDose/500)),strength:'500 mg',needsReview:false};
+ if(medication==='Morphine')return {count:Math.max(1,Math.ceil(totalDose/10)),strength:'10 mg',needsReview:false};
+ return {count:1,strength:'',needsReview:false};
 }
 function formatAdminDate(v){return formatDisplayDate(v)}
-function buildAdministrationSummary(transcript,fileName){
+function buildAdministrationSummary(transcript,fileName,overrides={}){
  const rows=parseAdministrationRows(transcript);
- if(!rows.length){
-   return 'Narcotic administration summary — '+fileName+'\nNo administration rows could be reliably identified from this PDF. Review the extracted transcription below before finalizing the audit.\n\nReference only; manual inventory counts unchanged.';
- }
- const groups=new Map();
- for(const r of rows){
-   const key=[r.date,r.report,r.medication,r.unit].join('|');
-   const g=groups.get(key)||{...r,totalDose:0,doseCount:0,providers:[]};
-   g.totalDose+=Number(r.dose||0);g.doseCount++;
-   if(r.provider&&!g.providers.includes(r.provider))g.providers.push(r.provider);
-   groups.set(key,g);
- }
- const entries=[...groups.values()].sort((a,b)=>{
-   const da=new Date(formatAdminDate(a.date)),db=new Date(formatAdminDate(b.date));
-   return da-db||String(a.report).localeCompare(String(b.report));
+ if(!rows.length)return 'Narcotic administration summary — '+fileName+'\nNo administration rows could be reliably identified from the PDF. Reference only; manual inventory counts unchanged.';
+ const groups=groupedAdministrations(rows).sort((a,b)=>String(a.date).localeCompare(String(b.date))||String(a.report).localeCompare(String(b.report)));
+ let total=0,pending=0;
+ const lines=groups.map(g=>{
+   const vial=administrationVialCount(g.medication,g.totalDose,g.doses,overrides[g.key]);
+   const provider=g.providers.filter(Boolean).join(' / ');
+   const location=String(g.unit||'').replace(/^M([123])$/,'Medic $1');
+   if(vial.needsReview)pending++;else total+=vial.count;
+   return '• '+formatAdminDate(g.date)+' | Report '+g.report+' | '+g.medication+
+     ' '+(vial.needsReview?'VIAL COUNT NEEDS CONFIRMATION':vial.strength+': '+vial.count+' vials')+
+     ' | '+location+(provider?' | By '+provider:'');
  });
- let totalVials=0;
- const lines=entries.map(g=>{
-   const vial=administrationVialCount(g.medication,g.totalDose);totalVials+=vial.count;
-   const location=g.unit.replace(/^M([123])$/,'Medic $1');
-   const providerText=(g.providers?.length?g.providers:[g.provider]).filter(Boolean).join(' / ');
-   return '• '+formatAdminDate(g.date)+' | Report '+g.report+' | '+g.medication+' '+vial.strength+': '+vial.count+' vial'+(vial.count===1?'':'s')+' | '+location+(providerText?' | By '+providerText:'');
- });
- const monthMatch=String(transcript).match(/Months in Treatment Date Timestamp\s+(\d{2}\/\d{4})/i);
- const heading='Narcotic administration summary'+(monthMatch?' ('+monthMatch[1]+')':'')+' — '+fileName;
- return heading+'\n\n'+lines.join('\n\n')+'\n\nTotal: '+totalVials+' vial'+(totalVials===1?'':'s')+'. Combined doses per report, medication, and source location; vial use is calculated from the department vial strengths.\nReference only; manual inventory counts unchanged.';
+ const period=String(transcript).match(/Months in Treatment Date Timestamp\s+(\d{2}\/\d{4})/i);
+ return 'Narcotic administration summary'+(period?' ('+period[1]+')':'')+' — '+fileName+
+   '\n\n'+lines.join('\n\n')+'\n\nTotal: '+(pending?'Pending confirmation ('+pending+' entry group(s))':total+' vials')+
+   '. Versed vial size is derived from individual 2 mg and 5 mg dose entries or manually confirmed when ambiguous. This is a reconciliation reference only; physical counts remain unchanged.';
 }
 async function handleAdministrationPdf(auditId,file){
  if(!file)return;
@@ -839,27 +884,68 @@ async function handleAdministrationPdf(auditId,file){
    const extracted=await extractPdfTranscript(file);
    const cleanText=extracted.text.trim();
    if(!cleanText||cleanText.replace(/--- Page \d+ ---/g,'').trim().length<20)throw new Error('This PDF does not contain enough extractable text. Use the text-based administration export rather than a scanned image PDF.');
+   if(status)status.textContent='Saving current audit before import…';
+   if(!(await flushAuditAutosave()))throw new Error('Save the audit before replacing its administration PDF.');
    if(status)status.textContent='Uploading private supporting PDF…';
-   const audit=await getOne('audits',auditId);if(!audit)throw new Error('Audit draft was not found.');
+   const audit=await getOne('audits',auditId);if(!audit||audit.status!=='draft')throw new Error('An editable audit draft was not found.');
    const digest=await sha256Buffer(extracted.arrayBuffer);
    const path=String(auditId)+'/'+Date.now()+'-'+safeStorageName(file.name);
    const {error:uploadError}=await sb.storage.from('audit-supporting-docs').upload(path,file,{contentType:'application/pdf',upsert:false});
    if(uploadError)throw uploadError;
    const administrationRows=parseAdministrationRows(cleanText);
    const summary=buildAdministrationSummary(cleanText,file.name);
+   const previousUsageSummary=audit.usageSummary||'';
+   const previousVialOverrides=structuredClone(audit.vialOverrides||{});
+   audit.vialOverrides={};
    audit.administrationRows=administrationRows;
    audit.supportingDocuments=Array.isArray(audit.supportingDocuments)?audit.supportingDocuments:[];
-   audit.supportingDocuments.push({name:file.name,storageBucket:'audit-supporting-docs',storagePath:path,mimeType:'application/pdf',size:file.size,pageCount:extracted.pageCount,sha256:digest,uploadedAt:nowISO(),uploadedBy:cloudSession?.user?.email||'',transcript:cleanText,administrationRows});
+   audit.supportingDocuments.push({name:file.name,storageBucket:'audit-supporting-docs',storagePath:path,mimeType:'application/pdf',size:file.size,pageCount:extracted.pageCount,sha256:digest,uploadedAt:nowISO(),uploadedBy:cloudSession?.user?.email||'',transcript:cleanText,administrationRows,
+      previousUsageSummary,previousVialOverrides});
    audit.usageSummary=summary;
    audit.updatedAt=nowISO();
    await put('audits',audit);
    const ta=document.getElementById('usageSummary');if(ta)ta.value=summary;
-   if(status)status.textContent='PDF transcribed and saved live · '+file.name+' · '+extracted.pageCount+' page'+(extracted.pageCount===1?'':'s');
-   setAutosaveStatus('Saved live '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'}));
+   const pending=pendingWrites().some(x=>x.store==='audits'&&x.id===auditId);
+   if(status)status.textContent=(pending?'PDF imported; cloud sync pending · ':'PDF imported · ')+file.name+' · '+extracted.pageCount+' page'+(extracted.pageCount===1?'':'s');
+   setAutosaveStatus(pending?'Saved locally · sync pending':'Saved live '+new Date().toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'}));
    await editAudit(auditId);
  }catch(err){
    if(status)status.textContent='Import failed: '+(err?.message||String(err));
  }
+}
+
+// Removes only the latest administration import from the editable audit.
+// Storage objects are retained for historical recovery; physical counts and
+// certification signatures are never changed by this operation.
+async function undoAdministrationImport(auditId){
+ if(!requireCloudAuth())return;
+ const latest=await getOne('audits',auditId);
+ if(!latest||latest.status!=='draft')return alert('Only an unfinished audit can undo an import.');
+ const docs=Array.isArray(latest.supportingDocuments)?latest.supportingDocuments:[];
+ const index=docs.findLastIndex(d=>Array.isArray(d.administrationRows));
+ if(index<0)return alert('There is no administration import to undo.');
+ const removed=docs[index];
+ if(!confirm('Undo the last administration import ('+(removed.name||'PDF')+')? Imported dose rows and vial confirmations from that file will be replaced with the previous import, if any. All counts, seals and signatures remain unchanged.'))return;
+ const saved=await flushAuditAutosave();
+ if(!saved)return alert('The audit could not be saved. Import was not removed.');
+ const audit=await getOne('audits',auditId);
+ if(!audit||audit.status!=='draft')return alert('The draft is not available.');
+ const currentDocs=Array.isArray(audit.supportingDocuments)?audit.supportingDocuments:[];
+ const currentIndex=currentDocs.findLastIndex(d=>Array.isArray(d.administrationRows));
+ if(currentIndex<0)return alert('No administration import is available.');
+ const deleted=currentDocs[currentIndex];
+ audit.supportingDocuments=currentDocs.filter((_,i)=>i!==currentIndex);
+ const previous=[...audit.supportingDocuments].reverse().find(d=>Array.isArray(d.administrationRows));
+ audit.administrationRows=previous?.administrationRows||[];
+ audit.vialOverrides=deleted.previousVialOverrides&&typeof deleted.previousVialOverrides==='object'?deleted.previousVialOverrides:{};
+ audit.usageSummary=deleted.previousUsageSummary??(previous?.transcript?buildAdministrationSummary(previous.transcript,previous.name||'PDF',audit.vialOverrides):'');
+ audit.administrationImportHistory=Array.isArray(audit.administrationImportHistory)?audit.administrationImportHistory:[];
+ audit.administrationImportHistory.push({action:'undo',fileName:deleted.name||'PDF',storagePath:deleted.storagePath||'',at:nowISO(),by:cloudSession?.user?.email||''});
+ audit.updatedAt=nowISO();
+ await put('audits',audit);
+ await editAudit(auditId);
+ const pending=pendingWrites().some(x=>x.store==='audits'&&x.id===auditId);
+ setAutosaveStatus(pending?'Saved locally · sync pending':'Saved live');
 }
 
 // All audit sections stay in the normal document flow on phones so staff can
@@ -972,6 +1058,34 @@ async function editAudit(id){
  if(adminOuter&&window.matchMedia('(max-width:650px)').matches)adminOuter.removeAttribute('open');
  const adminUploadBtn=document.getElementById('uploadAdminPdf'),adminPdfFile=document.getElementById('adminPdfFile');
  if(adminUploadBtn&&adminPdfFile){adminUploadBtn.onclick=()=>adminPdfFile.click();adminPdfFile.onchange=async e=>{const file=e.target.files?.[0];if(file)await handleAdministrationPdf(a.id,file);e.target.value=''}};
+ const undoImportBtn=document.getElementById('undoAdminImport');
+ if(undoImportBtn)undoImportBtn.onclick=()=>undoAdministrationImport(a.id);
+ document.querySelectorAll('[data-versed-confirm]').forEach(button=>button.onclick=async()=>{
+   const key=button.dataset.versedConfirm;
+   const groupHost=button.closest('[data-versed-key]');
+   const value2=groupHost?.querySelector('[data-versed-2]')?.value;
+   const value5=groupHost?.querySelector('[data-versed-5]')?.value;
+   const vial2=Number(value2),vial5=Number(value5);
+   if(value2===''||value5===''||!Number.isInteger(vial2)||!Number.isInteger(vial5)
+      ||vial2<0||vial5<0||vial2+vial5===0){
+     return alert('Enter whole-number quantities of 2 mg and 5 mg vials. Use 0 when none were used.');
+   }
+   const group=groupedAdministrations(a.administrationRows||[]).find(g=>g.key===key);
+   if(!group||group.medication!=='Versed')return alert('This administration group is no longer available.');
+   if(vial2*2+vial5*5<group.totalDose){
+     return alert('The selected vials contain less medication than the documented '+group.totalDose+' mg administered. Check both quantities.');
+   }
+   if(!(await flushAuditAutosave()))return alert('Save the audit before confirming vial quantities.');
+   const draft=await getOne('audits',a.id);
+   if(!draft||draft.status!=='draft')return alert('The audit draft is no longer editable.');
+   draft.vialOverrides??={};
+   draft.vialOverrides[key]={vial2,vial5,confirmedAt:nowISO(),confirmedBy:cloudSession?.user?.email||''};
+   const doc=[...(draft.supportingDocuments||[])].reverse().find(d=>Array.isArray(d.administrationRows));
+   if(doc?.transcript)draft.usageSummary=buildAdministrationSummary(doc.transcript,doc.name||'PDF',draft.vialOverrides);
+   draft.updatedAt=nowISO();
+   await put('audits',draft);
+   await editAudit(a.id);
+ });
  document.querySelectorAll('.signature-box').forEach(box=>setupSignature(box,a.signatures?.[box.dataset.sigLoc]||{},()=>scheduleAuditAutosave(a.id,true)));
  const primaryAuditorName=document.getElementById('auditAuditorName');
  const primaryAuditorEmployee=document.getElementById('auditAuditorEmployeeNumber');
@@ -1524,6 +1638,8 @@ async function saveAuditFromUI(id,finalize){
 
    const docs=Array.isArray(a.supportingDocuments)?a.supportingDocuments:[];
    const hasAdminImport=docs.some(d=>String(d.mimeType||'').toLowerCase()==='application/pdf'&&d.storagePath&&Array.isArray(d.administrationRows)&&d.administrationRows.length);
+   if(hasAdminImport&&providerVialData(a.administrationRows||[],a.vialOverrides||{}).pending.length)
+     return alert('Some Versed administrations need vial confirmation. Open Administration Import to review the 2 mg and 5 mg vial counts before finalizing.');
    if(!hasAdminImport){
      const admin=document.querySelector('.mobile-collapsible-admin');
      if(admin){admin.setAttribute('open','');const adminStep=admin.closest('[data-audit-step]');if(adminStep&&window.matchMedia('(max-width:700px)').matches){document.querySelectorAll('[data-audit-step]').forEach(s=>s.classList.remove('active-step'));adminStep.classList.add('active-step')}admin.scrollIntoView({behavior:'smooth',block:'start'})}
@@ -1688,7 +1804,10 @@ function annualSummaryHtml(year,reports){
    });
  });
  let vialTotal=null;
- try{vialTotal=adminRows.length?providerVialData(adminRows).total:0}catch(e){vialTotal=null}
+ try{
+   const values=reports.map(r=>providerVialData(r.administrationRows||[],r.vialOverrides||{}).total);
+   vialTotal=values.some(v=>v===null)?null:values.reduce((n,v)=>n+v,0);
+ }catch(e){vialTotal=null}
  const providerCount=new Set(adminRows.map(x=>String(x.provider||'').trim()).filter(Boolean)).size;
 
  return '<div class="report-sheet report-finalized annual-report">'+
@@ -1702,7 +1821,7 @@ function annualSummaryHtml(year,reports){
  '<p>This summary is calculated from finalized monthly audit reports stored for '+year+'. It does not infer missing months or values.</p>'+
  '<ul>'+
  '<li><b>Finalized monthly audits:</b> '+reports.length+'.</li>'+
- '<li><b>Imported administration activity:</b> '+adminRows.length+' source dose row'+(adminRows.length===1?'':'s')+' across '+providerCount+' provider'+(providerCount===1?'':'s')+(vialTotal!==null?', calculating to '+vialTotal+' vial'+(vialTotal===1?'':'s'):'')+'.</li>'+
+ '<li><b>Imported administration activity:</b> '+adminRows.length+' source dose row'+(adminRows.length===1?'':'s')+' across '+providerCount+' provider'+(providerCount===1?'':'s')+(vialTotal!==null?', calculating to '+vialTotal+' vial'+(vialTotal===1?'':'s'):'; vial count pending confirmation')+'.</li>'+
  '<li><b>Certification coverage:</b> '+certifiedSites+' of '+totalSites+' location Certification blocks contain auditor/witness identification and both signatures.</li>'+
  '<li><b>Recorded amendments:</b> '+amendments+'.</li>'+
  '</ul></section>'+
@@ -1751,7 +1870,7 @@ function monthlySummaryHtml(key,report,multipleCount=1){
    return Boolean(sig.signer&&sig.employeeNumber&&sig.witness&&sig.witnessEmployeeNumber&&sig.signature&&sig.witnessSignature);
  });
  let vialData=null;
- try{if(admin.length)vialData=providerVialData(admin)}catch(err){console.warn('Unable to calculate vial use',err)}
+ try{if(admin.length)vialData=providerVialData(admin,report.vialOverrides||{})}catch(err){console.warn('Unable to calculate vial use',err)}
  const medRows=MEDS.map(m=>{
    const prior=sumKnown(activeLocs,m,report.priorCounts);
    const current=sumKnown(activeLocs,m,report.counts);
@@ -1775,7 +1894,7 @@ function monthlySummaryHtml(key,report,multipleCount=1){
    return '<tr><td>'+esc(loc)+'</td><td>'+total+'</td><td>'+esc(tags.foundRemoved||'—')+'</td><td>'+esc(tags.newInstalled||'—')+'</td><td>'+(verifiedLocs.includes(loc)?'Complete':'Incomplete / not verified')+'</td></tr>';
  }).join('');
  const providerRows=vialData?.providers?.length?vialData.providers.map(([provider,items])=>
-   '<tr><td>'+esc(provider)+'</td><td>'+items.reduce((n,item)=>n+Number(item.vials||0),0)+'</td><td>'+
+   '<tr><td>'+esc(provider)+'</td><td>'+(items.some(item=>item.pending)?'Pending':items.reduce((n,item)=>n+Number(item.vials||0),0))+'</td><td>'+
    esc(items.map(item=>item.medication+' '+item.strength+': '+item.vials).join('; '))+'</td></tr>').join(''):'';
  const findingRows=findings.map(x=>
    '<tr><td>'+esc(x.sourceLocation||'—')+'</td><td>'+esc(x.medication||'—')+'</td><td>'+esc(x.quantity??'—')+'</td><td>'+esc(x.typeLabel||x.type||'—')+'</td><td>'+esc(x.note||'—')+'</td></tr>').join('');
@@ -1797,7 +1916,7 @@ function monthlySummaryHtml(key,report,multipleCount=1){
  '<section class="report-executive-summary"><h2>Monthly audit summary</h2>'+
  '<p>Generated from the finalized '+esc(title)+' audit. Physical counts are those documented at the audit, not a live stock verification. This summary is not a substitute for the signed audit packet.</p><ul>'+
  '<li><b>Physical inventory at audit:</b> '+display(currentActive)+' active, '+display(expiredTotal)+' Expired, '+display(physicalTotal)+' across all locations.</li>'+
- '<li><b>Administration source:</b> '+(admin.length?admin.length+' recorded dose row'+(admin.length===1?'':'s')+' from '+providers.size+' provider'+(providers.size===1?'':'s')+(vialData?', '+vialData.total+' calculated vial'+(vialData.total===1?'':'s')+' used':'')+'.':'No administration dose rows included in the stored report; use cannot be estimated.')+'</li>'+
+ '<li><b>Administration source:</b> '+(admin.length?admin.length+' recorded dose row'+(admin.length===1?'':'s')+' from '+providers.size+' provider'+(providers.size===1?'':'s')+(vialData?.total!==null&&vialData?.total!==undefined?', '+vialData.total+' calculated vial'+(vialData.total===1?'':'s')+' used':'; vial count pending confirmation')+'.':'No administration dose rows included in the stored report; use cannot be estimated.')+'</li>'+
  '<li><b>Certification:</b> '+verifiedLocs.length+' of '+LOCS.length+' locations have auditor and witness identification and both signature images.</li>'+
  '<li><b>Documentation:</b> '+findings.length+' damaged/expired finding'+(findings.length===1?'':'s')+', '+incidents.length+' incident'+(incidents.length===1?'':'s')+', '+amendments.length+' amendment'+(amendments.length===1?'':'s')+', and '+transactions.length+' recorded transaction'+(transactions.length===1?'':'s')+'.</li>'+
  '</ul>'+
@@ -2582,7 +2701,7 @@ function executiveSummaryHtml(r){
  const adminRows=Array.isArray(r.administrationRows)?r.administrationRows:[];
  const txs=Array.isArray(r.transactions)?r.transactions:[];
  let vialData=null;
- try{vialData=adminRows.length?providerVialData(adminRows):null}catch(e){vialData=null}
+ try{vialData=adminRows.length?providerVialData(adminRows,r.vialOverrides||{}):null}catch(e){vialData=null}
  const vialTotal=vialData?.total??null;
 
  function medBaseName(label=''){
@@ -2599,7 +2718,11 @@ function executiveSummaryHtml(r){
    let total=0;
    for(const [,items] of vialData.providers||[]){
      for(const item of items||[]){
-       if(medBaseName(item.medication)===base)total+=Number(item.vials||0);
+       if(medBaseName(item.medication)!==base)continue;
+       if(item.pending)return null;
+       // A Versed vial belongs to ONE strength category, never both.
+       if(base==='Versed')total+=/2 mg/i.test(med)?Number(item.vial2||0):Number(item.vial5||0);
+       else total+=Number(item.vials||0);
      }
    }
    return total;
@@ -2760,18 +2883,28 @@ function reportHtml(r){
  r.administrationRows.map(x=>'<tr><td>'+esc(formatAdminDate(x.date))+'</td><td>'+esc(x.report)+'</td><td>'+esc(x.provider)+'</td><td>'+esc(x.medication)+'</td><td><b>'+esc(x.dose)+' '+esc(adminDoseUnit(x.medication))+'</b></td><td>'+esc(String(x.unit||'').replace(/^M([123])$/,'Medic $1'))+'</td></tr>').join('')+
  '</tbody></table>'+
  '<div class="report-usage-summary report-vial-summary pdf-vial-section"><div class="report-vial-summary-title">Calculated Vial Use</div><p class="report-vial-explainer">Calculated vial use converts the imported ESO administration doses into whole-vial usage using the department vial-size rules. This reconciliation reference does not change the manually verified physical inventory count.</p>'+
- providerVialData(r.administrationRows).providers.map(([provider,items])=>{
-   const total=items.reduce((n,x)=>n+x.vials,0);
+ providerVialData(r.administrationRows,r.vialOverrides||{}).providers.map(([provider,items])=>{
+   const pending=items.some(item=>item.pending);
+   const total=pending?null:items.reduce((n,x)=>n+x.vials,0);
    const breakdown=new Map();
-   items.forEach(x=>{
-     const key=x.medication+'|'+x.strength;
-     const cur=breakdown.get(key)||{medication:x.medication,strength:x.strength,vials:0};
-     cur.vials+=x.vials;breakdown.set(key,cur);
-   });
-   const detail=[...breakdown.values()].map(x=>esc(x.medication)+' — '+x.vials+' × '+esc(x.strength)+' vial'+(x.vials===1?'':'s')).join('<br>');
-   return '<div class="report-vial-row report-vial-row-detailed"><div class="report-vial-provider"><strong>'+esc(provider)+'</strong><span>'+detail+'</span></div><div class="report-vial-count">'+total+' vial'+(total===1?'':'s')+'</div></div>';
+   const add=(med,strength,count)=>{
+     if(!count)return;
+     const key=med+'|'+strength;
+     breakdown.set(key,(breakdown.get(key)||0)+count);
+   };
+   for(const x of items){
+     if(x.pending){add(x.medication,'Pending confirmation',1);continue;}
+     if(x.medication==='Versed'){add('Versed','2 mg',x.vial2);add('Versed','5 mg',x.vial5);}
+     else add(x.medication,x.strength,x.vials);
+   }
+   const detail=[...breakdown.entries()].map(([key,n])=>{
+     const [med,strength]=key.split('|');
+     return strength==='Pending confirmation'?esc(med)+' — pending vial confirmation':
+       esc(med)+' — '+n+' × '+esc(strength)+' vial'+(n===1?'':'s');
+   }).join('<br>');
+   return '<div class="report-vial-row report-vial-row-detailed"><div class="report-vial-provider"><strong>'+esc(provider)+'</strong><span>'+detail+'</span></div><div class="report-vial-count">'+(total===null?'Pending':total+' vial'+(total===1?'':'s'))+'</div></div>';
  }).join('')+
- '<div class="report-vial-total"><span>Total calculated vials</span><strong>'+providerVialData(r.administrationRows).total+'</strong></div></div></section>':'')+'<section class="report-transactions-section"><h2>Transactions in the audit reporting period</h2><p class="report-note">This table lists recorded controlled-substance movements or adjustments during the audit period, such as receipts, transfers, waste, destruction, or other documented inventory activity. These entries provide context for inventory changes but do not replace the physical count.</p><table class="report-table report-transactions"><thead><tr><th>Date</th><th>Action</th><th>Medication</th><th>Qty</th><th>Movement</th><th>Vendor / incident / lot</th></tr></thead><tbody>'+txRows+'</tbody></table></section>'+
+ '<div class="report-vial-total"><span>Total vials administered · all providers</span><strong>'+(providerVialData(r.administrationRows,r.vialOverrides||{}).total??'Pending confirmation')+'</strong></div></div></section>':'')+'<section class="report-transactions-section"><h2>Transactions in the audit reporting period</h2><p class="report-note">This table lists recorded controlled-substance movements or adjustments during the audit period, such as receipts, transfers, waste, destruction, or other documented inventory activity. These entries provide context for inventory changes but do not replace the physical count.</p><table class="report-table report-transactions"><thead><tr><th>Date</th><th>Action</th><th>Medication</th><th>Qty</th><th>Movement</th><th>Vendor / incident / lot</th></tr></thead><tbody>'+txRows+'</tbody></table></section>'+
  '<section class="report-signature-section"><h2>Audit site Certifications</h2><div class="report-signature-section-grid">'+
  sigCard('Medic 1')+sigCard('Medic 2')+sigCard('Medic 3')+sigCard('Safe')+sigCard('Expired')+
  '</div></section>'+
@@ -3193,7 +3326,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}
  if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-234',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-236',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{

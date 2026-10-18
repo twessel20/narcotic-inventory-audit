@@ -7997,3 +7997,78 @@ body.report-open{overflow:hidden}
     grid-template-rows:auto minmax(0,1fr) auto!important;
   }
 }
+
+/* v236: audit-wide administered vial total and optional Versed vial verification */
+.admin-import-summary .admin-total-vials{
+  background:#eaf3f9;
+  border-color:#98bed8;
+  padding:11px 8px;
+}
+.admin-import-summary .admin-total-vials strong{
+  font-size:1.25rem;
+  color:#12486d;
+  font-variant-numeric:tabular-nums;
+  overflow-wrap:anywhere;
+}
+.admin-import-summary .admin-total-vials span{
+  color:#235574;
+  font-size:.66rem;
+}
+.admin-import-grand-total{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:wrap;
+  gap:9px;
+  margin:12px 0 2px;
+  padding:12px;
+  border-top:2px solid #1f608e;
+  background:#f1f7fb;
+  border-radius:8px;
+}
+.admin-import-grand-total span{font-size:.82rem;font-weight:800;color:#244e6b}
+.admin-import-grand-total strong{font-size:1.1rem;color:#133d5c}
+.admin-review-banner{
+  margin:10px 0;
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #d3a46e;
+  background:#fff9ee;
+  color:#734811;
+  font-weight:750;
+  font-size:.80rem;
+}
+.versed-reconciliation{
+  margin-top:12px;
+  padding:12px;
+  border:1px solid #cfdae2;
+  border-radius:10px;
+  background:#fcfdfe;
+}
+.versed-reconciliation h4{margin:0 0 6px;color:#1a4561}
+.versed-reconciliation p{font-size:.78rem;line-height:1.45;color:#506577;margin:0 0 10px}
+.versed-reconciliation-warning{font-weight:800;color:#865918;font-size:.78rem}
+.versed-review-row{padding:10px 0;border-top:1px solid #e2eaf0}
+.versed-review-head{
+  display:flex;
+  gap:6px 12px;
+  flex-wrap:wrap;
+  justify-content:space-between;
+  color:#25465b;
+  font-size:.8rem;
+}
+.versed-review-current{font-size:.78rem;color:#3a5c6f;margin:4px 0 8px;font-weight:750}
+.versed-review-actions{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;align-items:end;gap:8px}
+.versed-review-actions label{display:grid;gap:4px;font-size:.74rem;font-weight:750;color:#264b64}
+.versed-review-actions input{width:100%;min-width:0;min-height:44px;font-size:16px}
+.versed-review-actions button{min-height:44px;white-space:normal}
+#undoAdminImport{background:#fff7f0;border:1px solid #c79c72;color:#80501f;min-height:42px}
+@media(max-width:600px){
+  .admin-import-summary{grid-template-columns:repeat(2,minmax(0,1fr));}
+  .admin-import-summary .admin-total-vials{grid-column:1/-1;grid-row:1}
+  .admin-import-summary .admin-total-vials strong{font-size:1.4rem}
+  .versed-review-actions{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .versed-review-actions button{grid-column:1/-1;width:100%}
+  .admin-import-actions{flex-wrap:wrap;}
+  .admin-import-actions button{min-height:44px;}
+}
