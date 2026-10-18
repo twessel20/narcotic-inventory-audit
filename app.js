@@ -10,6 +10,9 @@ let activeAuditId=null;
 let auditAutosaveTimer=null;
 let auditSaveInFlight=false;
 let auditFinalizeInFlight=false;
+let auditStartInFlight=false;
+let auditSavePromise=null;
+let auditExitInFlight=false;
 let transactionSaveInFlight=false;
 let lastCloudWrite='local';
 
@@ -523,28 +526,97 @@ async function saveTransaction(fd,finalSubmit=true){
 function auditSkeleton(a){
  const b=a.counts||{};return '<div class="audit-card"><div class="audit-header"><div><h3>'+esc(a.month||'Draft audit')+'</h3><div class="meta">Status: '+esc(a.status||'draft')+' · Saved '+fmtDate(a.updatedAt)+'</div></div><div class="button-row"><button data-audit-action="open" data-id="'+a.id+'">Open</button><button data-audit-action="delete" data-id="'+a.id+'">Delete</button></div></div></div>'
 }
-async function renderAudits(){
- let rows=await getAll('audits');
- const drafts=rows.filter(a=>String(a.status||'draft').toLowerCase()==='draft');
- drafts.sort((a,b)=>String(b.updatedAt||'').localeCompare(String(a.updatedAt||'')));
- document.getElementById('auditWorkspace').innerHTML=(drafts.length?'<div class="notice">Audit drafts autosave to the live department database. You can leave this location and resume the same audit from another authorized device.</div>':'')+(drafts.length?drafts.map(auditSkeleton).join(''):'<div class="card empty">No monthly audit is currently in progress.</div>')
+function activateAuditTab(){
+ const tab=document.querySelector('.tabs button[data-tab="audit"]');
+ if(tab)document.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('active',b===tab));
+ document.querySelectorAll('.tab-panel').forEach(p=>p.classList.toggle('active',p.id==='audit'));
 }
-
+function unfinishedAudits(rows){
+ return (rows||[]).filter(a=>String(a.status||'draft').toLowerCase()==='draft')
+ .sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||'')));
+}
+async function updateAuditLaunchControls(rows){
+ const drafts=unfinishedAudits(rows||await getAll('audits'));
+ const editing=Boolean(activeAuditId&&document.getElementById('auditMonth'));
+ const exists=drafts.find(a=>a.id===activeAuditId)||drafts[0];
+ for(const id of ['startAuditHomeBtn','newAuditBtn']){
+   const button=document.getElementById(id);
+   if(!button)continue;
+   button.textContent=exists?'Continue Audit':'Start Audit';
+   button.title=exists?'Resume the existing audit, not a new draft':'Start a new audit';
+   button.disabled=auditStartInFlight;
+ }
+ const monthly=document.getElementById('newAuditBtn');
+ if(monthly){monthly.hidden=editing;monthly.style.display=editing?'none':'';}
+}
+async function renderAudits(){
+ const drafts=unfinishedAudits(await getAll('audits'));
+ if(activeAuditId&&document.getElementById('auditMonth')){
+   // Background inventory/transaction updates must not remove a live edit form.
+   await updateAuditLaunchControls(drafts);
+   return;
+ }
+ document.getElementById('auditWorkspace').innerHTML=
+ (drafts.length?'<div class="notice">Continue an existing live draft at another location. Do not finalize until all locations are counted and signed.</div>':'')+
+ (drafts.length?drafts.map(auditSkeleton).join(''):'<div class="card empty">No monthly audit is currently in progress.</div>');
+ await updateAuditLaunchControls(drafts);
+}
 async function startAudit(){
+ if(auditStartInFlight)return;
  if(!requireCloudAuth())return;
- const b=await balances(),reports=await getAll('reports');const d=new Date(),month=d.toLocaleString(undefined,{month:'long',year:'numeric'});
- reports.sort((x,y)=>String(y.finalizedAt||y.updatedAt||y.createdAt||'').localeCompare(String(x.finalizedAt||x.updatedAt||x.createdAt||'')));
- const previous=reports[0]||null;
- const counts={},priorCounts={},openingCounts={};LOCS.forEach(l=>{counts[l]={};priorCounts[l]={};openingCounts[l]={};MEDS.forEach(m=>{counts[l][m]=null;openingCounts[l][m]=b[l][m];priorCounts[l][m]=previous?.counts?.[l]?.[m]??null})});
- const localDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
- const signedInEmp=signedInEmployeeNumber();
- const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,openingCounts,dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],incidents:[],inventoryFindings:[],signatures:{},auditorName:'',auditorEmployeeNumber:signedInEmp,attestationText:FINAL_ATTESTATION,attestationName:'',attestationEmployeeNumber:signedInEmp,attestationAccepted:false};
- await put('audits',a);await put('meta',{id:'activeAudit',auditId:a.id,updatedAt:nowISO()});await editAudit(a.id)
+ auditStartInFlight=true;
+ await updateAuditLaunchControls();
+ try{
+   if(activeAuditId&&document.getElementById('auditMonth')){
+     activateAuditTab();
+     return;
+   }
+   if(navigator.onLine){await flushPendingWrites();await pullCloudRecords();}
+   const drafts=unfinishedAudits(await getAll('audits'));
+   if(drafts.length){activateAuditTab();await editAudit(drafts[0].id);return;}
+   if(!navigator.onLine){
+     alert('Go online before creating a new audit so the shared database can be checked. Existing drafts remain available offline.');
+     return;
+   }
+   const b=await balances(),reports=await getAll('reports');
+   const d=new Date(),month=d.toLocaleString(undefined,{month:'long',year:'numeric'});
+   reports.sort((x,y)=>String(y.finalizedAt||y.updatedAt||y.createdAt||'').localeCompare(String(x.finalizedAt||x.updatedAt||x.createdAt||'')));
+   const previous=reports[0]||null;
+   const counts={},priorCounts={},openingCounts={};
+   LOCS.forEach(loc=>{
+     counts[loc]={};priorCounts[loc]={};openingCounts[loc]={};
+     MEDS.forEach(med=>{
+       counts[loc][med]=null;
+       openingCounts[loc][med]=b[loc][med];
+       priorCounts[loc][med]=previous?.counts?.[loc]?.[med]??null;
+     });
+   });
+   const localDate=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+   const emp=signedInEmployeeNumber();
+   const a={id:uid('audit'),month,status:'draft',createdAt:nowISO(),updatedAt:nowISO(),auditDate:localDate,email:cloudSession?.user?.email||'',counts,priorCounts,openingCounts,countConfirmations:{},dateRangeStart:'',dateRangeEnd:'',notes:'',usageSummary:'',breakawayTags:{},supportingDocuments:[],administrationRows:[],incidents:[],inventoryFindings:[],signatures:{},auditorName:'',auditorEmployeeNumber:emp,attestationText:FINAL_ATTESTATION,attestationName:'',attestationEmployeeNumber:emp,attestationAccepted:false};
+   await put('audits',a);
+   activateAuditTab();
+   await editAudit(a.id);
+ }catch(err){console.error('Unable to start or resume audit',err);alert('Unable to open audit: '+(err?.message||String(err)));}
+ finally{auditStartInFlight=false;await updateAuditLaunchControls();}
 }
 function unitAuditSection(a,loc,index){
  const tag=a.breakawayTags?.[loc]||{},savedSig=a.signatures?.[loc]||{};
  const sig={...savedSig,signer:savedSig.signer||a.auditorName||'',employeeNumber:savedSig.employeeNumber||a.auditorEmployeeNumber||''};
- const medRows=MEDS.map(m=>{const p=a.priorCounts?.[loc]?.[m];const findingBtn=loc==='Expired'?'':'<button type="button" class="audit-finding-btn" data-audit-finding data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Record audit finding</button>';return '<div class="unit-med-row compact"><div class="unit-med-name">'+esc(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(p==null?'—':Number(p))+'</strong></div><label class="unit-current"><span>Current</span><input aria-label="'+m+' '+loc+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+loc+'" data-count-med="'+m+'" value="'+((a.counts?.[loc]?.[m]===null||a.counts?.[loc]?.[m]===undefined)?'':Number(a.counts[loc][m]))+'" required></label><div class="unit-med-actions">'+findingBtn+'<button type="button" class="audit-incident-btn" data-audit-incident data-loc="'+esc(loc)+'" data-med="'+esc(m)+'">Discrepancy / incident</button></div></div>'}).join('');
+ const medRows=MEDS.map(m=>{
+   const prior=a.priorCounts?.[loc]?.[m];
+   const current=a.counts?.[loc]?.[m];
+   const confirmed=a.countConfirmations?.[loc]?.[m];
+   const locked=Boolean(confirmed&&current!==null&&current!==undefined&&Number(confirmed.value)===Number(current));
+   const l=esc(loc),med=esc(m);
+   const issue=loc==='Expired'?'':'<button type="button" class="audit-finding-btn" data-audit-finding data-loc="'+l+'" data-med="'+med+'">Damaged / expired vial</button>';
+   return '<div class="unit-med-row compact"><div class="unit-med-name">'+med+'</div><div class="unit-prior"><span>Last</span><strong>'+(prior==null?'—':Number(prior))+'</strong></div>'+
+     '<label class="unit-current"><span>Current</span><input aria-label="'+med+' '+l+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+l+'" data-count-med="'+med+'" value="'+(current===null||current===undefined?'':Number(current))+'" '+(locked?'readonly data-confirmed-at="'+esc(confirmed.confirmedAt||'')+'" data-confirmed-by="'+esc(confirmed.confirmedBy||'')+'"':'')+' required></label>'+
+     '<div class="unit-med-actions"><button type="button" data-confirm-count data-loc="'+l+'" data-med="'+med+'" '+(locked?'hidden':'')+'>Confirm Count</button>'+
+     '<button type="button" data-edit-count data-loc="'+l+'" data-med="'+med+'" '+(!locked?'hidden':'')+'>Edit Count</button>'+
+     '<span class="count-confirmed-status" data-count-confirmed="'+l+'|'+med+'" '+(!locked?'hidden':'')+'>✓ Count saved</span>'+
+     issue+'<button type="button" class="audit-incident-btn" data-audit-incident data-loc="'+l+'" data-med="'+med+'">Discrepancy / incident</button></div></div>';
+ }).join('');
  return '<section class="audit-card unit-audit-card compact-unit" data-unit-section="'+esc(loc)+'">'+
  '<div class="unit-audit-head compact-head"><div><span class="kicker">LOCATION '+(index+1)+' OF '+LOCS.length+'</span><h3>'+esc(loc)+'</h3></div><span class="unit-step-badge">'+esc(loc)+'</span></div>'+
  '<div class="unit-compact-grid">'+
@@ -816,7 +888,7 @@ async function editAudit(id){
  activeAuditId=id;
  await put('meta',{id:'activeAudit',auditId:id,updatedAt:nowISO()});
  document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-shell">'+
- '<div class="audit-route"><div class="audit-route-title">Audit sections</div>'+
+ '<div class="audit-route"><div class="audit-route-title">Audit sections</div><button type="button" class="audit-save-exit-top" id="saveExitAuditTop">Save &amp; Exit</button>'+
  '<a href="#" data-step-target="0" data-route-section="details"><span class="route-label">Details</span></a>'+
  '<a href="#" data-step-target="1" data-route-section="admin"><span class="route-label">Admin</span></a>'+
  LOCS.map((l,i)=>'<a href="#unit-'+i+'" data-jump-unit="'+i+'" data-route-loc="'+esc(l)+'" data-step-target="'+(i+2)+'"><span class="route-status-mark"></span><span class="route-label">'+esc(l)+'</span></a>').join('')+
@@ -828,14 +900,13 @@ async function editAudit(id){
  LOCS.map((l,i)=>'<div class="audit-step-card" data-audit-step="'+(i+2)+'" data-step-title="'+esc(l)+'" id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+
  '<div class="audit-step-card" data-audit-step="'+(LOCS.length+2)+'" data-step-title="Audit notes"><div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div></div>'+
  '<div class="audit-step-card" data-audit-step="'+(LOCS.length+3)+'" data-step-title="Final Certification"><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><div class="final-auditor-grid"><label class="final-signer-label">Final auditor name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||a.auditorName||'')+'"></label><label class="final-signer-label">Employee number<input id="attestEmployeeNumber" placeholder="Employee #" type="text" inputmode="numeric" pattern="[0-9]*" data-integer-only required value="'+esc(a.attestationEmployeeNumber||a.auditorEmployeeNumber||signedInEmployeeNumber()||'')+'"></label></div><div class="final-signature-block"><div class="signature-label-row"><div class="signature-label">Final auditor signature</div><div class="button-row"><button type="button" id="clearFinalSignature">Clear</button><button type="button" class="expand-signature" id="expandFinalSignature">Open larger</button></div></div><canvas id="finalSignatureCanvas" width="500" height="150"></canvas></div><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>'+
- '<div class="mobile-card-nav" aria-label="Audit section navigation"><button type="button" id="auditStepPrev">Sections</button><div class="mobile-card-progress"><strong id="auditStepTitle"></strong><span id="auditStepCount"></span></div><button type="button" class="primary" id="auditStepNext">Next section</button></div>'+
+ '<div class="mobile-card-nav" aria-label="Audit section navigation"><button type="button" id="auditStepPrev">Sections</button><div class="mobile-card-progress"><strong id="auditStepTitle"></strong><span id="auditStepCount"></span></div><button type="button" id="saveExitAuditBottom">Save &amp; Exit</button><button type="button" class="primary" id="auditStepNext">Next section</button></div>'+
  '</div>';
- document.getElementById('backAudits').onclick=async()=>{
-   await flushAuditAutosave();
-   activeAuditId=null;
-   await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});
-   await renderAudits();
- };
+ for(const id of ['backAudits','saveExitAuditTop','saveExitAuditBottom']){
+   const btn=document.getElementById(id);
+   if(btn)btn.onclick=()=>saveAndExitAudit(a.id);
+ }
+ await updateAuditLaunchControls();
  const adminOuter=document.querySelector('.mobile-collapsible-admin');
  if(adminOuter&&window.matchMedia('(max-width:650px)').matches)adminOuter.removeAttribute('open');
  const adminUploadBtn=document.getElementById('uploadAdminPdf'),adminPdfFile=document.getElementById('adminPdfFile');
@@ -922,6 +993,43 @@ async function editAudit(id){
  document.getElementById('closeAuditFinding')?.addEventListener('click',()=>findingDialog?.close());
  document.getElementById('cancelAuditFinding')?.addEventListener('click',()=>findingDialog?.close());
 
+ const findCountInput=(loc,med)=>document.querySelector('[data-count-loc="'+CSS.escape(loc)+'"][data-count-med="'+CSS.escape(med)+'"]');
+ const setCountLocked=(loc,med,locked)=>{
+   const input=findCountInput(loc,med);
+   if(input){
+     input.readOnly=locked;
+     if(!locked){delete input.dataset.confirmedAt;delete input.dataset.confirmedBy;}
+   }
+   const selector='[data-loc="'+CSS.escape(loc)+'"][data-med="'+CSS.escape(med)+'"]';
+   const confirm=document.querySelector('[data-confirm-count]'+selector);
+   const edit=document.querySelector('[data-edit-count]'+selector);
+   const status=document.querySelector('[data-count-confirmed="'+CSS.escape(loc+'|'+med)+'"]');
+   if(confirm)confirm.hidden=locked;
+   if(edit)edit.hidden=!locked;
+   if(status)status.hidden=!locked;
+ };
+ document.querySelectorAll('[data-confirm-count]').forEach(button=>button.onclick=()=>{
+   const loc=button.dataset.loc,med=button.dataset.med;
+   const input=findCountInput(loc,med),val=input?.value;
+   if(val===''||val===undefined||!Number.isInteger(Number(val))||Number(val)<0)
+     return alert('Enter a valid whole-vial physical count before confirming.');
+   a.countConfirmations??={};
+   a.countConfirmations[loc]??={};
+   a.countConfirmations[loc][med]={value:Number(val),confirmedAt:nowISO(),confirmedBy:cloudSession?.user?.email||''};
+   input.dataset.confirmedAt=a.countConfirmations[loc][med].confirmedAt;
+   input.dataset.confirmedBy=a.countConfirmations[loc][med].confirmedBy;
+   setCountLocked(loc,med,true);
+   updateAuditRouteProgress();
+   scheduleAuditAutosave(a.id,true);
+ });
+ document.querySelectorAll('[data-edit-count]').forEach(button=>button.onclick=()=>{
+   const loc=button.dataset.loc,med=button.dataset.med;
+   if(a.countConfirmations?.[loc])delete a.countConfirmations[loc][med];
+   setCountLocked(loc,med,false);
+   findCountInput(loc,med)?.focus();
+   updateAuditRouteProgress();
+   scheduleAuditAutosave(a.id,true);
+ });
  document.querySelectorAll('[data-audit-finding]').forEach(btn=>btn.onclick=()=>{
    if(!findingDialog)return;
    const loc=btn.dataset.loc||'';
@@ -961,7 +1069,12 @@ async function editAudit(id){
 
    sourceInput.value=String(available-qty);
    if(physicalRetained)expiredInput.value=String(expiredAvailable+qty);
-
+   if(a.countConfirmations?.[loc])delete a.countConfirmations[loc][med];
+   setCountLocked(loc,med,false);
+   if(physicalRetained){
+     if(a.countConfirmations?.Expired)delete a.countConfirmations.Expired[med];
+     setCountLocked('Expired',med,false);
+   }
    collectAuditFromUI(a);
    a.inventoryFindings=Array.isArray(a.inventoryFindings)?a.inventoryFindings:[];
    a.inventoryFindings.push({
@@ -1185,7 +1298,15 @@ function collectAuditFromUI(a){
  a.dateRangeEnd=document.getElementById('auditEnd').value;
  a.usageSummary=document.getElementById('usageSummary').value;
  a.notes=document.getElementById('auditNotes').value;
- document.querySelectorAll('[data-count-loc]').forEach(i=>{a.counts??={};a.counts[i.dataset.countLoc]??={};a.counts[i.dataset.countLoc][i.dataset.countMed]=i.value===''?null:Number(i.value)});
+ document.querySelectorAll('[data-count-loc]').forEach(input=>{
+   const loc=input.dataset.countLoc,med=input.dataset.countMed;
+   a.counts??={};a.counts[loc]??={};
+   a.counts[loc][med]=input.value===''?null:Number(input.value);
+   a.countConfirmations??={};a.countConfirmations[loc]??={};
+   if(input.readOnly&&input.dataset.confirmedAt&&input.value!==''){
+     a.countConfirmations[loc][med]={value:Number(input.value),confirmedAt:input.dataset.confirmedAt,confirmedBy:input.dataset.confirmedBy||''};
+   }else delete a.countConfirmations[loc][med];
+ });
  a.breakawayTags??={};document.querySelectorAll('[data-tag-loc]').forEach(i=>{a.breakawayTags[i.dataset.tagLoc]??={};a.breakawayTags[i.dataset.tagLoc][i.dataset.tagKind]=i.value.trim()});
  a.attestationText=a.attestationText||FINAL_ATTESTATION;
  a.signatures={};
@@ -1204,21 +1325,56 @@ function scheduleAuditAutosave(id,immediate=false){
  auditAutosaveTimer=setTimeout(()=>autosaveAudit(id),immediate?0:150);
 }
 async function autosaveAudit(id){
- if(auditSaveInFlight||!id)return;
- auditSaveInFlight=true;
- try{
-   const a=await getOne('audits',id);if(!a)return;
-   collectAuditFromUI(a);a.updatedAt=nowISO();a.lastAutosaveAt=a.updatedAt;
-   await put('audits',a);
-   await put('meta',{id:'activeAudit',auditId:id,updatedAt:a.updatedAt});
-   const t=new Date(a.updatedAt).toLocaleTimeString([], {hour:'numeric',minute:'2-digit',second:'2-digit'});
-   setAutosaveStatus(lastCloudWrite==='live'?'Saved live '+t:'Saved locally · sync pending '+t);
- }catch(e){setAutosaveStatus('Save failed — keep this screen open');}
- finally{auditSaveInFlight=false}
+ if(!id)return false;
+ if(auditSavePromise)await auditSavePromise;
+ const task=(async()=>{
+   auditSaveInFlight=true;
+   try{
+     const draft=await getOne('audits',id);if(!draft)return false;
+     collectAuditFromUI(draft);
+     draft.updatedAt=nowISO();draft.lastAutosaveAt=draft.updatedAt;
+     await put('audits',draft);
+     await put('meta',{id:'activeAudit',auditId:id,updatedAt:draft.updatedAt});
+     const time=new Date(draft.updatedAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit',second:'2-digit'});
+     setAutosaveStatus(lastCloudWrite==='live'?'Saved live '+time:'Saved locally · sync pending '+time);
+     return true;
+   }catch(err){
+     console.error('Audit autosave failed',err);
+     setAutosaveStatus('Save failed — keep this screen open');
+     return false;
+   }finally{auditSaveInFlight=false;}
+ })();
+ auditSavePromise=task;
+ try{return await task}finally{if(auditSavePromise===task)auditSavePromise=null;}
 }
 async function flushAuditAutosave(){
  clearTimeout(auditAutosaveTimer);
- if(activeAuditId&&document.getElementById('auditMonth'))await autosaveAudit(activeAuditId);
+ if(activeAuditId&&document.getElementById('auditMonth'))return autosaveAudit(activeAuditId);
+ return true;
+}
+async function saveAndExitAudit(id){
+ if(!id||auditExitInFlight)return;
+ auditExitInFlight=true;
+ const buttons=['saveExitAuditTop','saveExitAuditBottom','backAudits'].map(x=>document.getElementById(x)).filter(Boolean);
+ const labels=buttons.map(b=>b.textContent);
+ buttons.forEach(b=>{b.disabled=true;b.textContent='Saving…';});
+ try{
+   const ok=await flushAuditAutosave();
+   if(!ok)throw new Error('Could not save the draft. Keep the audit open and try again.');
+   if(cloudSession&&navigator.onLine)await flushPendingWrites();
+   const pending=pendingWrites().some(w=>w.store==='audits'&&w.id===id);
+   if(pending||!navigator.onLine||!cloudSession){
+     const allowed=confirm('Draft saved on this device, but cloud sync is pending. Do not resume from another device until it says Saved live. Leave this screen anyway?');
+     if(!allowed)return;
+   }
+   activeAuditId=null;
+   await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});
+   await renderAudits();
+ }catch(err){console.error('Save & Exit failed',err);alert(err?.message||String(err));}
+ finally{
+   auditExitInFlight=false;
+   buttons.forEach((b,i)=>{b.disabled=false;b.textContent=labels[i];});
+ }
 }
 
 async function saveAuditFromUI(id,finalize){
@@ -1259,6 +1415,11 @@ async function saveAuditFromUI(id,finalize){
        if(count===null||count===undefined||count==='')return alert('Enter the physical count for '+med+' at '+loc+' before finalizing.');
        if(!Number.isInteger(Number(count))||Number(count)<0)return alert('Enter a whole-vial physical count of zero or greater for '+med+' at '+loc+'.');
      }
+   }
+   for(const loc of LOCS)for(const med of MEDS){
+     const confirmed=a.countConfirmations?.[loc]?.[med];
+     if(!confirmed||Number(confirmed.value)!==Number(a.counts?.[loc]?.[med]))
+       return alert('Confirm the physical count for '+med+' at '+loc+' before finalizing.');
    }
    if(!a.dateRangeStart||!a.dateRangeEnd)return alert('Audit period start and end dates are required before finalizing.');
    if(a.dateRangeStart>a.dateRangeEnd)return alert('Audit period start date cannot be after the end date.');
@@ -2664,7 +2825,7 @@ function bind(){
    restore(txRecordedSig,tx.recordedBySignature);restore(txWitnessSig,tx.witnessSignature);
    syncTxPdfRequirement();txDialog.showModal();
  };document.getElementById('exportActivityBtn').onclick=exportActivity;document.getElementById('newAuditBtn').onclick=startAudit;const startAuditHomeBtn=document.getElementById('startAuditHomeBtn');if(startAuditHomeBtn)startAuditHomeBtn.onclick=startAudit;
- document.getElementById('auditWorkspace').onclick=async e=>{const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open')editAudit(b.dataset.id);if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);renderAudits()}};
+ document.getElementById('auditWorkspace').onclick=async e=>{const b=e.target.closest('[data-audit-action]');if(!b)return;if(b.dataset.auditAction==='open'){activateAuditTab();await editAudit(b.dataset.id)}if(b.dataset.auditAction==='delete'&&confirm('Delete this audit draft?')){await del('audits',b.dataset.id);await renderAudits()}};
  document.getElementById('reportsList').onclick=async e=>{
    const test=e.target.closest('[data-test-report]');
    if(test){await showTestReport();return}
@@ -2736,7 +2897,7 @@ window.addEventListener('pagehide',()=>{if(activeAuditId)scheduleAuditAutosave(a
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeAuditId)flushAuditAutosave()});
 (async()=>{await openDB();await initCloud();await seedInventory();fillSelects();bind();await refreshAll();if(!cloudSession)setTimeout(()=>document.getElementById('authDialog')?.showModal(),300);const active=await getOne('meta','activeAudit');if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-228',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-229',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
