@@ -43,6 +43,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     finalName.split(/\s+[\u00b7#]/)[0]||'Not recorded';
   const employee=txt(coverEl?.querySelector('.cover-auditor-row > div:last-child strong'))||
     finalName.match(/Employee\s*#?\s*(\d+)/i)?.[1]||'Not recorded';
+  const recordNumber=txt(sheet.querySelector('.report-footer')).match(/Record\s*#\s*([A-Za-z0-9-]+)/i)?.[1]||'';
   const isTest=!!sheet.querySelector('.report-cover-test')||/^TEST\b/i.test(title);
   const fileName=(String(title||'Narcotic Inventory Audit Report')
     .replace(/[\\/:*?"<>|]+/g,'-').replace(/\s+/g,' ').trim()||'Narcotic Inventory Audit Report')+'.pdf';
@@ -246,7 +247,10 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     y-=h+16;
   }
   async function renderSection(section){
-    const name=txt(section.querySelector(':scope > h2'))||'Audit Details';
+    const name=txt(section.querySelector(':scope > h2'))||
+      (section.classList.contains('report-month-administrative-correction')
+        ? txt(section.querySelector(':scope > strong'))
+        : 'Audit Details');
     if(section.classList.contains('report-signature-section'))return;
     if(section.classList.contains('report-attestation'))return;
     if(section.classList.contains('report-cover-page'))return;
@@ -311,6 +315,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     front.drawLine({start:{x:211,y:136},end:{x:401,y:136},thickness:.8,color:colors.rule});
   }
   centered('FINAL CERTIFYING AUDITOR SIGNATURE',107,8,regular,colors.muted);
+  if(recordNumber)centered('FINALIZED AUDIT RECORD #'+recordNumber,90,8,bold,colors.muted);
   centered('Finalized audit snapshot - supporting records follow',76,8,regular,colors.muted);
 
   newPage('Executive Summary');
