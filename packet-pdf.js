@@ -24,6 +24,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     .replace(/\u2264/g,'<=').replace(/\u00b5/g,'mc').replace(/\u00d7/g,'x')
     .replace(/\u00a0/g,' ').replace(/[^\x20-\x7e\n]/g,' ');
   const txt=el=>String(el?.innerText||el?.textContent||'').replace(/\s+/g,' ').trim();
+  const multiline=el=>String(el?.innerText||el?.textContent||'').replace(/\r/g,'').replace(/[ \t]+\n/g,'\n').trim();
   const docs=Array.isArray(preview._packetSupportingDocuments)?preview._packetSupportingDocuments:[];
   const metaGrid=sheet.querySelector('.report-meta-grid');
   const meta=txt(metaGrid);
@@ -341,10 +342,10 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
   const notes=sheet.querySelector('.report-notes');
   if(notes){
     newPage('Audit Notes / Discrepancies');
-    const typed=txt(notes.querySelector('.audit-notes-text'));
+    const typed=multiline(notes.querySelector('.audit-notes-text'));
     notePanel('Auditor Notes',typed||'No audit notes recorded.');
     const summary=notes.querySelector('.report-usage-summary');
-    if(summary)notePanel('Imported Administration / Usage Notes',txt(summary));
+    if(summary)notePanel('Imported Administration / Usage Notes',multiline(summary));
   }
   if(attestation){
     newPage('Final Audit Attestation');
