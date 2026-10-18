@@ -8072,3 +8072,21 @@ body.report-open{overflow:hidden}
   .admin-import-actions{flex-wrap:wrap;}
   .admin-import-actions button{min-height:44px;}
 }
+
+/* v237: site-specific Versed cap color cues; inventory keys unchanged. */
+.vial-cap-label{display:inline-flex;align-items:center;border-radius:999px;padding:2px 7px;font-size:.70em;font-weight:900;line-height:1.5;white-space:nowrap;vertical-align:middle}
+.vial-cap-orange{background:#fff0df;color:#93500d;border:1px solid #d9a166}
+.vial-cap-green{background:#e7f5e9;color:#1d6b36;border:1px solid #8dbda0}
+.vial-label-orange,.vial-label-green{border-left:4px solid transparent;padding-left:7px!important}
+.vial-label-orange{border-left-color:#d8903c;color:#93500d!important}
+.vial-label-green{border-left-color:#2f9755;color:#1d6b36!important}
+/* Active and expired stock never mix with usage-based administered vial counts. */
+.physical-vial-tally{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;padding:12px;border:1px solid #cddfea;border-radius:11px;background:#f8fbfd;margin:0 0 12px}
+.physical-vial-tally>div{min-width:0;border-radius:9px;padding:12px;background:#fff;border:1px solid #dce6eb}
+.physical-vial-tally span{display:block;color:#315671;font-weight:900;font-size:.72rem;letter-spacing:.04em}
+.physical-vial-tally strong{display:block;color:#173a52;font-size:1.45rem;line-height:1.35;overflow-wrap:anywhere;font-variant-numeric:tabular-nums}
+.physical-vial-tally small{display:block;color:#637c8c;font-size:.73rem;margin-top:3px}
+.physical-vial-tally #auditActiveVialTotal[data-complete="false"],.physical-vial-tally #auditExpiredVialTotal[data-complete="false"]{font-size:.95rem;color:#8a5c1e}
+.physical-vial-tally>div:nth-child(2){border-left:4px solid #a56a35}
+.dashboard-tally{grid-column:1/-1}
+@media(max-width:560px){.physical-vial-tally{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:8px}.physical-vial-tally>div{padding:9px 7px}.physical-vial-tally strong{font-size:1.2rem}.physical-vial-tally span{font-size:.67rem}}

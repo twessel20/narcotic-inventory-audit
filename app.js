@@ -1,4 +1,24 @@
 const MEDS=['Fentanyl 100 mcg','Versed 2 mg','Versed 5 mg','Ketamine 500 mg','Morphine 10 mg'];
+// User-specified department cap identifiers are presentation-only.
+// Keep canonical medication keys unchanged for inventory, reports and cloud data.
+function medicationDisplayName(medication=''){
+ const med=String(medication);
+ if(med==='Versed 2 mg')return 'Versed 2 mg (orange cap)';
+ if(med==='Versed 5 mg')return 'Versed 5 mg (green cap)';
+ return med;
+}
+function medicationDisplayHtml(medication=''){
+ const med=String(medication);
+ if(med==='Versed 2 mg')return 'Versed 2 mg <span class="vial-cap-label vial-cap-orange">Orange cap</span>';
+ if(med==='Versed 5 mg')return 'Versed 5 mg <span class="vial-cap-label vial-cap-green">Green cap</span>';
+ return esc(med);
+}
+function versedStrengthDisplayText(medication='',strength=''){
+ const value=String(strength);
+ if(String(medication)!=='Versed')return value;
+ return value.replace(/\b2 mg\b/g,'2 mg (orange cap)').replace(/\b5 mg\b/g,'5 mg (green cap)');
+}
+
 const FINAL_ATTESTATION='I certify that I have personally reviewed this controlled-substance audit, the physical counts and seal records for Medic 1, Medic 2, Medic 3, Safe, and Expired, and each location’s signer and witness Certifications. To the best of my knowledge, this record is complete, accurate, and truthful. All shortages, overages, damaged or missing seals, expired stock, and other discrepancies identified during this audit are documented with corrective actions or escalation in the audit notes. I have not knowingly concealed a discrepancy or falsified any count, signature, or record. Unresolved discrepancies remain subject to investigation and required departmental reporting; this signature does not represent their resolution. By signing, I accept responsibility for this Certification and authorize finalization of this audit record.';
 const LOCS=['Medic 1','Medic 2','Medic 3','Safe','Expired'];
 const DB_NAME='narcotic-audit-db', DB_VER=2;
@@ -322,8 +342,12 @@ async function renderInventory(){
    :'No finalized physical audit is on file. Displayed balances reflect recorded inventory data only and should not be interpreted as a verified physical count.';
  const totalBasis=document.getElementById('inventoryBalanceAsOf');
  if(totalBasis)totalBasis.textContent=basisText;
- grid.innerHTML=LOCS.map(loc=>'<div class="location-card"><h3><span>'+loc+'</span><span class="pill '+(loc==='Expired'?'expired':'')+'">'+(loc==='Expired'?'Segregated':'Active')+'</span></h3><div class="location-card-meta">'+esc(lastAuditDate?'Last physical audit: '+lastAuditDate:'No finalized physical audit on file')+'</div>'+MEDS.map(m=>'<div class="med-row"><span>'+m+'</span><strong>'+b[loc][m]+'</strong></div>').join('')+'</div>').join('');
- totals.innerHTML=MEDS.map(m=>{const t=['Medic 1','Medic 2','Medic 3','Safe'].reduce((a,l)=>a+b[l][m],0);return '<div class="total-row"><div><b>'+m+'</b><small>Medic 1 + Medic 2 + Medic 3 + Safe</small></div><strong>'+t+'</strong></div>'}).join('');
+ grid.innerHTML=LOCS.map(loc=>'<div class="location-card"><h3><span>'+loc+'</span><span class="pill '+(loc==='Expired'?'expired':'')+'">'+(loc==='Expired'?'Segregated':'Active')+'</span></h3><div class="location-card-meta">'+esc(lastAuditDate?'Last physical audit: '+lastAuditDate:'No finalized physical audit on file')+'</div>'+MEDS.map(m=>'<div class="med-row"><span>'+medicationDisplayHtml(m)+'</span><strong>'+b[loc][m]+'</strong></div>').join('')+'</div>').join('');
+ const activeLocations=['Medic 1','Medic 2','Medic 3','Safe'];
+ const activeSum=activeLocations.reduce((n,l)=>n+MEDS.reduce((m,med)=>m+Number(b[l]?.[med]||0),0),0);
+ const expiredSum=MEDS.reduce((n,med)=>n+Number(b['Expired']?.[med]||0),0);
+ totals.innerHTML='<div class="physical-vial-tally dashboard-tally"><div><span>ACTIVE VIALS</span><strong>'+activeSum+'</strong><small>Medic 1 + Medic 2 + Medic 3 + Safe</small></div><div><span>EXPIRED VIALS</span><strong>'+expiredSum+'</strong><small>Expired location only</small></div></div>'+
+ MEDS.map(m=>{const t=activeLocations.reduce((a,l)=>a+b[l][m],0);return '<div class="total-row"><div><b>'+medicationDisplayHtml(m)+'</b><small>Medic 1 + Medic 2 + Medic 3 + Safe</small></div><strong>'+t+'</strong></div>'}).join('');
 }
 
 async function renderActivity(){
@@ -333,7 +357,7 @@ async function renderActivity(){
  if(q)rows=rows.filter(r=>JSON.stringify(r).toLowerCase().includes(q));
  document.getElementById('activityList').innerHTML=rows.length?rows.map(r=>{
    const items=Array.isArray(r.items)&&r.items.length?r.items:[{medication:r.medication,quantity:r.quantity}];
-   const itemText=items.map(x=>esc(x.medication)+' × '+esc(x.quantity)).join(' · ');
+   const itemText=items.map(x=>medicationDisplayHtml(x.medication)+' × '+esc(x.quantity)).join(' · ');
    return '<div class="list-item"><strong>'+esc(r.typeLabel||r.type)+(r.status==='draft'?' · DRAFT':'')+'</strong><div>'+itemText+'</div><div>'+esc(r.sourcePharmacy||r.externalSource||r.incidentSourceLocation||r.fromLocation||'—')+' → '+esc(r.toLocation||'—')+'</div><div class="meta">'+fmtDate(r.timestamp)+(r.recordedBy?' · '+esc(r.recordedBy)+(r.recordedByEmployeeNumber?' #'+esc(r.recordedByEmployeeNumber):''):'')+(r.witness?' · Witness '+esc(r.witness)+(r.witnessEmployeeNumber?' #'+esc(r.witnessEmployeeNumber):''):'')+'</div>'+(r.summary?'<div>'+esc(r.summary)+'</div>':'')+(Array.isArray(r.inventoryImpact)&&r.inventoryImpact.length?'<div class="meta">'+r.inventoryImpact.map(x=>esc(x.location+' · '+x.medication+': '+x.before+' → '+x.after)).join('<br>')+'</div>':'')+(r.notes?'<div>'+esc(r.notes)+'</div>':'')+(r.memoDescription?'<div class="meta"><b>Memo description:</b> '+esc(r.memoDescription)+'</div>':'')+(r.supportingDocument?'<div class="meta"><b>'+esc(r.supportingDocument.documentType||'Supporting PDF')+':</b> '+esc(r.supportingDocument.name||'Attached PDF')+'</div>':'')+(r.destructionReceipt?'<div class="meta"><b>Destruction receipt:</b> '+esc(r.destructionReceipt.name||'Attached PDF')+'</div>':'')+(r.type==='incident'&&r.status==='draft'?'<div class="button-row"><button type="button" data-resume-incident="'+esc(r.id)+'">Resume incident</button></div>':'')+'</div>';
  }).join(''):'<div class="empty">No activity recorded yet.</div>';
 }
@@ -644,8 +668,8 @@ function unitAuditSection(a,loc,index){
    const locked=Boolean(confirmed&&current!==null&&current!==undefined&&Number(confirmed.value)===Number(current));
    const l=esc(loc),med=esc(m);
    const issue=loc==='Expired'?'':'<button type="button" class="audit-finding-btn" data-audit-finding data-loc="'+l+'" data-med="'+med+'">Damaged / expired vial</button>';
-   return '<div class="unit-med-row compact"><div class="unit-med-name">'+med+'</div><div class="unit-prior"><span>Last</span><strong>'+(prior==null?'—':Number(prior))+'</strong></div>'+
-     '<label class="unit-current"><span>Current</span><input aria-label="'+med+' '+l+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+l+'" data-count-med="'+med+'" value="'+(current===null||current===undefined?'':Number(current))+'" '+(locked?'readonly data-confirmed-at="'+esc(confirmed.confirmedAt||'')+'" data-confirmed-by="'+esc(confirmed.confirmedBy||'')+'"':'')+' required></label>'+
+   return '<div class="unit-med-row compact"><div class="unit-med-name">'+medicationDisplayHtml(m)+'</div><div class="unit-prior"><span>Last</span><strong>'+(prior==null?'—':Number(prior))+'</strong></div>'+
+     '<label class="unit-current"><span>Current</span><input aria-label="'+esc(medicationDisplayName(m))+' '+l+' current count" type="number" min="0" step="1" inputmode="numeric" data-count-loc="'+l+'" data-count-med="'+med+'" value="'+(current===null||current===undefined?'':Number(current))+'" '+(locked?'readonly data-confirmed-at="'+esc(confirmed.confirmedAt||'')+'" data-confirmed-by="'+esc(confirmed.confirmedBy||'')+'"':'')+' required></label>'+
      '<div class="unit-med-actions"><button type="button" data-confirm-count data-loc="'+l+'" data-med="'+med+'" '+(locked?'hidden':'')+'>Confirm Count</button>'+
      '<button type="button" data-edit-count data-loc="'+l+'" data-med="'+med+'" '+(!locked?'hidden':'')+'>Edit Count</button>'+
      '<span class="count-confirmed-status" data-count-confirmed="'+l+'|'+med+'" '+(!locked?'hidden':'')+'>✓ Count saved</span>'+
@@ -674,7 +698,7 @@ function actualAdministrationPreview(rows=[]){
    return da-db||String(a.report).localeCompare(String(b.report));
  });
  return '<details class="admin-detail-block"><summary>View imported doses</summary><div class="admin-actual-table"><div class="admin-actual-head"><span>Date</span><span>Report</span><span>Provider</span><span>Medication</span><span>Dose</span><span>Unit</span></div>'+
- sorted.map(r=>'<div class="admin-actual-row"><span data-label="Date">'+esc(formatAdminDate(r.date))+'</span><span data-label="Report">'+esc(r.report)+'</span><span data-label="Provider">'+esc(r.provider)+'</span><span data-label="Medication">'+esc(r.medication)+'</span><span data-label="Dose"><b>'+esc(r.dose)+' '+esc(adminDoseUnit(r.medication))+'</b></span><span data-label="Unit">'+esc(String(r.unit||'').replace(/^M([123])$/,'M$1'))+'</span></div>').join('')+
+ sorted.map(r=>'<div class="admin-actual-row"><span data-label="Date">'+esc(formatAdminDate(r.date))+'</span><span data-label="Report">'+esc(r.report)+'</span><span data-label="Provider">'+esc(r.provider)+'</span><span data-label="Medication">'+medicationDisplayHtml(r.medication)+'</span><span data-label="Dose"><b>'+esc(r.dose)+' '+esc(adminDoseUnit(r.medication))+'</b></span><span data-label="Unit">'+esc(String(r.unit||'').replace(/^M([123])$/,'M$1'))+'</span></div>').join('')+
  '</div></details>';
 }
 function administrationGroupKey(row){
@@ -735,13 +759,13 @@ function providerVialSummary(rows=[],overrides={}){
    }
    const medSummary=[...medTotals.entries()].map(([key,n])=>{
      const [med,strength]=key.split('|');
-     return strength==='Needs confirmation'?med+': needs confirmation':med+' '+strength+': '+n+' vial'+(n===1?'':'s');
+     return strength==='Needs confirmation'?med+': needs confirmation':med+' '+versedStrengthDisplayText(med,strength)+': '+n+' vial'+(n===1?'':'s');
    }).join(' · ');
    const details=items.slice().sort((a,b)=>a.date.localeCompare(b.date)||String(a.report).localeCompare(String(b.report))).map(item=>
      '<div class="provider-vial-detail-row">'+
        '<div><strong>'+esc(item.date)+'</strong><span>'+esc(item.report)+' · '+esc(item.unit)+'</span></div>'+
        '<div><strong>'+esc(item.medication)+' — '+esc(item.dose)+' '+esc(item.doseUnit)+' given</strong><span>'+
-       (item.pending?'Needs manual vial confirmation':esc(item.strength)+' · '+item.vials+' vial'+(item.vials===1?'':'s'))+'</span></div>'+
+       (item.pending?'Needs manual vial confirmation':esc(versedStrengthDisplayText(item.medication,item.strength))+' · '+item.vials+' vial'+(item.vials===1?'':'s'))+'</span></div>'+
        '<div class="provider-vial-calc">'+(item.pending?'Review':item.vials+' vial'+(item.vials===1?'':'s'))+'</div></div>'
    ).join('');
    return '<details class="provider-vial-provider"><summary><div><strong>'+esc(provider)+'</strong><span>'+
@@ -766,15 +790,15 @@ function versedReviewHtml(rows=[],overrides={}){
      '<div class="versed-review-head"><strong>'+esc(item.report)+' · '+esc(item.unit)+'</strong><span>'+
      esc(item.date)+' · '+esc(item.doses.join(' + '))+' mg = '+item.dose+' mg</span></div>'+
      '<div class="versed-review-current">'+
-     (pending?'Needs confirmation':item.vials+' vial'+(item.vials===1?'':'s')+' · '+esc(item.strength)+(item.confirmed?' · Manually confirmed':' · Derived from dose entries'))+'</div>'+
+     (pending?'Needs confirmation':item.vials+' vial'+(item.vials===1?'':'s')+' · '+esc(versedStrengthDisplayText(item.medication,item.strength))+(item.confirmed?' · Manually confirmed':' · Derived from dose entries'))+'</div>'+
      '<div class="versed-review-actions">'+
-     '<label>2 mg vials<input type="number" min="0" step="1" inputmode="numeric" data-versed-2="'+key+'" value="'+(pending?'':item.vial2)+'"></label>'+
-     '<label>5 mg vials<input type="number" min="0" step="1" inputmode="numeric" data-versed-5="'+key+'" value="'+(pending?'':item.vial5)+'"></label>'+
+     '<label class="vial-label-orange">2 mg vials (orange cap)<input type="number" min="0" step="1" inputmode="numeric" data-versed-2="'+key+'" value="'+(pending?'':item.vial2)+'"></label>'+
+     '<label class="vial-label-green">5 mg vials (green cap)<input type="number" min="0" step="1" inputmode="numeric" data-versed-5="'+key+'" value="'+(pending?'':item.vial5)+'"></label>'+
      '<button type="button" data-versed-confirm="'+key+'">Confirm vials</button></div>'+
      '</div>';
  }).join('');
  return '<div class="versed-reconciliation"><h4>Versed vial reconciliation</h4>'+
- '<p>Each documented 2 mg or 5 mg administration is counted as its recorded vial size. If dose entries do not identify the vials, confirm the actual numbers below. This does not change physical inventory.</p>'+
+ '<p>Default vial calculation follows each recorded 2 mg (orange cap) or 5 mg (green cap) dose. If a dose was drawn from another vial size, confirm the actual vials used below. This does not change physical inventory.</p>'+
  (data.pending.length?'<div class="versed-reconciliation-warning">Some vial counts need confirmation before finalizing.</div>':'')+
  groups+'</div>';
 }
@@ -866,7 +890,7 @@ function buildAdministrationSummary(transcript,fileName,overrides={}){
    const location=String(g.unit||'').replace(/^M([123])$/,'Medic $1');
    if(vial.needsReview)pending++;else total+=vial.count;
    return '• '+formatAdminDate(g.date)+' | Report '+g.report+' | '+g.medication+
-     ' '+(vial.needsReview?'VIAL COUNT NEEDS CONFIRMATION':vial.strength+': '+vial.count+' vials')+
+     ' '+(vial.needsReview?'VIAL COUNT NEEDS CONFIRMATION':versedStrengthDisplayText(g.medication,vial.strength)+': '+vial.count+' vials')+
      ' | '+location+(provider?' | By '+provider:'');
  });
  const period=String(transcript).match(/Months in Treatment Date Timestamp\s+(\d{2}\/\d{4})/i);
@@ -954,7 +978,27 @@ async function undoAdministrationImport(auditId){
 // Sections switch only when the user explicitly navigates; keyboard and Safari
 // toolbar viewport changes must never cause the page to jump.
 // Visual-only progress indicators. Never mutate counts or signatures here.
+function updateAuditPhysicalTotals(){
+ const root=document.querySelector('.audit-workspace-shell');
+ if(!root)return;
+ const counts=[...root.querySelectorAll('[data-count-loc][data-count-med]')];
+ const sumFor=locations=>{
+   const selected=counts.filter(c=>locations.includes(c.dataset.countLoc));
+   const filled=selected.filter(c=>c.value!==''&&Number.isFinite(Number(c.value))&&Number(c.value)>=0);
+   return {total:filled.reduce((n,c)=>n+Number(c.value),0),complete:selected.length===MEDS.length*locations.length&&filled.length===selected.length,filled:filled.length,expected:MEDS.length*locations.length};
+ };
+ const active=sumFor(['Medic 1','Medic 2','Medic 3','Safe']),expired=sumFor(['Expired']);
+ const display=(id,data)=>{
+   const el=document.getElementById(id);
+   if(!el)return;
+   el.textContent=data.complete?data.total+' vials':data.total+' counted · '+data.filled+'/'+data.expected+' entered';
+   el.dataset.complete=data.complete?'true':'false';
+ };
+ display('auditActiveVialTotal',active);
+ display('auditExpiredVialTotal',expired);
+}
 function updateAuditRouteProgress(){
+ updateAuditPhysicalTotals();
  const shell=document.querySelector('.audit-workspace-shell');
  if(!shell)return;
  shell.querySelectorAll('[data-route-loc]').forEach(link=>{
@@ -1003,7 +1047,12 @@ function setupMobileAuditCards(auditId){
    if(prev)prev.textContent='Sections';
    if(next)next.textContent=current===steps.length-1?'Back to details':'Next section';
    sessionStorage.setItem('narcoticAuditStep:'+auditId,String(current));
-   if(scroll&&mq.matches)steps[current]?.scrollIntoView({behavior:'auto',block:'start'});
+   if(scroll){
+     const destination=steps[current];
+     // Wait until the newly selected mobile card becomes visible before scrolling.
+     // On desktop/landscape, all sections remain visible and scroll directly.
+     requestAnimationFrame(()=>destination?.scrollIntoView({behavior:'auto',block:'start'}));
+   }
  };
  if(prev)prev.onclick=()=>shell.querySelector('.audit-route')?.scrollIntoView({behavior:'auto',block:'start'});
  if(next)next.onclick=()=>{
@@ -1011,9 +1060,12 @@ function setupMobileAuditCards(auditId){
    scheduleAuditAutosave(auditId,true);
  };
  links.forEach(link=>link.addEventListener('click',e=>{
-   if(!mq.matches)return;
+   // Section navigation applies to desktop and landscape too: href="#"
+   // formerly jumped to the top instead of opening Notes or Final.
    e.preventDefault();
-   show(Number(link.dataset.stepTarget)||0,true);
+   const index=Number(link.dataset.stepTarget);
+   if(!Number.isInteger(index)||index<0||index>=steps.length)return;
+   show(index,true);
    scheduleAuditAutosave(auditId,true);
  }));
  // Only a change between desktop and mobile layouts triggers a redraw.
@@ -1036,17 +1088,17 @@ async function editAudit(id){
  await put('meta',{id:'activeAudit',auditId:id,updatedAt:nowISO()});
  document.getElementById('auditWorkspace').innerHTML='<div class="audit-workspace-shell">'+
  '<div class="audit-route"><div class="audit-route-title">Audit sections</div><button type="button" class="audit-save-exit-top" id="saveExitAuditTop">Save &amp; Exit</button>'+
- '<a href="#" data-step-target="0" data-route-section="details"><span class="route-label">Details</span></a>'+
- '<a href="#" data-step-target="1" data-route-section="admin"><span class="route-label">Admin</span></a>'+
+ '<a href="#audit-details-section" data-step-target="0" data-route-section="details"><span class="route-label">Details</span></a>'+
+ '<a href="#audit-admin-section" data-step-target="1" data-route-section="admin"><span class="route-label">Admin</span></a>'+
  LOCS.map((l,i)=>'<a href="#unit-'+i+'" data-jump-unit="'+i+'" data-route-loc="'+esc(l)+'" data-step-target="'+(i+2)+'"><span class="route-status-mark"></span><span class="route-label">'+esc(l)+'</span></a>').join('')+
- '<a href="#" data-step-target="'+(LOCS.length+2)+'" data-route-section="notes"><span class="route-label">Notes</span></a>'+
- '<a href="#" data-step-target="'+(LOCS.length+3)+'" data-route-section="final"><span class="route-label">Final</span></a>'+
+ '<a href="#audit-notes-section" data-step-target="'+(LOCS.length+2)+'" data-route-section="notes"><span class="route-label">Notes</span></a>'+
+ '<a href="#audit-final-section" data-step-target="'+(LOCS.length+3)+'" data-route-section="final"><span class="route-label">Final</span></a>'+
  '</div>'+
- '<div class="audit-step-card active-step" data-audit-step="0" data-step-title="Audit details"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div class="audit-header-meta"><span id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</span><span class="audit-status-chip">'+esc(a.status||'draft')+'</span></div></div><button id="backAudits" class="audit-back-btn">Back to drafts</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label class="audit-primary-auditor">Auditor name<input id="auditAuditorName" placeholder="Full name" autocomplete="name" value="'+esc(a.auditorName||a.attestationName||'')+'"></label><label class="audit-primary-auditor">Employee number<input id="auditAuditorEmployeeNumber" placeholder="Employee #" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-integer-only required value="'+esc(a.auditorEmployeeNumber||a.attestationEmployeeNumber||signedInEmployeeNumber()||'')+'"></label><div class="audit-period-heading"><strong>Audit period</strong><span>Enter the exact date range covered by this audit.</span></div><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div></div>'+
- '<div class="audit-step-card" data-audit-step="1" data-step-title="Administration import">'+administrationImportSection(a)+'</div>'+
+ '<div class="audit-step-card active-step" id="audit-details-section" data-audit-step="0" data-step-title="Audit details"><div class="audit-card audit-hero"><div class="audit-header"><div><span class="kicker">DRAFT AUDIT</span><h2>'+esc(a.month)+'</h2><div class="audit-header-meta"><span id="autosaveStatus" class="autosave-status">Saved '+fmtDate(a.updatedAt)+'</span><span class="audit-status-chip">'+esc(a.status||'draft')+'</span></div></div><button id="backAudits" class="audit-back-btn">Back to drafts</button></div><div class="form-grid audit-meta-grid"><label>Audit month / year<input id="auditMonthPicker" type="month" value="'+esc((a.monthValue||'')||monthTextToValue(a.month||''))+'"><input id="auditMonth" type="hidden" value="'+esc(a.month||'')+'"></label><label>Date of audit<input id="auditDate" type="date" value="'+esc(a.auditDate||'')+'"></label><label>Auditor email<input id="auditEmail" type="email" value="'+esc(a.email||cloudSession?.user?.email||'')+'"></label><label class="audit-primary-auditor">Auditor name<input id="auditAuditorName" placeholder="Full name" autocomplete="name" value="'+esc(a.auditorName||a.attestationName||'')+'"></label><label class="audit-primary-auditor">Employee number<input id="auditAuditorEmployeeNumber" placeholder="Employee #" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-integer-only required value="'+esc(a.auditorEmployeeNumber||a.attestationEmployeeNumber||signedInEmployeeNumber()||'')+'"></label><div class="audit-period-heading"><strong>Audit period</strong><span>Enter the exact date range covered by this audit.</span></div><label>Period start<input id="auditStart" type="date" value="'+esc(a.dateRangeStart||'')+'"></label><label>Period end<input id="auditEnd" type="date" value="'+esc(a.dateRangeEnd||'')+'"></label></div></div></div>'+
+ '<div class="audit-step-card" id="audit-admin-section" data-audit-step="1" data-step-title="Administration import"><div class="physical-vial-tally audit-tally"><div><span>ACTIVE VIALS · PHYSICAL AUDIT</span><strong id="auditActiveVialTotal">Calculating…</strong><small>Medic 1 + Medic 2 + Medic 3 + Safe</small></div><div><span>EXPIRED VIALS · PHYSICAL AUDIT</span><strong id="auditExpiredVialTotal">Calculating…</strong><small>Expired location only</small></div></div>'+administrationImportSection(a)+'</div>'+
  LOCS.map((l,i)=>'<div class="audit-step-card" data-audit-step="'+(i+2)+'" data-step-title="'+esc(l)+'" id="unit-'+i+'">'+unitAuditSection(a,l,i)+'</div>').join('')+
- '<div class="audit-step-card" data-audit-step="'+(LOCS.length+2)+'" data-step-title="Audit notes"><div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div></div>'+
- '<div class="audit-step-card" data-audit-step="'+(LOCS.length+3)+'" data-step-title="Final Certification"><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><div class="final-auditor-grid"><label class="final-signer-label">Final auditor name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||a.auditorName||'')+'"></label><label class="final-signer-label">Employee number<input id="attestEmployeeNumber" placeholder="Employee #" type="text" inputmode="numeric" pattern="[0-9]*" data-integer-only required value="'+esc(a.attestationEmployeeNumber||a.auditorEmployeeNumber||signedInEmployeeNumber()||'')+'"></label></div><div class="final-signature-block"><div class="signature-label-row"><div class="signature-label">Final auditor signature</div><div class="button-row"><button type="button" id="clearFinalSignature">Clear</button><button type="button" class="expand-signature" id="expandFinalSignature">Open larger</button></div></div><canvas id="finalSignatureCanvas" width="500" height="150"></canvas></div><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>'+
+ '<div class="audit-step-card" id="audit-notes-section" data-audit-step="'+(LOCS.length+2)+'" data-step-title="Audit notes"><div class="audit-card audit-section-card"><span class="kicker">DOCUMENTATION</span><h3>Overall audit notes</h3><textarea id="auditNotes" rows="6" placeholder="Document discrepancies, corrective actions, or other audit notes.">'+esc(a.notes||'')+'</textarea></div></div>'+
+ '<div class="audit-step-card" id="audit-final-section" data-audit-step="'+(LOCS.length+3)+'" data-step-title="Final Certification"><div class="audit-card audit-section-card attestation-card"><span class="kicker">FINAL CERTIFICATION</span><h3>Final attestation</h3><p>'+esc(a.attestationText||FINAL_ATTESTATION)+'</p><label class="attest-check"><input id="attestCheck" type="checkbox" '+(a.attestationAccepted?'checked':'')+'> <span>I certify this audit.</span></label><div class="final-auditor-grid"><label class="final-signer-label">Final auditor name<input id="attestName" placeholder="Full name" value="'+esc(a.attestationName||a.auditorName||'')+'"></label><label class="final-signer-label">Employee number<input id="attestEmployeeNumber" placeholder="Employee #" type="text" inputmode="numeric" pattern="[0-9]*" data-integer-only required value="'+esc(a.attestationEmployeeNumber||a.auditorEmployeeNumber||signedInEmployeeNumber()||'')+'"></label></div><div class="final-signature-block"><div class="signature-label-row"><div class="signature-label">Final auditor signature</div><div class="button-row"><button type="button" id="clearFinalSignature">Clear</button><button type="button" class="expand-signature" id="expandFinalSignature">Open larger</button></div></div><canvas id="finalSignatureCanvas" width="500" height="150"></canvas></div><div class="audit-actions"><button id="saveAudit">Save draft</button><button class="primary" id="finalizeAudit">Finalize audit</button></div></div></div>'+
  '<div class="mobile-card-nav" aria-label="Audit section navigation"><button type="button" id="auditStepPrev">Sections</button><div class="mobile-card-progress"><strong id="auditStepTitle"></strong><span id="auditStepCount"></span></div><button type="button" id="saveExitAuditBottom">Save &amp; Exit</button><button type="button" class="primary" id="auditStepNext">Next section</button></div>'+
  '</div>';
  for(const id of ['backAudits','saveExitAuditTop','saveExitAuditBottom']){
@@ -1068,7 +1120,7 @@ async function editAudit(id){
    const vial2=Number(value2),vial5=Number(value5);
    if(value2===''||value5===''||!Number.isInteger(vial2)||!Number.isInteger(vial5)
       ||vial2<0||vial5<0||vial2+vial5===0){
-     return alert('Enter whole-number quantities of 2 mg and 5 mg vials. Use 0 when none were used.');
+     return alert('Enter whole-number quantities of 2 mg (orange cap) and 5 mg (green cap) vials. Use 0 when none were used.');
    }
    const group=groupedAdministrations(a.administrationRows||[]).find(g=>g.key===key);
    if(!group||group.medication!=='Versed')return alert('This administration group is no longer available.');
@@ -1086,6 +1138,7 @@ async function editAudit(id){
    await put('audits',draft);
    await editAudit(a.id);
  });
+ document.querySelectorAll('[data-count-loc][data-count-med]').forEach(input=>input.addEventListener('input',updateAuditPhysicalTotals));
  document.querySelectorAll('.signature-box').forEach(box=>setupSignature(box,a.signatures?.[box.dataset.sigLoc]||{},()=>scheduleAuditAutosave(a.id,true)));
  const primaryAuditorName=document.getElementById('auditAuditorName');
  const primaryAuditorEmployee=document.getElementById('auditAuditorEmployeeNumber');
@@ -1148,7 +1201,7 @@ async function editAudit(id){
    const sourceAfter=sourceEntered?Math.max(0,sourceBefore-qty):null;
    const expiredAfter=expiredEntered?(expiredBefore+(retained?qty:0)):null;
 
-   if(findingContext)findingContext.innerHTML='<strong>'+esc(loc)+' · '+esc(med)+'</strong><span>'+(sourceEntered?'Current audit count: '+sourceBefore+' vial'+(sourceBefore===1?'':'s'):'Enter the current physical count first')+'</span>';
+   if(findingContext)findingContext.innerHTML='<strong>'+esc(loc)+' · '+medicationDisplayHtml(med)+'</strong><span>'+(sourceEntered?'Current audit count: '+sourceBefore+' vial'+(sourceBefore===1?'':'s'):'Enter the current physical count first')+'</span>';
    if(findingImpact){
      findingImpact.innerHTML=
        '<div><span>'+esc(loc)+'</span><strong>'+(sourceEntered?(sourceBefore+' → '+sourceAfter):'Not entered')+'</strong></div>'+
@@ -1308,6 +1361,7 @@ async function editAudit(id){
    el.addEventListener('blur',()=>{updateAuditRouteProgress();scheduleAuditAutosave(a.id,true)});
  });
  setupMobileAuditCards(a.id);
+ updateAuditPhysicalTotals();
  updateAuditRouteProgress();
  setAutosaveStatus('Saved '+fmtDate(a.updatedAt));
 }
@@ -1826,13 +1880,13 @@ function annualSummaryHtml(year,reports){
  '<li><b>Recorded amendments:</b> '+amendments+'.</li>'+
  '</ul></section>'+
  '<section><h2>Year-start to year-end active inventory</h2><table class="report-table"><thead><tr><th>Medication</th><th>First finalized audit</th><th>Last finalized audit</th><th>Net change</th></tr></thead><tbody>'+
- medSummary.map(x=>'<tr><td>'+esc(x.m)+'</td><td>'+x.first+'</td><td><b>'+x.last+'</b></td><td><b>'+(x.diff>0?'+':'')+x.diff+'</b></td></tr>').join('')+
+ medSummary.map(x=>'<tr><td>'+medicationDisplayHtml(x.m)+'</td><td>'+x.first+'</td><td><b>'+x.last+'</b></td><td><b>'+(x.diff>0?'+':'')+x.diff+'</b></td></tr>').join('')+
  '</tbody></table><p class="report-note">Active inventory includes Medic 1, Medic 2, Medic 3, and Safe; Expired inventory is excluded from active totals.</p></section>'+
  '<section><h2>Monthly audit register</h2><table class="report-table"><thead><tr><th>Month</th><th>Audit date</th><th>Auditor</th><th>Administration rows</th><th>Amendments</th></tr></thead><tbody>'+
  sorted.map(r=>'<tr><td>'+esc(r.month||'')+'</td><td>'+esc(reportShareDate(r.auditDate||r.finalizedAt)||'—')+'</td><td>'+esc(r.attestationName||r.auditorName||'—')+'</td><td>'+((r.administrationRows||[]).length)+'</td><td>'+((r.amendments||[]).length)+'</td></tr>').join('')+
  '</tbody></table></section>'+
- (inventoryFindings.length?'<section><h2>Expired / damaged medications found during audits</h2><p class="report-note">These findings were recorded within the live monthly audits. Retained items moved into Expired inventory; damaged vials that could not be physically retained were documented without increasing the Expired physical count. No separate inventory transactions were created.</p><table class="report-table"><thead><tr><th>Month</th><th>Date</th><th>Finding</th><th>Source</th><th>Medication</th><th>Qty</th><th>Notes</th></tr></thead><tbody>'+inventoryFindings.map(x=>'<tr><td>'+esc(x.auditMonth||'')+'</td><td>'+esc(formatDisplayDate(x.recordedAt)||'')+'</td><td>'+esc(x.typeLabel||x.type||'')+'</td><td>'+esc(x.sourceLocation||'')+' → '+esc(x.destinationLocation||'Expired')+'</td><td>'+esc(x.medication||'')+'</td><td>'+esc(x.quantity||'')+'</td><td>'+esc((x.physicalRetained===false?'No physical vial retained. ':'')+(x.note||''))+'</td></tr>').join('')+'</tbody></table></section>':'')+
- '<section><h2>Medication detail by month</h2><table class="report-table"><thead><tr><th>Month</th>'+MEDS.map(m=>'<th>'+esc(m)+'</th>').join('')+'</tr></thead><tbody>'+
+ (inventoryFindings.length?'<section><h2>Expired / damaged medications found during audits</h2><p class="report-note">These findings were recorded within the live monthly audits. Retained items moved into Expired inventory; damaged vials that could not be physically retained were documented without increasing the Expired physical count. No separate inventory transactions were created.</p><table class="report-table"><thead><tr><th>Month</th><th>Date</th><th>Finding</th><th>Source</th><th>Medication</th><th>Qty</th><th>Notes</th></tr></thead><tbody>'+inventoryFindings.map(x=>'<tr><td>'+esc(x.auditMonth||'')+'</td><td>'+esc(formatDisplayDate(x.recordedAt)||'')+'</td><td>'+esc(x.typeLabel||x.type||'')+'</td><td>'+esc(x.sourceLocation||'')+' → '+esc(x.destinationLocation||'Expired')+'</td><td>'+medicationDisplayHtml(x.medication||'')+'</td><td>'+esc(x.quantity||'')+'</td><td>'+esc((x.physicalRetained===false?'No physical vial retained. ':'')+(x.note||''))+'</td></tr>').join('')+'</tbody></table></section>':'')+
+ '<section><h2>Medication detail by month</h2><table class="report-table"><thead><tr><th>Month</th>'+MEDS.map(m=>'<th>'+medicationDisplayHtml(m)+'</th>').join('')+'</tr></thead><tbody>'+
  sorted.map(r=>'<tr><td>'+esc(r.month||'')+'</td>'+MEDS.map(m=>'<td>'+activeLocs.reduce((n,l)=>n+Number(r.counts?.[l]?.[m]||0),0)+'</td>').join('')+'</tr>').join('')+
  '</tbody></table></section>'+
  '<footer class="report-footer">Year-end summary · '+year+'</footer></div>';
@@ -1875,7 +1929,7 @@ function monthlySummaryHtml(key,report,multipleCount=1){
    const prior=sumKnown(activeLocs,m,report.priorCounts);
    const current=sumKnown(activeLocs,m,report.counts);
    const expired=count('Expired',m);
-   return '<tr><td>'+esc(m)+'</td><td>'+display(prior)+'</td><td><b>'+display(current)+'</b></td><td>'+diff(prior,current)+'</td><td>'+expired+'</td></tr>';
+   return '<tr><td>'+medicationDisplayHtml(m)+'</td><td>'+display(prior)+'</td><td><b>'+display(current)+'</b></td><td>'+diff(prior,current)+'</td><td>'+expired+'</td></tr>';
  }).join('');
  const currentActive=MEDS.reduce((n,m)=>{
    const value=sumKnown(activeLocs,m,report.counts);
@@ -2778,7 +2832,7 @@ function executiveSummaryHtml(r){
      const amount=Math.abs(x.diff);
      const direction=x.diff>0?'increased':'decreased';
      const reasons=reasonsForChange(x.m,x.diff);
-     parts.push(x.m+' '+direction+' by '+amount+' vial'+(amount===1?'':'s')+(reasons.length?' ('+reasons.join('; ')+')':''));
+     parts.push(medicationDisplayName(x.m)+' '+direction+' by '+amount+' vial'+(amount===1?'':'s')+(reasons.length?' ('+reasons.join('; ')+')':''));
      if(!reasons.length)missingReason=true;
    }
    inventorySentence='The physical inventory changed from the prior audit: '+parts.join('; ')+'.'+(missingReason?' No specific reason was documented for one or more of these inventory changes.':'');
@@ -2873,14 +2927,14 @@ function reportHtml(r){
  '<hr class="report-blue-rule">'+
  ((r.isTest||!r.legacyRecordNumber)?newReportSummaryHtml(r):'')+
  (amendment?'<section class="report-amendment"><h2>Amended inventory record — correction history</h2><p>The table below includes these corrections. Signatures were recorded before these amendments and certify the original record, not the corrected entries.</p>'+amendment+'</section>':'')+
- '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+esc(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
+ '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+medicationDisplayHtml(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
  '<section><h2>Breakaway tag record</h2><table class="report-table"><thead><tr><th>Location</th><th>Tag found / removed</th><th>New tag installed</th></tr></thead><tbody>'+tagRows+'</tbody></table></section>'+
- (Array.isArray(r.inventoryFindings)&&r.inventoryFindings.length?'<section class="report-audit-findings"><h2>Expired / damaged medications found during audit</h2><p class="report-note">These items were identified during the physical audit. Retained items were moved from the source location into Expired inventory; damaged vials that could not be physically retained were removed from the source count and documented without increasing the Expired physical count. No separate inventory transaction was created.</p><table class="report-table"><thead><tr><th>Date</th><th>Finding</th><th>Source</th><th>Medication</th><th>Qty</th><th>Notes</th></tr></thead><tbody>'+r.inventoryFindings.map(x=>'<tr><td>'+esc(formatDisplayDate(x.recordedAt)||'')+'</td><td>'+esc(x.typeLabel||x.type||'')+'</td><td>'+esc(x.sourceLocation||'')+' → '+esc(x.destinationLocation||'Expired')+'</td><td>'+esc(x.medication||'')+'</td><td>'+esc(x.quantity||'')+'</td><td>'+esc((x.physicalRetained===false?'No physical vial retained. ':'')+(x.note||''))+'</td></tr>').join('')+'</tbody></table></section>':'')+
+ (Array.isArray(r.inventoryFindings)&&r.inventoryFindings.length?'<section class="report-audit-findings"><h2>Expired / damaged medications found during audit</h2><p class="report-note">These items were identified during the physical audit. Retained items were moved from the source location into Expired inventory; damaged vials that could not be physically retained were removed from the source count and documented without increasing the Expired physical count. No separate inventory transaction was created.</p><table class="report-table"><thead><tr><th>Date</th><th>Finding</th><th>Source</th><th>Medication</th><th>Qty</th><th>Notes</th></tr></thead><tbody>'+r.inventoryFindings.map(x=>'<tr><td>'+esc(formatDisplayDate(x.recordedAt)||'')+'</td><td>'+esc(x.typeLabel||x.type||'')+'</td><td>'+esc(x.sourceLocation||'')+' → '+esc(x.destinationLocation||'Expired')+'</td><td>'+medicationDisplayHtml(x.medication||'')+'</td><td>'+esc(x.quantity||'')+'</td><td>'+esc((x.physicalRetained===false?'No physical vial retained. ':'')+(x.note||''))+'</td></tr>').join('')+'</tbody></table></section>':'')+
  '<section class="report-eso-source"><h2>ESO Narcotic Administration Record</h2><p>Administration activity was imported from the ESO software PDF for this audit period. Physical inventory totals remain based on the manually verified count.</p>'+(sourceDoc?'<p><b>Imported ESO PDF:</b> <u>'+esc(sourceDoc.name)+'</u> — imported '+esc(formatDisplayDate(sourceDoc.uploadedAt)||'')+(sourceDoc.uploadedBy?' by '+esc(sourceDoc.uploadedBy):'')+'</p>':'')+'<p class="report-note">The imported record and calculated vial-use reconciliation are included below.</p></section>'+
  (r.isTest&&Array.isArray(r.administrationRows)&&r.administrationRows.length?
  '<section class="report-imported-admin"><h2>Administration Detail</h2><p class="report-note">Source doses are preserved as imported. Calculated vial use is derived separately using department vial rules.</p>'+
  '<table class="report-table"><thead><tr><th>Date</th><th>Report</th><th>Provider</th><th>Medication</th><th>Dose</th><th>Unit</th></tr></thead><tbody>'+
- r.administrationRows.map(x=>'<tr><td>'+esc(formatAdminDate(x.date))+'</td><td>'+esc(x.report)+'</td><td>'+esc(x.provider)+'</td><td>'+esc(x.medication)+'</td><td><b>'+esc(x.dose)+' '+esc(adminDoseUnit(x.medication))+'</b></td><td>'+esc(String(x.unit||'').replace(/^M([123])$/,'Medic $1'))+'</td></tr>').join('')+
+ r.administrationRows.map(x=>'<tr><td>'+esc(formatAdminDate(x.date))+'</td><td>'+esc(x.report)+'</td><td>'+esc(x.provider)+'</td><td>'+medicationDisplayHtml(x.medication)+'</td><td><b>'+esc(x.dose)+' '+esc(adminDoseUnit(x.medication))+'</b></td><td>'+esc(String(x.unit||'').replace(/^M([123])$/,'Medic $1'))+'</td></tr>').join('')+
  '</tbody></table>'+
  '<div class="report-usage-summary report-vial-summary pdf-vial-section"><div class="report-vial-summary-title">Calculated Vial Use</div><p class="report-vial-explainer">Calculated vial use converts the imported ESO administration doses into whole-vial usage using the department vial-size rules. This reconciliation reference does not change the manually verified physical inventory count.</p>'+
  providerVialData(r.administrationRows,r.vialOverrides||{}).providers.map(([provider,items])=>{
@@ -2900,7 +2954,7 @@ function reportHtml(r){
    const detail=[...breakdown.entries()].map(([key,n])=>{
      const [med,strength]=key.split('|');
      return strength==='Pending confirmation'?esc(med)+' — pending vial confirmation':
-       esc(med)+' — '+n+' × '+esc(strength)+' vial'+(n===1?'':'s');
+       esc(med)+' — '+n+' × '+esc(versedStrengthDisplayText(med,strength))+' vial'+(n===1?'':'s');
    }).join('<br>');
    return '<div class="report-vial-row report-vial-row-detailed"><div class="report-vial-provider"><strong>'+esc(provider)+'</strong><span>'+detail+'</span></div><div class="report-vial-count">'+(total===null?'Pending':total+' vial'+(total===1?'':'s'))+'</div></div>';
  }).join('')+
@@ -3022,7 +3076,7 @@ async function exportActivity(){let rows=await getAll('transactions');const cols
 async function renderStats(){const [tx,aud,rep,arc]=await Promise.all(['transactions','audits','reports','legacyArchive'].map(getAll));document.getElementById('storageStats').innerHTML=[['Activity entries',tx.length],['Audit drafts',aud.filter(x=>x.status!=='finalized').length],['Finalized reports',rep.length],['Migration archives',arc.length]].map(x=>'<div class="stat"><strong>'+x[1]+'</strong>'+x[0]+'</div>').join('');const m=await getOne('meta','migration');if(m)document.getElementById('migrationStatus').textContent='Last migration import: '+fmtDate(m.importedAt)}
 async function refreshAll(){await Promise.all([renderInventory(),renderActivity(),renderAudits(),renderReports(),renderStats()])}
 function txMedicationRowHtml(med='',qty=''){
- const options=MEDS.map(x=>'<option value="'+esc(x)+'" '+(x===med?'selected':'')+'>'+esc(x)+'</option>').join('');
+ const options=MEDS.map(x=>'<option value="'+esc(x)+'" '+(x===med?'selected':'')+'>'+esc(medicationDisplayName(x))+'</option>').join('');
  return '<div class="tx-med-row"><label>Medication<select name="txMedication" required>'+options+'</select></label><label>Quantity<input name="txQuantity" type="number" step="1" min="1" inputmode="numeric" data-integer-only required value="'+esc(qty)+'"></label><button type="button" class="remove-tx-med">Remove</button></div>';
 }
 function addTxMedicationRow(med='',qty=''){
@@ -3326,7 +3380,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}
  if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-236',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-237',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
