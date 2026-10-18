@@ -2062,7 +2062,7 @@ function monthlySummaryHtml(key,report,multipleCount=1){
  '<section><h2>Auditor notes</h2><p class="audit-notes-text">'+esc(report.notes||'No overall notes entered.').replace(/\n/g,'<br>')+'</p></section>'+
  '<footer class="report-footer">Monthly summary · '+esc(title)+' · Based on finalized audit record</footer></div>';
 }
-async function showMonthlySummary(month,year){
+async function showSignedMonthlyReport(month,year){
  const yr=String(year||'').trim(),m=String(month||'').padStart(2,'0');
  if(!/^\d{4}$/.test(yr)||!/^(0[1-9]|1[0-2])$/.test(m))return alert('Select a valid month and year.');
  const key=yr+'-'+m;
@@ -2073,14 +2073,17 @@ async function showMonthlySummary(month,year){
  }
  const matches=(await getAll('reports')).filter(r=>String(r.status||'finalized').toLowerCase()==='finalized'&&reportMonthKey(r)===key)
    .sort((a,b)=>String(b.finalizedAt||b.updatedAt||b.auditDate||'').localeCompare(String(a.finalizedAt||a.updatedAt||a.auditDate||'')));
- if(!matches.length)return alert('No finalized monthly audit is available for '+monthValueToText(key)+'. Save or finalize the audit before generating a summary.');
+ if(!matches.length)return alert('No finalized monthly audit is available for '+monthValueToText(key)+'. Save or finalize the audit before generating the signed report.');
  const record=matches[0],d=document.getElementById('reportDialog'),preview=document.getElementById('reportPreview');
  if(d.open)d.close();
- preview.innerHTML=monthlySummaryHtml(key,record,matches.length);
+ // Month selection must generate the full signed record, just as the August
+ // 2026 original audit does. A summary omits ten site signatures and the
+ // final certifying signature, which was being mistaken for the audit packet.
+ preview.innerHTML=reportHtml(record);
  preview._packetSupportingDocuments=uniqueSupportingDocuments(record.supportingDocuments||[]);
  d.showModal();document.body.classList.add('report-open');
  d.scrollTop=0;preview.scrollTop=0;
- const title='Gladstone FD Narcotic Inventory Audit Monthly Summary — '+monthValueToText(key);
+ const title='Gladstone FD Narcotic Inventory Audit Report — '+monthValueToText(key)+' — '+reportShareDate(record.auditDate||record.finalizedAt);
  const close=document.getElementById('closeReport'),pdfPreview=document.getElementById('previewPdfReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
  if(close)close.onclick=()=>d.close();
  if(pdfPreview)pdfPreview.onclick=()=>previewRenderedReportPdf(preview,title);
@@ -2127,20 +2130,20 @@ async function renderReports(){
  const monthYears=new Set(rows.map(reportMonthKey).filter(Boolean).map(key=>key.slice(0,4)));
  [now.getFullYear()-1,now.getFullYear(),now.getFullYear()+1,Number(selectedYear)].forEach(y=>monthYears.add(String(y)));
  const selectableYears=[...monthYears].filter(v=>/^\d{4}$/.test(v)).sort((a,b)=>b.localeCompare(a));
- const monthly='<div class="annual-report-card monthly-summary-card"><div><span class="kicker">MONTHLY REVIEW</span><h3>Monthly summary report</h3><div class="meta">Choose a reporting month and year. Available for finalized audits; the original signed audit report remains unchanged.</div></div>'+
+ const monthly='<div class="annual-report-card monthly-summary-card"><div><span class="kicker">SIGNED MONTHLY AUDIT</span><h3>Full signed audit packet</h3><div class="meta">Choose a finalized reporting month and year. Generate the complete August-style audit packet, including physical inventory, all five site signature pairs, final signature, and supporting records.</div></div>'+
  '<div class="monthly-summary-controls">'+
  '<label for="monthlyReportMonth">Month<select id="monthlyReportMonth" aria-label="Select report month">'+
  monthNames.map((m,i)=>{const val=String(i+1).padStart(2,'0');return '<option value="'+val+'" '+(val===selectedMonth?'selected':'')+'>'+m+'</option>'}).join('')+'</select></label>'+
  '<label for="monthlyReportYear">Year<select id="monthlyReportYear" aria-label="Select report year">'+
  selectableYears.map(y=>'<option value="'+y+'" '+(y===selectedYear?'selected':'')+'>'+y+'</option>').join('')+'</select></label>'+
- '<button type="button" id="generateMonthlyReport" class="primary">Generate monthly report</button></div></div>';
+ '<button type="button" id="generateMonthlyReport" class="primary">Generate signed audit packet</button></div></div>';
  const testCard='<div class="list-item test-report-card"><div><span class="test-badge">TEST</span><strong>Test audit report</strong><div class="meta">Synthetic data · safe report-layout preview</div></div><div class="button-row"><button data-test-report="1">View test report</button></div></div>';
  const real=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month||monthValueToText(reportMonthKey(r))||'Monthly audit')+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+(r.reportingMonthCorrection?' · Reporting-month correction recorded':'')+'</div><div class="button-row"><button data-report="'+esc(r.id)+'">View / print original audit</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>';
  document.getElementById('reportsList').innerHTML=monthly+annual+testCard+real;
  const annualBtn=document.getElementById('generateAnnualReport');
  if(annualBtn)annualBtn.onclick=()=>showAnnualReport(document.getElementById('annualReportYear')?.value);
  const monthlyBtn=document.getElementById('generateMonthlyReport');
- if(monthlyBtn)monthlyBtn.onclick=()=>showMonthlySummary(document.getElementById('monthlyReportMonth')?.value,document.getElementById('monthlyReportYear')?.value);
+ if(monthlyBtn)monthlyBtn.onclick=()=>showSignedMonthlyReport(document.getElementById('monthlyReportMonth')?.value,document.getElementById('monthlyReportYear')?.value);
 }
 
 async function sharePdfFile(file,title){
