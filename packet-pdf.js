@@ -501,7 +501,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
       y:67,size:8.4,font:regular,color:colors.ink});
   }
 
-  newPage('Executive summary');
+  newPage(isSummary?'Executive summary':'Audit summary');
   const execSummary=sheet.querySelector('.report-executive-summary');
   if(isSummary){
     if(!execSummary){
@@ -520,51 +520,18 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
       }
     }
   }else{
-    paragraph('This packet documents the physical inventory audit for '+safeText(auditPeriod||auditMonth)+
-      '. Locations covered: Medic 1, Medic 2, Medic 3, Safe, Expired. It includes inventory comparisons, tag records, activity, signatures, notes, and referenced supporting documents.',{size:9.3});
-    heading('Inventory and recorded activity',11.4);
-    const invTable=sheet.querySelector('.report-inventory');
-    const invData=tableData(invTable);
-    const countCurrent=()=>{
-      if(!invData)return null;
-      let total=0,active=0,expired=0,ok=false;
-      for(const row of invData.rows){
-        for(let j=1;j<=5;j++){
-          const v=String(row[j]||'').split('/').pop().trim();
-          if(/^\d+$/.test(v)){
-            total+=Number(v);if(j===5)expired+=Number(v);else active+=Number(v);ok=true;
-          }
-        }
-      }
-      return ok?{total,active,expired}:null;
-    };
-    const c=countCurrent();
-    const txn=sheet.querySelector('.report-transactions-section table');
-    const transactionRows=tableData(txn)?.rows||[];
-    const facts=[
-      ['Current physical inventory (all locations)',c?c.total+' vials':'See signed inventory comparison'],
-      ['Active inventory (Medic 1, 2, 3 and Safe)',c?c.active+' vials':'See signed inventory comparison'],
-      ['Expired stock',c?c.expired+' vials':'See signed inventory comparison'],
-      ['Recorded transactions',transactionRows.length?String(transactionRows.length):'None recorded'],
-      ['Seals','Five locations - original and replacement tags documented']
-    ];
-    for(const [label,value] of facts){
-      ensure(30,'Executive summary (continued)');
-      page.drawText(safeText(label),{x:L+6,y:y-9,size:8.7,font:regular,color:colors.ink});
-      const valueLines=wrap(value,regular,8.7,205);
-      valueLines.slice(0,2).forEach((line,j)=>page.drawText(line,
-        {x:R-210,y:y-9-j*11,size:8.7,font:regular,color:colors.ink}));
-      page.drawLine({start:{x:L,y:y-20},end:{x:R,y:y-20},thickness:.6,color:colors.rule});
-      y-=Math.max(30,20+valueLines.length*11);
-    }
-    y-=12;
-    if(execSummary){
-      for(const p of execSummary.querySelectorAll('p')){
-        if(txt(p))paragraph(txt(p),{size:9.1,continuation:'Executive summary (continued)'});
-      }
-    }
-    paragraph('Physical counts are the verified audit inventory. Source documents and administration calculations are supporting evidence and do not replace the final signed physical count.',
-      {size:8.7,muted:true});
+    // The August-style signed packet starts with a narrative that summarizes
+    // only the auditor's actual notes. Counts and calculated movements are
+    // documented in the detailed inventory and activity sections that follow.
+    const summaryText=multiline(execSummary?.querySelector('p:not(.report-note)'))||
+      'No overall auditor notes were recorded for this audit.';
+    paragraph(summaryText,{size:10.2,leading:15.2,
+      continuation:'Audit summary (continued)',gap:18});
+    const sourceNote=txt(execSummary?.querySelector('.report-note'));
+    if(sourceNote)paragraph(sourceNote,{size:8.7,muted:true,
+      continuation:'Audit summary (continued)'});
+    const context=execSummary?.querySelector('.report-implementation-note');
+    if(context)notePanel('Historical Implementation Context',txt(context));
   }
   // Data tables follow August's standalone summary page.
   newPage('Audit data and supporting records');
