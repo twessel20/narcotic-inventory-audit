@@ -2162,22 +2162,82 @@ function uniqueSupportingDocuments(docs=[]){
    if(seen.has(k))return false;seen.add(k);return true;
  });
 }
-async function appendSupportingPdfs(baseBlob,docs=[]){
+// For imported ESO administration PDFs, include only pages with actual
+// dated medication rows and crop out source report headers/filter banners.
+// No stored attachment is edited or replaced.
+async function administrationAppendixPageRanges(bytes,expectedRows=0){
+ await ensurePdfReader();
+ const reader=await window.pdfjsLib.getDocument({data:bytes.slice()}).promise;
+ const selected=[];
+ try{
+  for(let index=0;index<reader.numPages;index++){
+   const page=await reader.getPage(index+1);
+   const content=await page.getTextContent();
+   const items=(content.items||[]).map(item=>({
+    text:String(item.str||'').trim(),
+    x:Number(item.transform?.[4]),y:Number(item.transform?.[5])
+   })).filter(item=>item.text&&Number.isFinite(item.x)&&Number.isFinite(item.y));
+   const full=items.map(item=>item.text).join(' ');
+   const incidents=items.filter(item=>/\bGFD\s*\d{6,}\b/i.test(item.text));
+   const hasDrug=/\b(Fentanyl|Versed|Midazolam|Morphine|Ketamine)\b/i.test(full);
+   const hasDate=/\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/.test(full);
+   // Ignore the original blank/filter-title page. Never treat a 09/2026
+   // filter line by itself as an actual administration record.
+   if(!incidents.length||!hasDrug||!hasDate)continue;
+   const firstY=Math.max(...incidents.map(item=>item.y));
+   const lastY=Math.min(...incidents.map(item=>item.y));
+   const heads=items.filter(item=>item.y>=firstY-2&&item.y<=firstY+36&&
+    /Incident|Date|Number|Provider|Treatment|Dose|Unit/i.test(item.text));
+   const headY=heads.length?Math.max(...heads.map(item=>item.y)):firstY+11;
+   const cells=items.filter(item=>item.y>=lastY-2&&item.y<=headY+4);
+   const left=Math.max(0,Math.min(...cells.map(item=>item.x))-12);
+   const rightText=Math.max(...cells.map(item=>item.x+Math.max(12,item.text.length*5.3)));
+   const size=page.getViewport({scale:1,rotation:0});
+   const right=Math.min(size.width,rightText+11);
+   const bottom=Math.max(0,lastY-9);
+   const top=Math.min(size.height,headY+15);
+   const crop=right-left>size.width*.4&&top-bottom>45?
+    {x:left,y:bottom,width:right-left,height:top-bottom}:null;
+   selected.push({index,crop,incidentCount:incidents.length});
+  }
+ }finally{await reader.destroy();}
+ if(!selected.length)throw new Error('The imported ESO PDF has no recognizable dated medication rows. Verify the source file before creating the data-only appendix.');
+ if(expectedRows>0){
+  const found=selected.reduce((n,p)=>n+p.incidentCount,0);
+  if(found<expectedRows)throw new Error('The imported ESO PDF has fewer visible medication rows than the saved audit import. Check the source file before exporting.');
+ }
+ return selected;
+}
+async function appendSupportingPdfs(baseBlob,docs=[],options={}){
  const unique=uniqueSupportingDocuments(docs);
  if(!unique.length)return baseBlob;
  await ensurePdfMerger();
  const merged=await window.PDFLib.PDFDocument.load(await baseBlob.arrayBuffer());
  for(const doc of unique){
-   const bucket=doc.storageBucket||'audit-supporting-docs';
-   const {data,error}=await sb.storage.from(bucket).download(doc.storagePath);
-   if(error||!data)throw new Error('Unable to retrieve supporting document: '+(doc.name||'PDF'));
-   const src=await window.PDFLib.PDFDocument.load(await data.arrayBuffer());
+  const bucket=doc.storageBucket||'audit-supporting-docs';
+  const {data,error}=await sb.storage.from(bucket).download(doc.storagePath);
+  if(error||!data)throw new Error('Unable to retrieve supporting document: '+(doc.name||'PDF'));
+  const bytes=new Uint8Array(await data.arrayBuffer());
+  const src=await window.PDFLib.PDFDocument.load(bytes);
+  const isESO=options.dataOnlyAdministrationAppendix&&
+   Array.isArray(doc.administrationRows)&&doc.administrationRows.length>0;
+  if(isESO){
+   const selected=await administrationAppendixPageRanges(bytes,doc.administrationRows.length);
+   for(const entry of selected){
+    const [copy]=await merged.copyPages(src,[entry.index]);
+    if(entry.crop&&(copy.getRotation()?.angle||0)===0){
+     const crop=entry.crop;
+     copy.setCropBox(crop.x,crop.y,crop.width,crop.height);
+    }
+    merged.addPage(copy);
+   }
+  }else{
    const pages=await merged.copyPages(src,src.getPageIndices());
    pages.forEach(p=>merged.addPage(p));
+  }
  }
  return new Blob([await merged.save()],{type:'application/pdf'});
 }
-
 async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit Report'){
   // All finalized report families use the same searchable August 2026
   // PDF layout engine. Monthly and annual summaries retain their own figures,
