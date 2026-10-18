@@ -3099,6 +3099,18 @@ function newReportSummaryHtml(r){
 
 function reportHtml(r){
  const logo='gfd-patch.jpg';
+ const signedImages=LOCS.reduce((total,loc)=>{
+   const site=r.signatures?.[loc]||{};
+   return total+Number(Boolean(site.signature))+Number(Boolean(site.witnessSignature));
+ },0);
+ const finalImage=Boolean(r.attestationSignature);
+ const totalImages=signedImages+Number(finalImage);
+ const signatureStatus='<div class="notice" role="status" style="margin:8px 0 18px;padding:12px 15px;">'+
+   '<strong>Saved signature check:</strong> '+signedImages+'/10 site signatures; '+
+   (finalImage?'final attestation signature present':'final attestation signature missing')+'. '+
+   (totalImages===11?'All 11 required signature images are stored in this report.':
+    'This report has missing signature images. The signed PDF export will identify what is missing.')+
+   '</div>';
  const recordNo=r.legacyRecordNumber||String(r.auditId||r.id||'').match(/\d+/)?.[0]||'';
  const activeTotal=m=>['Medic 1','Medic 2','Medic 3','Safe'].reduce((n,l)=>n+Number(r.counts?.[l]?.[m]||0),0);
  const amendment=(r.amendments||[]).map(a=>'<div class="report-amendment-row"><b>'+esc(a.location)+' · '+esc(a.medication)+':</b> '+esc(a.from)+' → '+esc(a.to)+' '+esc(a.unit||'')+'. '+esc(a.reason||'')+(a.recordedAt?' Recorded '+esc(formatDisplayDate(a.recordedAt)):'')+(a.recordedBy?' by '+esc(a.recordedBy):'')+'.</div>').join('');
@@ -3124,6 +3136,7 @@ function reportHtml(r){
  const sourceDoc=(r.supportingDocuments||[])[0];
  return '<div class="report-sheet report-finalized">'+
  '<div class="report-toolbar"><button id="closeReport">Close</button><button id="previewPdfReport">Generate PDF Preview</button><button id="shareReport">Share PDF</button><button id="printReport" class="primary">Print / Save PDF</button></div>'+
+ signatureStatus+
  ((r.isTest||!r.legacyRecordNumber)?newReportFrontMatterHtml(r):'')+
  '<header class="report-top"><img src="'+logo+'" alt="Gladstone Fire Department patch"><div><div class="report-kicker">FINALIZED MONTHLY RECORD</div><h1>Gladstone Fire Department Narcotic<br>Inventory / Audit Form</h1></div></header>'+
  '<div class="report-meta-grid"><div><b>Audit month:</b> '+esc(r.month||'')+'</div><div><b>Created:</b> '+esc(formatDisplayDate(r.createdDisplay||r.createdAt)||'')+'</div><div><b>Email:</b> '+esc(r.email||'travisw@gladstone.mo.us')+'</div><div></div><div><b>Date of audit:</b> '+esc(formatDisplayDate(r.auditDate)||'')+'</div><div></div><div class="wide"><b>Audit period:</b> '+esc(formatDisplayDate(r.dateRangeStart)||'—')+' through '+esc(formatDisplayDate(r.dateRangeEnd)||'—')+' (both dates included)</div></div>'+
