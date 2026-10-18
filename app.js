@@ -867,6 +867,33 @@ async function handleAdministrationPdf(auditId,file){
 // Single-section audit workflow on phones, with a stable native page scroll.
 // Sections switch only when the user explicitly navigates; keyboard and Safari
 // toolbar viewport changes must never cause the page to jump.
+// Visual-only progress indicators. Never mutate counts or signatures here.
+function updateAuditRouteProgress(){
+ const shell=document.querySelector('.audit-workspace-shell');
+ if(!shell)return;
+ shell.querySelectorAll('[data-route-loc]').forEach(link=>{
+   const loc=link.dataset.routeLoc;
+   const section=[...shell.querySelectorAll('[data-unit-section]')]
+     .find(node=>node.dataset.unitSection===loc);
+   if(!section)return;
+   const counts=[...section.querySelectorAll('[data-count-loc]')];
+   const allConfirmed=counts.length===MEDS.length&&
+     counts.every(input=>input.value!==''&&input.readOnly&&Number.isInteger(Number(input.value))&&Number(input.value)>=0);
+   const signatures=section.querySelector('.signature-box');
+   const signed=Boolean(signatures?.querySelector('[data-canvas]')?.dataset.hasSignature==='true'
+     &&signatures?.querySelector('[data-witness-canvas]')?.dataset.hasSignature==='true');
+   const identified=Boolean(signatures?.querySelector('[data-signer]')?.value.trim()
+     &&signatures?.querySelector('[data-witness]')?.value.trim()
+     &&validEmployeeNumber(signatures?.querySelector('[data-employee-number]')?.value)
+     &&validEmployeeNumber(signatures?.querySelector('[data-witness-employee-number]')?.value));
+   const seals=[...section.querySelectorAll('[data-tag-loc]')];
+   const sealed=seals.length>=2&&seals.every(input=>input.value.trim());
+   const complete=Boolean(allConfirmed&&signed&&identified&&sealed);
+   link.classList.toggle('complete',complete);
+   const indicator=link.querySelector('.route-status-mark');
+   if(indicator)indicator.textContent=complete?'✓':'';
+ });
+}
 function setupMobileAuditCards(auditId){
  const shell=document.querySelector('.audit-workspace-shell');
  if(!shell)return;
@@ -967,8 +994,11 @@ async function editAudit(id){
    const clearBtn=document.getElementById('clearFinalSignature');
    if(btn)btn.onclick=()=>openStandaloneSignatureCapture(finalSigCanvas,'Final auditor signature',()=>scheduleAuditAutosave(a.id,true));
    if(clearBtn)clearBtn.onclick=()=>{
+     finalSigCanvas.resetSignatureStroke?.();
      finalSigCanvas.getContext('2d').clearRect(0,0,finalSigCanvas.width,finalSigCanvas.height);
      finalSigCanvas.dataset.hasSignature='false';
+     finalSigCanvas.dataset.signatureEdited='true';
+     updateAuditRouteProgress();
      a.attestationSignature='';
      scheduleAuditAutosave(a.id,true);
    };
@@ -1229,13 +1259,25 @@ function bindSignatureInk(canvas,lineWidth,onDraw){
    last=p;stroked=true;
    if(e.cancelable)e.preventDefault();
  };
- const up=e=>{
-   if(!active||(pointerId!==null&&e.pointerId!==pointerId))return;
-   if(stroked){canvas.dataset.hasSignature='true';if(onDraw)onDraw()}
+ const resetStroke=()=>{
    const id=pointerId;
    active=false;last=null;pointerId=null;stroked=false;
    if(id!==null&&canvas.hasPointerCapture?.(id)){
      try{canvas.releasePointerCapture(id)}catch(_){}
+   }
+ };
+ // Clear buttons can reset an interrupted iPhone gesture so the next finger
+ // stroke always begins a fresh signature, even after pointercancel.
+ canvas.resetSignatureStroke=resetStroke;
+ const up=e=>{
+   if(!active||(pointerId!==null&&e.pointerId!==pointerId))return;
+   const completed=stroked;
+   resetStroke(); // Finish FIRST so an onDraw error cannot lock the canvas.
+   if(completed){
+     canvas.dataset.hasSignature='true';
+     try{if(onDraw)onDraw()}catch(err){
+       console.error('Unable to refresh signature status; the drawn ink is retained',err);
+     }
    }
  };
  if(window.PointerEvent){
@@ -1322,6 +1364,7 @@ function openStandaloneSignatureCapture(source,titleText,onChange){
    if(onChange)onChange();
  };
  dialog.querySelector('#signatureCaptureClear').onclick=()=>{
+   live.resetSignatureStroke?.();
    ctx.clearRect(0,0,live.width,live.height);
    live.dataset.hasSignature='false';
    live.dataset.signatureEdited='true';
@@ -1356,8 +1399,10 @@ function setupSignature(box,s,onChange){
  box.querySelectorAll('[data-clear-signature]').forEach(btn=>btn.onclick=()=>{
    const target=btn.dataset.clearSignature==='witness'?w:c;
    if(!target)return;
+   target.resetSignatureStroke?.();
    target.getContext('2d').clearRect(0,0,target.width,target.height);
    target.dataset.hasSignature='false';
+   target.dataset.signatureEdited='true';
    updateAuditRouteProgress();
    if(onChange)onChange();
  });
@@ -3030,14 +3075,14 @@ function bind(){
    const b=document.getElementById('expandTxRecordedSignature');
    const clear=document.getElementById('clearTxRecordedSignature');
    if(b)b.onclick=()=>openStandaloneSignatureCapture(txRecordedSig,'Recorded-by signature');
-   if(clear)clear.onclick=()=>{txRecordedSig.getContext('2d').clearRect(0,0,txRecordedSig.width,txRecordedSig.height);txRecordedSig.dataset.hasSignature='false';};
+   if(clear)clear.onclick=()=>{txRecordedSig.resetSignatureStroke?.();txRecordedSig.getContext('2d').clearRect(0,0,txRecordedSig.width,txRecordedSig.height);txRecordedSig.dataset.hasSignature='false';txRecordedSig.dataset.signatureEdited='true';};
  }
  if(txWitnessSig){
    setupCanvas(txWitnessSig,'');
    const b=document.getElementById('expandTxWitnessSignature');
    const clear=document.getElementById('clearTxWitnessSignature');
    if(b)b.onclick=()=>openStandaloneSignatureCapture(txWitnessSig,'Witness signature');
-   if(clear)clear.onclick=()=>{txWitnessSig.getContext('2d').clearRect(0,0,txWitnessSig.width,txWitnessSig.height);txWitnessSig.dataset.hasSignature='false';};
+   if(clear)clear.onclick=()=>{txWitnessSig.resetSignatureStroke?.();txWitnessSig.getContext('2d').clearRect(0,0,txWitnessSig.width,txWitnessSig.height);txWitnessSig.dataset.hasSignature='false';txWitnessSig.dataset.signatureEdited='true';};
  }
  if(txRowsHost&&!txRowsHost.children.length)addTxMedicationRow();
 
@@ -3148,7 +3193,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}
  if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-233',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-234',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
