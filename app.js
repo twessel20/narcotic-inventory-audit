@@ -2189,7 +2189,10 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
  const clone=sheet.cloneNode(true);
  clone.querySelector('.report-toolbar')?.remove();
  clone.querySelector('.test-report-banner')?.remove();
- clone.classList.add('pdf-clean-report');
+ // html2pdf moves this element into its own container. Preserve the PDF
+ // styling ancestor on the element it actually clones so patch sizes,
+ // page-break rules and compact report tables survive the move.
+ clone.classList.add('pdf-clean-report','pdf-clean-stage');
  clone.style.width='7.55in';
  clone.style.maxWidth='7.55in';
  clone.style.margin='0';
@@ -2353,7 +2356,8 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      page.innerHTML=
        '<div class="pdf-packet-header">'+
          '<div class="pdf-packet-header-brand">'+
-           (packetLogoSrc?'<img src="'+packetLogoSrc+'" alt="Gladstone Fire Department patch">':'')+
+           // Running headers already get the small department patch.
+           // An unconstrained second image split every interior report page.
            '<div><strong>Gladstone Fire Department</strong><span>Narcotic Inventory / Audit Report</span></div>'+
          '</div>'+
          '<div class="pdf-packet-header-meta"><strong>'+esc(packetMonth||'Monthly Audit')+'</strong><span>'+esc(packetDateRange||'')+'</span></div>'+
@@ -2387,6 +2391,15 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
    clearPdfBreaks(cover);
    cover.classList.add('pdf-packet-cover');
+   // Protect the cover image dimensions inside independently cloned PDF DOM.
+   const coverPatch=cover.querySelector('.report-cover-brand img');
+   if(coverPatch){
+     coverPatch.style.setProperty('width','30px','important');
+     coverPatch.style.setProperty('height','30px','important');
+     coverPatch.style.setProperty('min-width','30px','important');
+     coverPatch.style.setProperty('max-width','30px','important');
+     coverPatch.style.setProperty('object-fit','contain','important');
+   }
 
    if(executive){
      executive.classList.remove('pdf-executive-page');
@@ -3498,7 +3511,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}
  if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-240',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-241',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
