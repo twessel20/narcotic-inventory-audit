@@ -342,6 +342,27 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
           newPage('Audit data and supporting records (continued)');
       }
     }
+    // Keep a section title with its table, as in the August signed packet.
+    // A small table moves as a unit; a long table moves with its first
+    // rows and the renderer repeats its column headers on later pages.
+    const firstTable=section.querySelector('table');
+    const firstData=tableData(firstTable);
+    if(firstData){
+      const cols=Math.max(firstData.headers.length,...firstData.rows.map(r=>r.length),1);
+      const weights=cols===7?[1.55,1.08,1.08,1.08,1.08,1.08,.90]:
+        cols===6?[1.05,1.10,1.0,.72,1.2,1.8]:cols===3?[1.0,1.9,1.9]:Array(cols).fill(1);
+      const sum=weights.reduce((a,b)=>a+b,0);
+      const widths=weights.map(v=>W*v/sum);
+      const fs=cols>=7?7.05:cols>=6?7.45:8.25,lead=fs*1.3;
+      const height=(row,isHead)=>Math.max(isHead?25:20,...widths.map((width,i)=>
+        wrap(row[i]||'',isHead?bold:regular,fs,width-10).length*lead+10));
+      const headHeight=firstData.headers.length?height(firstData.headers,true):0;
+      const bodyHeight=firstData.rows.reduce((a,row)=>a+height(row,false),0);
+      const complete=54+headHeight+bodyHeight+15;
+      const minimum=54+headHeight+Math.min(firstData.rows.length,2)*25;
+      const needed=complete<TOP-BOTTOM-40?complete:minimum;
+      if(y-needed<BOTTOM)newPage('Audit data and supporting records (continued)');
+    }
     heading(name);
     for(const child of [...section.children]){
       if(child.matches('h2'))continue;
@@ -355,7 +376,11 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
       }
       if(child.matches('.report-amendment-row')){notePanel('Amendment / Incident',txt(child));continue;}
       if(child.matches('.report-implementation-note')){notePanel('Implementation Note',txt(child));continue;}
-      if(child.matches('p,li')){paragraph(txt(child),{continuation:name+' (continued)'});continue;}
+      if(child.matches('p,li')){
+        paragraph(child.matches('.audit-notes-text')?multiline(child):txt(child),
+          {continuation:name+' (continued)'});
+        continue;
+      }
       if(child.matches('div')&&txt(child))paragraph(txt(child),{continuation:name+' (continued)'});
     }
   }
