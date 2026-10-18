@@ -256,6 +256,30 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     if(section.classList.contains('report-attestation'))return;
     if(section.classList.contains('report-cover-page'))return;
     if(section.classList.contains('report-notes'))return;
+    // The breakaway-seal register is a single audit evidence block. Measure
+    // all five rows plus the heading BEFORE drawing anything; otherwise a
+    // near-full preceding inventory page can orphan the heading or split the
+    // found/removed and installed tag numbers across PDF pages.
+    if(/^breakaway tag record$/i.test(name)){
+      const tagTable=section.querySelector('table');
+      if(!tagTable){heading(name);return;}
+      const data=tableData(tagTable);
+      const fontSize=8.25,leading=fontSize*1.3,pad=5;
+      const widths=[W/4.8,W*1.9/4.8,W*1.9/4.8];
+      const rowHeight=(cells,isHeader)=>Math.max(20,...widths.map((width,i)=>
+        wrap(cells[i]||'',isHeader?bold:regular,fontSize,width-2*pad).length*leading+2*pad));
+      const tableHeight=(data.headers.length?Math.max(25,rowHeight(data.headers,true)):0)+
+        data.rows.reduce((sum,cells)=>sum+rowHeight(cells,false),0);
+      // A fresh PDF sheet must contain this complete small register. Never
+      // scale away or omit any seal numbers to make it fit.
+      const required=tableHeight+56;
+      if(required>TOP-BOTTOM-48)
+        throw new Error('The breakaway tag record cannot fit on one report page.');
+      if(y-required<BOTTOM)newPage('Breakaway Tag Record');
+      else heading('Breakaway Tag Record');
+      renderTable(tagTable,'Breakaway Tag Record');
+      return;
+    }
     heading(name);
     for(const child of [...section.children]){
       if(child.matches('h2'))continue;
