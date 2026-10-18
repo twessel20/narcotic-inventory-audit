@@ -2181,6 +2181,9 @@ async function appendSupportingPdfs(baseBlob,docs=[]){
 async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit Report'){
  const sheet=preview?.querySelector('.report-sheet');
  if(!sheet)throw new Error('Report preview is not ready yet.');
+ // Prevent a valid-looking PDF from being generated from an empty report.
+ if((sheet.textContent||'').trim().length<60)
+   throw new Error('The report content is empty. Reopen the monthly report and try again.');
  await ensurePdfWriter();
 
  const clone=sheet.cloneNode(true);
@@ -2521,13 +2524,16 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
   const stage=document.createElement('div');
  stage.className='pdf-render-stage pdf-clean-stage';
+ // Avoid the far-offscreen capture that can produce blank pages in iOS Safari.
+ // The report dialog sits in the browser top layer, above the capture stage.
  stage.style.position='fixed';
- stage.style.left='-10000px';
+ stage.style.left='0';
  stage.style.top='0';
  stage.style.width='8.5in';
  stage.style.padding='0.35in';
  stage.style.background='#fff';
- stage.style.zIndex='-1';
+ stage.style.zIndex='0';
+ stage.style.pointerEvents='none';
  stage.appendChild(clone);
  document.body.appendChild(stage);
 
@@ -2572,7 +2578,8 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
        jsPDF:{unit:'in',format:'letter',orientation:'portrait'},
        pagebreak:{
          mode:['css','legacy'],
-         before:['.pdf-packet-page','.pdf-page-start'],
+         // Front cover is page 1 already. Never insert a blank lead page.
+         before:['.pdf-packet-page:not(.pdf-front-page)','.pdf-page-start'],
          avoid:[
            '.pdf-certifications-secondary-wrap',
            '.report-final-signature',
@@ -2662,56 +2669,94 @@ async function previewRenderedReportPdf(preview,title){
    const frame=document.getElementById('pdfPreviewFrame');
    const pages=document.getElementById('pdfPreviewPages');
    const name=document.getElementById('pdfPreviewTitle');
+   const openLink=document.getElementById('openPdfPreview');
+   const shareBtn=document.getElementById('savePdfPreview');
    if(!d||!frame||!pages)throw new Error('PDF preview window is unavailable.');
    if(name)name.textContent=result.safeName+'.pdf';
-
+   // Always expose the actual generated file as a fallback. A PDF can be
+   // valid even when a device's inline browser viewer refuses to display it.
+   url=URL.createObjectURL(result.blob);
+   d.dataset.objectUrl=url;
+   if(openLink){openLink.href=url;openLink.removeAttribute('download');openLink.hidden=false;}
+   if(shareBtn){
+     shareBtn.hidden=false;
+     shareBtn.onclick=async()=>{
+       try{
+         if(await sharePdfFile(result.file,title))return;
+         const link=document.createElement('a');
+         link.href=url;link.download=result.file.name;
+         document.body.appendChild(link);link.click();link.remove();
+       }catch(err){console.error('PDF share failed',err);alert('Unable to share the PDF. Try Open PDF instead.');}
+     };
+   }
    const mobile=window.matchMedia('(max-width:700px)').matches;
-   if(mobile){try{await ensurePdfReader()}catch(error){console.warn('Mobile PDF preview will use browser viewer',error);}}
-   pages.innerHTML='';
-   if(mobile&&window.pdfjsLib){
+   if(mobile){
      frame.hidden=true;
      frame.removeAttribute('src');
      pages.hidden=false;
-     pages.innerHTML='<div class="pdf-preview-loading">Rendering PDF pages…</div>';
-     const bytes=new Uint8Array(await result.blob.arrayBuffer());
-     const pdf=await window.pdfjsLib.getDocument({data:bytes}).promise;
-     pages.innerHTML='';
-     const targetWidth=Math.max(280,Math.min(window.innerWidth-16,760));
-     for(let pageNum=1;pageNum<=pdf.numPages;pageNum++){
-       const page=await pdf.getPage(pageNum);
-       const base=page.getViewport({scale:1});
-       const scale=targetWidth/base.width;
-       const viewport=page.getViewport({scale});
-       const wrap=document.createElement('div');
-       wrap.className='pdf-preview-page';
-       const canvas=document.createElement('canvas');
-       const ratio=Math.min(window.devicePixelRatio||1,2);
-       canvas.width=Math.floor(viewport.width*ratio);
-       canvas.height=Math.floor(viewport.height*ratio);
-       canvas.style.width=viewport.width+'px';
-       canvas.style.height=viewport.height+'px';
-       wrap.appendChild(canvas);
-       pages.appendChild(wrap);
-       await page.render({canvasContext:canvas.getContext('2d'),viewport,transform:ratio!==1?[ratio,0,0,ratio,0,0]:null}).promise;
-     }
-     pages.scrollTop=0;
+     pages.innerHTML='<div class="pdf-preview-loading">Preparing PDF pages…</div>';
    }else{
      pages.hidden=true;
+     pages.innerHTML='';
      frame.hidden=false;
-     url=URL.createObjectURL(result.blob);
      frame.src=url;
-     d.dataset.objectUrl=url;
    }
-   d.showModal();
+   // Open the dialog BEFORE rendering PDF.js canvases. Rendering may take
+   // time on iPhones; the user should never stare at an empty report window.
+   if(!d.open)d.showModal();
+   if(mobile){
+     let readerReady=false;
+     try{await ensurePdfReader();readerReady=!!window.pdfjsLib;}catch(error){
+       console.warn('Inline PDF renderer unavailable',error);
+     }
+     if(!d.open)return;
+     if(!readerReady){
+       pages.innerHTML='<div class="pdf-preview-loading">Inline preview unavailable on this device. Use Open PDF or Share / Save above.</div>';
+       return;
+     }
+     try{
+       const bytes=new Uint8Array(await result.blob.arrayBuffer());
+       const pdf=await window.pdfjsLib.getDocument({data:bytes}).promise;
+       if(!pdf.numPages)throw new Error('Generated PDF contains no pages.');
+       pages.innerHTML='';
+       const targetWidth=Math.max(280,Math.min(window.innerWidth-16,760));
+       for(let pageNum=1;pageNum<=pdf.numPages;pageNum++){
+         if(!d.open)return; // The preview was closed during rendering.
+         const page=await pdf.getPage(pageNum);
+         const base=page.getViewport({scale:1});
+         const viewport=page.getViewport({scale:targetWidth/base.width});
+         const wrap=document.createElement('div');
+         wrap.className='pdf-preview-page';
+         const canvas=document.createElement('canvas');
+         // Lower-resolution canvas avoids out-of-memory blank previews in
+         // iOS Safari when a monthly packet contains many pages.
+         const ratio=Math.min(window.devicePixelRatio||1,1.4);
+         canvas.width=Math.floor(viewport.width*ratio);
+         canvas.height=Math.floor(viewport.height*ratio);
+         canvas.style.width=viewport.width+'px';
+         canvas.style.height=viewport.height+'px';
+         wrap.appendChild(canvas);
+         pages.appendChild(wrap);
+         await page.render({canvasContext:canvas.getContext('2d'),viewport,
+           transform:ratio!==1?[ratio,0,0,ratio,0,0]:null}).promise;
+         if(page.cleanup)page.cleanup();
+         if(pageNum===1)pages.scrollTop=0;
+         // Allow a frame for the rendered canvas to become visible.
+         if(pageNum%3===0)await new Promise(resolve=>requestAnimationFrame(resolve));
+       }
+     }catch(err){
+       console.error('Inline PDF rendering failed',err);
+       pages.innerHTML='<div class="pdf-preview-loading">The inline preview could not render. The PDF is ready: use Open PDF or Share / Save above.</div>';
+     }
+   }
  }catch(err){
    if(url)URL.revokeObjectURL(url);
-   alert('Unable to generate the PDF preview. Please try again.');
-   console.error(err);
+   console.error('PDF generation failed',err);
+   alert('Unable to generate the PDF preview: '+(err?.message||'Please try again.'));
  }finally{
    if(btn){btn.disabled=false;btn.textContent=original;}
  }
 }
-
 async function shareRenderedReport(preview,title='Narcotic Inventory Audit Report'){
  const shareBtn=document.getElementById('shareReport');
  const originalLabel=shareBtn?.textContent||'Share PDF';
@@ -3453,7 +3498,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}
  if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-239',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-240',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
@@ -3484,6 +3529,10 @@ document.addEventListener('DOMContentLoaded',()=>{
  if(d)d.addEventListener('close',()=>{
    const frame=document.getElementById('pdfPreviewFrame');
    if(frame)frame.src='about:blank';
+   const openLink=document.getElementById('openPdfPreview');
+   if(openLink){openLink.removeAttribute('href');openLink.hidden=true;}
+   const shareBtn=document.getElementById('savePdfPreview');
+   if(shareBtn){shareBtn.onclick=null;shareBtn.hidden=true;}
    if(d.dataset.objectUrl){URL.revokeObjectURL(d.dataset.objectUrl);delete d.dataset.objectUrl;}
  });
 });

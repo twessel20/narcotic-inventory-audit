@@ -12,7 +12,7 @@
   <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png?v=226">
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon-v226.png">
   <link rel="apple-touch-icon-precomposed" href="./apple-touch-icon-precomposed.png">
-  <link rel="stylesheet" href="styles.css?v=20261018-239">
+  <link rel="stylesheet" href="styles.css?v=20261018-240">
 </head>
 <body>
   <header class="app-header">
@@ -218,7 +218,11 @@
         <span class="kicker">GENERATED PDF</span>
         <strong id="pdfPreviewTitle">Report.pdf</strong>
       </div>
-      <button type="button" id="closePdfPreview">Close</button>
+      <div class="pdf-preview-actions">
+        <a id="openPdfPreview" target="_blank" rel="noopener noreferrer" hidden>Open PDF</a>
+        <button type="button" id="savePdfPreview" hidden>Share / Save</button>
+        <button type="button" id="closePdfPreview">Close</button>
+      </div>
     </div>
     <div id="pdfPreviewPages" class="pdf-preview-pages" hidden></div>
     <iframe id="pdfPreviewFrame" title="Generated PDF preview"></iframe>
@@ -240,6 +244,6 @@
   </dialog>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="app.js?v=20261018-239"></script>
+  <script src="app.js?v=20261018-240"></script>
 </body>
 </html>

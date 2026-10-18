@@ -8216,3 +8216,69 @@ body.report-open{overflow:hidden}
   padding:8px 10px!important;
   background:#f5f8fa!important;
 }
+
+
+/* v240: PDF preview recovery and iOS page-capture safeguards. */
+.pdf-clean-stage .pdf-front-page{
+  break-before:auto!important;
+  page-break-before:auto!important;
+}
+.pdf-preview-head .pdf-preview-actions{
+  display:flex!important;
+  flex-direction:row!important;
+  flex-wrap:wrap!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:6px!important;
+  flex:0 0 auto;
+}
+.pdf-preview-actions a{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  min-height:38px;
+  padding:7px 10px;
+  border:1px solid #9ab5c7;
+  border-radius:7px;
+  font-size:.76rem;
+  font-weight:850;
+  color:#174b6e;
+  text-decoration:none;
+  background:#f3f8fb;
+  white-space:nowrap;
+}
+.pdf-preview-actions button{
+  min-height:38px;
+  padding:7px 10px;
+  font-size:.76rem;
+  white-space:nowrap;
+}
+.pdf-preview-actions [hidden]{
+  display:none!important;
+}
+@media(max-width:700px){
+  .pdf-preview-head{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr)!important;
+    gap:5px!important;
+    padding:7px 10px!important;
+  }
+  .pdf-preview-head .pdf-preview-actions{
+    width:100%;
+    justify-content:flex-start!important;
+    gap:7px!important;
+  }
+  .pdf-preview-head .pdf-preview-actions > *{
+    flex:1 1 auto;
+    min-width:0;
+  }
+  #pdfPreviewDialog .pdf-preview-pages,
+  #pdfPreviewDialog #pdfPreviewFrame{
+    height:calc(100% - 107px)!important;
+    max-height:calc(100% - 107px)!important;
+  }
+  #pdfPreviewDialog .pdf-preview-loading{
+    padding:20px!important;
+    text-align:center!important;
+  }
+}
