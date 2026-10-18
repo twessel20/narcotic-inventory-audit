@@ -170,7 +170,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
       return;
     }
     ensure(h+8,label);
-    page.drawRectangle({x:L,y:y-h+6,width:W,height:h,borderColor:colors.rule,borderWidth:.8,color:colors.pale});
+    page.drawRectangle({x:L,y:y-h+6,width:W,height:h,borderColor:colors.rule,borderWidth:.8,color:colors.white});
     page.drawText(safeText(label),{x:L+12,y:y-17,size:9.5,font:bold,color:colors.navy});
     let rowY=y-35;
     for(const line of lines){if(line)page.drawText(line,{x:L+12,y:rowY,size,font:regular,color:colors.ink});rowY-=lead;}
@@ -338,7 +338,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     ['Certifying auditor',auditor||'Not recorded'],
     ['Employee number',employee||'Not recorded'],
     ['Certified',finalizedDate||'Finalized audit'],
-    ['Contact',meta.match(/Email:\\s*(\\S+)/i)?.[1]||'Not recorded']
+    ['Contact',meta.match(/Email:\s*(\S+)/i)?.[1]||'Not recorded']
   ];
   let fieldY=294;
   for(const [label,value] of frontFields){
@@ -362,7 +362,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     for(const row of invData.rows){
       for(let j=1;j<=5;j++){
         const v=String(row[j]||'').split('/').pop().trim();
-        if(/^\\d+$/.test(v)){
+        if(/^\d+$/.test(v)){
           total+=Number(v);if(j===5)expired+=Number(v);else active+=Number(v);ok=true;
         }
       }
@@ -379,15 +379,18 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     ['Recorded transactions',transactionRows.length?String(transactionRows.length):'None recorded'],
     ['Seals', 'Five locations - original and replacement tags documented']
   ];
-  const factRows=facts.map(([label,value])=>[label,value]);
-  const factTable={
-    querySelectorAll(q){
-      if(q==='thead tr:last-child th')return [ {innerText:'Inventory and audit evidence'},{innerText:'Finalized values'} ];
-      if(q==='tbody tr')return factRows.map(row=>({children:row.map(value=>({tagName:'TD',innerText:value}))}));
-      return [];
-    }
-  };
-  renderTable(factTable,'Executive summary');
+  // August executive-summary style: simple two-column rows separated by
+  // thin rules, rather than the dark audit-data table used later.
+  for(const [label,value] of facts){
+    ensure(30,'Executive summary (continued)');
+    page.drawText(safeText(label),{x:L+6,y:y-9,size:8.7,font:regular,color:colors.ink});
+    const valueLines=wrap(value,regular,8.7,205);
+    valueLines.slice(0,2).forEach((line,j)=>page.drawText(line,
+      {x:R-210,y:y-9-j*11,size:8.7,font:regular,color:colors.ink}));
+    page.drawLine({start:{x:L,y:y-20},end:{x:R,y:y-20},thickness:.6,color:colors.rule});
+    y-=Math.max(30,20+valueLines.length*11);
+  }
+  y-=12;
   const execSummary=sheet.querySelector('.report-executive-summary');
   if(execSummary){
     for(const p of execSummary.querySelectorAll('p')){
@@ -428,7 +431,8 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
   if(attestation){
     newPage('Final audit attestation');
     heading('Final audit attestation');
-    for(const p of attestation.querySelectorAll(':scope > p'))notePanel('Certification Statement',txt(p));
+    for(const p of attestation.querySelectorAll(':scope > p'))paragraph(txt(p),
+      {size:9.5,leading:14.6,continuation:'Final audit attestation (continued)',gap:14});
     const sign=await signatureFor(attestation.querySelector('.report-final-signature img'));
     ensure(150,'Final Audit Attestation (continued)');
     page.drawRectangle({x:L,y:y-135,width:W,height:135,borderColor:colors.rule,borderWidth:.8,color:colors.pale});
