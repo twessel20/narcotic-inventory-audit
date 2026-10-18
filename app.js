@@ -1630,6 +1630,131 @@ function annualSummaryHtml(year,reports){
  '<footer class="report-footer">Year-end summary · '+year+'</footer></div>';
 }
 
+function reportMonthKey(r){
+ const direct=String(r?.monthValue||'').trim();
+ if(/^\d{4}-(0[1-9]|1[0-2])$/.test(direct))return direct;
+ const named=monthTextToValue(r?.month||'');
+ if(named)return named;
+ const iso=String(r?.auditDate||r?.finalizedAt||r?.createdAt||'').slice(0,7);
+ return /^\d{4}-(0[1-9]|1[0-2])$/.test(iso)?iso:'';
+}
+function monthlySummaryHtml(key,report,multipleCount=1){
+ const activeLocs=['Medic 1','Medic 2','Medic 3','Safe'];
+ const title=monthValueToText(key)||report.month||key;
+ const allLocations=LOCS;
+ const num=(loc,med,source)=>source?.[loc]?.[med];
+ const count=(loc,med)=>{const v=num(loc,med,report.counts);return v===null||v===undefined||v===''?'—':Number(v)};
+ const sumKnown=(locs,med,source)=>{
+   const vals=locs.map(l=>num(l,med,source));
+   return vals.some(v=>v===null||v===undefined||v===''||!Number.isFinite(Number(v)))?null:vals.reduce((n,v)=>n+Number(v),0);
+ };
+ const display=n=>n===null?'—':n;
+ const diff=(a,b)=>a===null||b===null?'—':(b-a>0?'+':'')+(b-a);
+ const admin=Array.isArray(report.administrationRows)?report.administrationRows:[];
+ const docs=Array.isArray(report.supportingDocuments)?report.supportingDocuments:[];
+ const findings=Array.isArray(report.inventoryFindings)?report.inventoryFindings:[];
+ const incidents=Array.isArray(report.incidents)?report.incidents:[];
+ const amendments=Array.isArray(report.amendments)?report.amendments:[];
+ const transactions=Array.isArray(report.transactions)?report.transactions:[];
+ const providers=new Set(admin.map(a=>String(a.provider||'').trim()).filter(Boolean));
+ const verifiedLocs=allLocations.filter(loc=>{
+   const sig=report.signatures?.[loc]||{};
+   return Boolean(sig.signer&&sig.employeeNumber&&sig.witness&&sig.witnessEmployeeNumber&&sig.signature&&sig.witnessSignature);
+ });
+ let vialData=null;
+ try{if(admin.length)vialData=providerVialData(admin)}catch(err){console.warn('Unable to calculate vial use',err)}
+ const medRows=MEDS.map(m=>{
+   const prior=sumKnown(activeLocs,m,report.priorCounts);
+   const current=sumKnown(activeLocs,m,report.counts);
+   const expired=count('Expired',m);
+   return '<tr><td>'+esc(m)+'</td><td>'+display(prior)+'</td><td><b>'+display(current)+'</b></td><td>'+diff(prior,current)+'</td><td>'+expired+'</td></tr>';
+ }).join('');
+ const currentActive=MEDS.reduce((n,m)=>{
+   const value=sumKnown(activeLocs,m,report.counts);
+   return value===null?null:n===null?null:n+value;
+ },0);
+ const expiredTotal=MEDS.reduce((n,m)=>{
+   const v=num('Expired',m,report.counts);
+   return n===null||v===null||v===undefined||v===''?null:n+Number(v);
+ },0);
+ const physicalTotal=currentActive===null||expiredTotal===null?null:currentActive+expiredTotal;
+ const locRows=allLocations.map(loc=>{
+   const sig=report.signatures?.[loc]||{};
+   const tags=report.breakawayTags?.[loc]||{};
+   const vals=MEDS.map(m=>num(loc,m,report.counts));
+   const total=vals.some(v=>v===null||v===undefined||v==='')?'—':vals.reduce((n,v)=>n+Number(v),0);
+   return '<tr><td>'+esc(loc)+'</td><td>'+total+'</td><td>'+esc(tags.foundRemoved||'—')+'</td><td>'+esc(tags.newInstalled||'—')+'</td><td>'+(verifiedLocs.includes(loc)?'Complete':'Incomplete / not verified')+'</td></tr>';
+ }).join('');
+ const providerRows=vialData?.providers?.length?vialData.providers.map(([provider,items])=>
+   '<tr><td>'+esc(provider)+'</td><td>'+items.reduce((n,item)=>n+Number(item.vials||0),0)+'</td><td>'+
+   esc(items.map(item=>item.medication+' '+item.strength+': '+item.vials).join('; '))+'</td></tr>').join(''):'';
+ const findingRows=findings.map(x=>
+   '<tr><td>'+esc(x.sourceLocation||'—')+'</td><td>'+esc(x.medication||'—')+'</td><td>'+esc(x.quantity??'—')+'</td><td>'+esc(x.typeLabel||x.type||'—')+'</td><td>'+esc(x.note||'—')+'</td></tr>').join('');
+ const incidentRows=incidents.map(x=>
+   '<tr><td>'+esc(x.sourceLocation||x.fromLocation||'—')+'</td><td>'+esc((x.items||[]).map(i=>i.medication+' × '+i.quantity).join(', ')||'—')+'</td><td>'+esc(x.status||'—')+'</td><td>'+esc(x.memoDescription||x.explanation||'—')+'</td></tr>').join('');
+ const amendRows=amendments.map(x=>
+   '<tr><td>'+esc(x.location||'—')+'</td><td>'+esc(x.medication||'—')+'</td><td>'+esc(x.from??'—')+' → '+esc(x.to??'—')+'</td><td>'+esc(x.reason||'—')+'</td></tr>').join('');
+ const auditor=report.attestationName||report.auditorName||'—';
+ return '<div class="report-sheet report-finalized annual-report monthly-summary-report">'+
+ '<div class="report-toolbar"><button id="closeReport">Close</button><button id="previewPdfReport">Generate PDF Preview</button><button id="shareReport">Share PDF</button><button id="printReport" class="primary">Print / Save PDF</button></div>'+
+ '<section class="report-cover-page annual-cover">'+
+ '<div class="report-cover-brand"><img src="gfd-patch.jpg" alt="Gladstone Fire Department patch"><div class="report-cover-dept">GLADSTONE FIRE DEPARTMENT</div></div>'+
+ '<div class="report-cover-main"><div class="report-cover-kicker">MONTHLY CONTROLLED-SUBSTANCE REVIEW</div><h1>Narcotic Inventory / Audit<br>Monthly Summary</h1><div class="report-cover-month">'+esc(title)+'</div></div>'+
+ '<div class="report-cover-meta"><div><span>Audit date</span><strong>'+esc(reportShareDate(report.auditDate||report.finalizedAt)||'—')+'</strong></div>'+
+ '<div><span>Audit period</span><strong>'+esc(reportShareDate(report.dateRangeStart)||'—')+' – '+esc(reportShareDate(report.dateRangeEnd)||'—')+'</strong></div>'+
+ '<div><span>Certifying auditor</span><strong>'+esc(auditor)+'</strong></div>'+
+ '<div><span>Generated</span><strong>'+esc(formatDisplayDate(new Date()))+'</strong></div></div>'+
+ '<div class="report-cover-footer">Gladstone Fire Department · Monthly Narcotic Inventory / Audit Summary</div></section>'+
+ '<section class="report-executive-summary"><h2>Monthly audit summary</h2>'+
+ '<p>Generated from the finalized '+esc(title)+' audit. Physical counts are those documented at the audit, not a live stock verification. This summary is not a substitute for the signed audit packet.</p><ul>'+
+ '<li><b>Physical inventory at audit:</b> '+display(currentActive)+' active, '+display(expiredTotal)+' Expired, '+display(physicalTotal)+' across all locations.</li>'+
+ '<li><b>Administration source:</b> '+(admin.length?admin.length+' recorded dose row'+(admin.length===1?'':'s')+' from '+providers.size+' provider'+(providers.size===1?'':'s')+(vialData?', '+vialData.total+' calculated vial'+(vialData.total===1?'':'s')+' used':'')+'.':'No administration dose rows included in the stored report; use cannot be estimated.')+'</li>'+
+ '<li><b>Certification:</b> '+verifiedLocs.length+' of '+LOCS.length+' locations have auditor and witness identification and both signature images.</li>'+
+ '<li><b>Documentation:</b> '+findings.length+' damaged/expired finding'+(findings.length===1?'':'s')+', '+incidents.length+' incident'+(incidents.length===1?'':'s')+', '+amendments.length+' amendment'+(amendments.length===1?'':'s')+', and '+transactions.length+' recorded transaction'+(transactions.length===1?'':'s')+'.</li>'+
+ '</ul>'+
+ (multipleCount>1?'<p><b>Record selection:</b> '+multipleCount+' finalized records were found for this month; this summary uses the most recently finalized record only to avoid double-counting.</p>':'')+
+ (amendments.length?'<p><b>Amended audit:</b> Corrections recorded after original signatures may not have been separately certified. See the amendment history and original signed packet.</p>':'')+
+ '</section>'+
+ '<section><h2>Active inventory comparison</h2><table class="report-table"><thead><tr><th>Medication</th><th>Previous audit</th><th>Current audit</th><th>Net change</th><th>Expired</th></tr></thead><tbody>'+medRows+'</tbody></table>'+
+ '<p class="report-note">Active counts include Medic 1, Medic 2, Medic 3, and Safe. Expired is shown separately. An em dash indicates missing prior data, not zero.</p></section>'+
+ '<section><h2>Location counts, seals &amp; certification</h2><table class="report-table"><thead><tr><th>Location</th><th>Count</th><th>Tag removed</th><th>Tag installed</th><th>Signatures</th></tr></thead><tbody>'+locRows+'</tbody></table></section>'+
+ '<section><h2>Administration reconciliation</h2>'+
+ (providerRows?'<p class="report-note">'+admin.length+' source dose rows; estimated '+vialData.total+' vials from the department calculation rules. This is a reconciliation reference only.</p><table class="report-table"><thead><tr><th>Provider</th><th>Vials</th><th>Medication / vial detail</th></tr></thead><tbody>'+providerRows+'</tbody></table>':'<p>No administration details were available in this finalized record. This does not establish that no medications were administered.</p>')+
+ (docs.length?'<p class="report-note">Supporting documents referenced: '+esc(docs.map(d=>d.name||'PDF attachment').join('; '))+'.</p>':'')+
+ '</section>'+
+ (findings.length?'<section><h2>Damaged / expired medication findings</h2><table class="report-table"><thead><tr><th>Source</th><th>Medication</th><th>Qty</th><th>Finding</th><th>Notes</th></tr></thead><tbody>'+findingRows+'</tbody></table></section>':'')+
+ (incidents.length?'<section><h2>Recorded discrepancies / incidents</h2><table class="report-table"><thead><tr><th>Location</th><th>Items</th><th>Status</th><th>Memo</th></tr></thead><tbody>'+incidentRows+'</tbody></table></section>':'')+
+ (amendments.length?'<section><h2>Correction / amendment history</h2><table class="report-table"><thead><tr><th>Location</th><th>Medication</th><th>Change</th><th>Reason</th></tr></thead><tbody>'+amendRows+'</tbody></table></section>':'')+
+ '<section><h2>Auditor notes</h2><p class="audit-notes-text">'+esc(report.notes||'No overall notes entered.').replace(/\n/g,'<br>')+'</p></section>'+
+ '<footer class="report-footer">Monthly summary · '+esc(title)+' · Based on finalized audit record</footer></div>';
+}
+async function showMonthlySummary(month,year){
+ const yr=String(year||'').trim(),m=String(month||'').padStart(2,'0');
+ if(!/^\d{4}$/.test(yr)||!/^(0[1-9]|1[0-2])$/.test(m))return alert('Select a valid month and year.');
+ const key=yr+'-'+m;
+ // Fetch current finalized reports only when a report is requested; the
+ // dashboard itself stays fast and offline-capable.
+ if(cloudSession&&navigator.onLine){
+   try{await pullCloudRecords('reports')}catch(err){console.warn('Using locally saved reports',err)}
+ }
+ const matches=(await getAll('reports')).filter(r=>String(r.status||'finalized').toLowerCase()==='finalized'&&reportMonthKey(r)===key)
+   .sort((a,b)=>String(b.finalizedAt||b.updatedAt||b.auditDate||'').localeCompare(String(a.finalizedAt||a.updatedAt||a.auditDate||'')));
+ if(!matches.length)return alert('No finalized monthly audit is available for '+monthValueToText(key)+'. Save or finalize the audit before generating a summary.');
+ const record=matches[0],d=document.getElementById('reportDialog'),preview=document.getElementById('reportPreview');
+ if(d.open)d.close();
+ preview.innerHTML=monthlySummaryHtml(key,record,matches.length);
+ preview._packetSupportingDocuments=uniqueSupportingDocuments(record.supportingDocuments||[]);
+ d.showModal();document.body.classList.add('report-open');
+ d.scrollTop=0;preview.scrollTop=0;
+ const title='Gladstone FD Narcotic Inventory Audit Monthly Summary — '+monthValueToText(key);
+ const close=document.getElementById('closeReport'),pdfPreview=document.getElementById('previewPdfReport'),share=document.getElementById('shareReport'),print=document.getElementById('printReport');
+ if(close)close.onclick=()=>d.close();
+ if(pdfPreview)pdfPreview.onclick=()=>previewRenderedReportPdf(preview,title);
+ if(share)share.onclick=()=>shareRenderedReport(preview,title);
+ if(print)print.onclick=()=>shareRenderedReport(preview,title);
+ d.onclose=()=>{document.body.classList.remove('report-open');preview.innerHTML='';setTimeout(refreshAll,0)};
+}
+
 async function showAnnualReport(year){
  let rows=await getAll('reports');
  rows=rows.filter(r=>reportYear(r)===Number(year));
@@ -1644,20 +1769,44 @@ async function showAnnualReport(year){
  if(close)close.onclick=()=>d.close();
  if(pdfPreview)pdfPreview.onclick=()=>previewRenderedReportPdf(preview,title);
  if(share)share.onclick=()=>shareRenderedReport(preview,title);
- if(print)print.onclick=()=>shareRenderedReport(preview,shareTitle);
+ if(print)print.onclick=()=>shareRenderedReport(preview,title);
  d.onclose=()=>{document.body.classList.remove('report-open');preview.innerHTML='';setTimeout(refreshAll,0)};
 }
 
 async function renderReports(){
  let rows=await getAll('reports');
- rows.sort((a,b)=>(b.finalizedAt||b.auditDate||'').localeCompare(a.finalizedAt||a.auditDate||''));
+ rows=rows.filter(r=>String(r.status||'finalized').toLowerCase()==='finalized');
+ rows.sort((a,b)=>String(b.finalizedAt||b.auditDate||'').localeCompare(String(a.finalizedAt||a.auditDate||'')));
  const years=[...new Set(rows.map(reportYear).filter(Boolean))].sort((a,b)=>b-a);
- const annual=years.length?'<div class="annual-report-card"><div><span class="kicker">YEAR-END REVIEW</span><h3>Annual summary report</h3><div class="meta">Generate a data-backed summary from finalized monthly audits.</div></div><div class="annual-report-controls"><select id="annualReportYear">'+years.map(y=>'<option value="'+y+'">'+y+'</option>').join('')+'</select><button id="generateAnnualReport">Generate annual report</button></div></div>':'';
+ const annual=years.length?'<div class="annual-report-card"><div><span class="kicker">YEAR-END REVIEW</span><h3>Annual summary report</h3><div class="meta">Generate a data-backed summary from finalized monthly audits.</div></div><div class="annual-report-controls"><select id="annualReportYear" aria-label="Annual report year">'+years.map(y=>'<option value="'+y+'">'+y+'</option>').join('')+'</select><button id="generateAnnualReport">Generate annual report</button></div></div>':'';
+ // Native select controls display as wheel pickers on iPhone Safari.
+ // Report month is the audit's reporting month, NOT the calendar month in
+ // which the physical audit was completed or finalized.
+ const monthNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+ const previousMonth=document.getElementById('monthlyReportMonth')?.value;
+ const previousYear=document.getElementById('monthlyReportYear')?.value;
+ const latestKey=rows.map(reportMonthKey).filter(Boolean).sort().pop();
+ const now=new Date();
+ const initial=latestKey||String(now.getFullYear())+'-'+String(now.getMonth()+1).padStart(2,'0');
+ const selectedMonth=previousMonth||initial.slice(5,7);
+ const selectedYear=previousYear||initial.slice(0,4);
+ const monthYears=new Set(rows.map(reportMonthKey).filter(Boolean).map(key=>key.slice(0,4)));
+ [now.getFullYear()-1,now.getFullYear(),now.getFullYear()+1,Number(selectedYear)].forEach(y=>monthYears.add(String(y)));
+ const selectableYears=[...monthYears].filter(v=>/^\d{4}$/.test(v)).sort((a,b)=>b.localeCompare(a));
+ const monthly='<div class="annual-report-card monthly-summary-card"><div><span class="kicker">MONTHLY REVIEW</span><h3>Monthly summary report</h3><div class="meta">Choose a reporting month and year. Available for finalized audits; the original signed audit report remains unchanged.</div></div>'+
+ '<div class="monthly-summary-controls">'+
+ '<label for="monthlyReportMonth">Month<select id="monthlyReportMonth" aria-label="Select report month">'+
+ monthNames.map((m,i)=>{const val=String(i+1).padStart(2,'0');return '<option value="'+val+'" '+(val===selectedMonth?'selected':'')+'>'+m+'</option>'}).join('')+'</select></label>'+
+ '<label for="monthlyReportYear">Year<select id="monthlyReportYear" aria-label="Select report year">'+
+ selectableYears.map(y=>'<option value="'+y+'" '+(y===selectedYear?'selected':'')+'>'+y+'</option>').join('')+'</select></label>'+
+ '<button type="button" id="generateMonthlyReport" class="primary">Generate monthly report</button></div></div>';
  const testCard='<div class="list-item test-report-card"><div><span class="test-badge">TEST</span><strong>Test audit report</strong><div class="meta">Synthetic data · safe report-layout preview</div></div><div class="button-row"><button data-test-report="1">View test report</button></div></div>';
- const real=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month)+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+'</div><div class="button-row"><button data-report="'+r.id+'">View / print</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>';
- document.getElementById('reportsList').innerHTML=annual+testCard+real;
- const btn=document.getElementById('generateAnnualReport');
- if(btn)btn.onclick=()=>showAnnualReport(document.getElementById('annualReportYear')?.value);
+ const real=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month||monthValueToText(reportMonthKey(r))||'Monthly audit')+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+'</div><div class="button-row"><button data-report="'+esc(r.id)+'">View / print original audit</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>';
+ document.getElementById('reportsList').innerHTML=monthly+annual+testCard+real;
+ const annualBtn=document.getElementById('generateAnnualReport');
+ if(annualBtn)annualBtn.onclick=()=>showAnnualReport(document.getElementById('annualReportYear')?.value);
+ const monthlyBtn=document.getElementById('generateMonthlyReport');
+ if(monthlyBtn)monthlyBtn.onclick=()=>showMonthlySummary(document.getElementById('monthlyReportMonth')?.value,document.getElementById('monthlyReportYear')?.value);
 }
 
 async function sharePdfFile(file,title){
@@ -2098,11 +2247,14 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
    const pdf=await worker.get('pdf');
    const totalPages=pdf.internal.getNumberOfPages();
    const isAnnual=/annual summary/i.test(title);
+   const isMonthlySummary=/monthly summary/i.test(title);
    const isTest=/^TEST\b/i.test(title);
    const footerTitle=(isTest?'TEST - ':'')+
      (isAnnual
        ?'Gladstone Fire Department - Narcotic Inventory / Audit Annual Summary'
-       :'Gladstone Fire Department - Narcotic Inventory / Audit Report');
+       :isMonthlySummary
+         ?'Gladstone Fire Department - Narcotic Inventory / Audit Monthly Summary'
+         :'Gladstone Fire Department - Narcotic Inventory / Audit Report');
 
    for(let page=1;page<=totalPages;page++){
      pdf.setPage(page);
@@ -2944,7 +3096,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}
  if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-230',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-231',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{

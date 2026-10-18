@@ -7486,3 +7486,63 @@ body.report-open{overflow:hidden}
    grid-template-columns:1fr 1fr!important;
  }
 }
+
+
+/* v231: report month/year native iPhone picker controls */
+.monthly-summary-card{
+  border-color:#c5d7e5;
+  background:#f4f9fd;
+}
+.monthly-summary-card .monthly-summary-controls{
+  display:grid;
+  grid-template-columns:minmax(134px,1.2fr) minmax(95px,.7fr) auto;
+  gap:10px;
+  align-items:end;
+  width:min(100%,560px);
+}
+.monthly-summary-controls label{
+  display:grid;
+  gap:5px;
+  font-size:.77rem;
+  font-weight:850;
+  color:#264b65;
+  min-width:0;
+}
+.monthly-summary-controls select{
+  width:100%;
+  min-width:0;
+  min-height:46px;
+  max-width:100%;
+  padding:9px 10px;
+  font-size:16px; /* avoid Safari zoom, use native iPhone selection wheels */
+  border:1px solid #9db9cc;
+  border-radius:9px;
+  background:#fff;
+  color:#15384e;
+  font-weight:750;
+}
+.monthly-summary-controls button{
+  align-self:end;
+  min-height:46px;
+  padding:9px 14px;
+  white-space:normal;
+  font-weight:800;
+}
+.monthly-summary-report .report-cover-main h1{
+  overflow-wrap:normal;
+}
+.monthly-summary-report .report-table td,
+.monthly-summary-report .report-table th{
+  overflow-wrap:anywhere;
+}
+@media(max-width:700px){
+  .monthly-summary-card .monthly-summary-controls{
+    width:100%;
+    grid-template-columns:minmax(0,1.3fr) minmax(0,.7fr);
+    gap:10px;
+  }
+  .monthly-summary-controls button{
+    width:100%;
+    grid-column:1 / -1;
+  }
+}
