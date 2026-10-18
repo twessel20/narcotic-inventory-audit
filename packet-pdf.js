@@ -217,12 +217,12 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
         let sum=0;
         for(const record of data.rows){
           const raw=String(record[col]||'').split('/').pop().trim();
-          if(!/^\\d+$/.test(raw))return '—';
+          if(!/^\d+$/.test(raw))return '—';
           sum+=Number(raw);
         }
         return String(sum);
       });
-      const active=sums.slice(0,4).every(v=>/^\\d+$/.test(v))?
+      const active=sums.slice(0,4).every(v=>/^\d+$/.test(v))?
         String(sums.slice(0,4).reduce((n,v)=>n+Number(v),0)):'—';
       data.rows.push(['TOTAL VIALS',...sums,active]);
     }
