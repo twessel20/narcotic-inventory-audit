@@ -140,7 +140,70 @@ function requireCloudAuth(){
 }
 
 async function seedInventory(){const rows=await getAll('inventory');if(rows.length)return;for(const loc of LOCS)for(const med of MEDS)await put('inventory',{id:loc+'|'+med,location:loc,medication:med,quantity:0,updatedAt:nowISO()})}
-async function balances(){const rows=await getAll('inventory');const map={};for(const l of LOCS){map[l]={};for(const m of MEDS)map[l][m]=0}rows.forEach(r=>{if(map[r.location])map[r.location][r.medication]=Number(r.quantity||0)});return map}
+function emptyInventoryBalances(){
+ const result={};
+ for(const loc of LOCS){result[loc]={};for(const med of MEDS)result[loc][med]=0}
+ return result;
+}
+function latestFinalizedPhysicalAudit(reports=[]){
+ return [...reports]
+   .filter(r=>String(r?.status||'finalized').toLowerCase()==='finalized'
+     &&LOCS.every(loc=>MEDS.every(med=>{
+       const val=r.counts?.[loc]?.[med];
+       return val!==null&&val!==undefined&&val!==''&&Number.isInteger(Number(val))&&Number(val)>=0;
+     })))
+   .sort((a,b)=>String(b.auditDate||b.finalizedAt||b.createdAt||'').localeCompare(String(a.auditDate||a.finalizedAt||a.createdAt||''))
+     ||String(b.finalizedAt||b.updatedAt||b.createdAt||'').localeCompare(String(a.finalizedAt||a.updatedAt||a.createdAt||'')))[0]||null;
+}
+function recordedInventoryChanges(tx){
+ if(tx.status==='draft'||tx.reconciliationMode==='audit_physical_count'||tx.inventoryAdjusted===false)return [];
+ if(Array.isArray(tx.inventoryImpact)&&tx.inventoryImpact.length){
+   return tx.inventoryImpact.map(row=>({
+     location:row.location,medication:row.medication,change:Number(row.change)
+   }));
+ }
+ const items=Array.isArray(tx.items)&&tx.items.length?tx.items:[{medication:tx.medication,quantity:tx.quantity}];
+ const changes=[];
+ for(const item of items){
+   const quantity=Number(item.quantity);
+   if(!Number.isFinite(quantity)||quantity<=0)continue;
+   if(tx.type==='received')changes.push({location:'Safe',medication:item.medication,change:quantity});
+   if(tx.type==='destroyed')changes.push({location:'Expired',medication:item.medication,change:-quantity});
+   if(tx.type==='incident'&&tx.fromLocation)changes.push({location:tx.fromLocation,medication:item.medication,change:-quantity});
+ }
+ return changes;
+}
+async function inventorySnapshot(){
+ const [raw, reports, transactions]=await Promise.all([getAll('inventory'),getAll('reports'),getAll('transactions')]);
+ const lastAudit=latestFinalizedPhysicalAudit(reports);
+ const result=emptyInventoryBalances();
+ if(!lastAudit){
+   raw.forEach(r=>{if(result[r.location]&&Object.prototype.hasOwnProperty.call(result[r.location],r.medication))result[r.location][r.medication]=Number(r.quantity||0)});
+   return {balances:result,lastAudit:null,adjustedTransactions:0};
+ }
+ for(const loc of LOCS)for(const med of MEDS)result[loc][med]=Number(lastAudit.counts[loc][med]);
+ // Use the final certification time when present. Legacy audits without one use the
+ // latest recorded correction timestamp, so their amended physical count remains authoritative.
+ const cutoff=lastAudit.finalizedAt||lastAudit.updatedAt||lastAudit.createdAt||(lastAudit.auditDate+'T23:59:59.999Z');
+ const cutoffMs=Date.parse(cutoff);
+ let adjustedTransactions=0;
+ for(const tx of transactions){
+   if(String(tx.status||'submitted').toLowerCase()!=='submitted')continue;
+   const time=Date.parse(tx.timestamp||tx.createdAt||'');
+   if(!Number.isFinite(time)||!Number.isFinite(cutoffMs)||time<=cutoffMs)continue;
+   const changes=recordedInventoryChanges(tx);
+   let applied=false;
+   for(const change of changes){
+     if(!result[change.location]||!Object.prototype.hasOwnProperty.call(result[change.location],change.medication)
+       ||!Number.isFinite(change.change))continue;
+     result[change.location][change.medication]+=change.change;
+     applied=true;
+   }
+   if(applied)adjustedTransactions++;
+ }
+ return {balances:result,lastAudit,adjustedTransactions};
+}
+async function balances(){return (await inventorySnapshot()).balances}
 async function setBalance(location,medication,quantity){await put('inventory',{id:location+'|'+medication,location,medication,quantity:Number(quantity||0),updatedAt:nowISO()})}
 function formatDisplayDate(v){
  if(v===null||v===undefined||v==='')return '';
@@ -213,13 +276,12 @@ function monthValueToText(v=''){
 async function renderInventory(){
  const grid=document.getElementById('inventoryGrid'),totals=document.getElementById('activeTotals');
  if(!grid||!totals)return;
- const [b,reports]=await Promise.all([balances(),getAll('reports')]);
- const finalized=[...(reports||[])].filter(r=>String(r.status||'finalized').toLowerCase()==='finalized');
- finalized.sort((a,b)=>String(b.finalizedAt||b.auditDate||b.createdAt||'').localeCompare(String(a.finalizedAt||a.auditDate||a.createdAt||'')));
- const lastAudit=finalized[0]||null;
+ const {balances:b,lastAudit,adjustedTransactions}=await inventorySnapshot();
  const lastAuditDate=lastAudit?formatDisplayDate(lastAudit.auditDate||lastAudit.finalizedAt||lastAudit.createdAt):'';
  const basisText=lastAuditDate
-   ?'Physical inventory was last verified '+lastAuditDate+'. Active stock may have changed since that physical audit. Displayed balances reflect the last finalized audit adjusted only by inventory transactions recorded in this system after that date.'
+   ?'Baseline: physical counts from the finalized '+lastAuditDate+' audit.'+
+     (adjustedTransactions?' Adjusted by '+adjustedTransactions+' submitted inventory transaction'+(adjustedTransactions===1?'':'s')+' after that audit.':' No later inventory transactions are recorded.')+
+     ' Draft audit counts do not change this dashboard until the entire audit is finalized. Reconfirm stock physically before use.'
    :'No finalized physical audit is on file. Displayed balances reflect recorded inventory data only and should not be interpreted as a verified physical count.';
  const totalBasis=document.getElementById('inventoryBalanceAsOf');
  if(totalBasis)totalBasis.textContent=basisText;
@@ -2660,11 +2722,15 @@ window.addEventListener('pagehide',()=>{if(activeAuditId)scheduleAuditAutosave(a
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeAuditId)flushAuditAutosave()});
 (async()=>{await openDB();await initCloud();await seedInventory();fillSelects();bind();await refreshAll();if(!cloudSession)setTimeout(()=>document.getElementById('authDialog')?.showModal(),300);const active=await getOne('meta','activeAudit');if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20260930-222',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-225',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
       if(reloading)return;
+      if(activeAuditId&&document.getElementById('auditMonth')){
+        setAutosaveStatus('App update available. Save your draft before reopening to update.');
+        return; // Preserve any unfinished work during a service worker update.
+      }
       reloading=true;
       location.reload();
     });
