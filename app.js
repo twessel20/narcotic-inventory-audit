@@ -3097,7 +3097,7 @@ function summarizeAuditNotes(notes){
  for(let i=0;i<sentences.length;i++){
    const sentence=sentences[i];
    const movement=sentence.match(/^(\d+)\s+vials?\s+of\s+(.+?)\s+were\s+(?:moved|distributed|transferred)\s+from\s+the\s+safe\b/i);
-   if(movement&&/\b(?:to|distributed to)\s+(?:both\s+)?(?:medic units|medics)\b/i.test(sentence)){
+   if(movement&&/\b(?:to|distributed to)\s+(?:both\s+)?(?:the\s+)?(?:medic units|medics)\b/i.test(sentence)){
      transfers.push(movement[1]+' vial'+(Number(movement[1])===1?'':'s')+' of '+movement[2].trim());
      absorbed.add(i);
    }
