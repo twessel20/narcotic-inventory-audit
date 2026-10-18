@@ -1,5 +1,5 @@
-const CACHE='narcotic-audit-v246';
-const ASSETS=['./','./index.html','./styles.css?v=20261018-246','./packet-pdf.js?v=20261018-246','./app.js?v=20261018-246','./manifest.webmanifest','./gfd-patch.jpg','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png','./icons/apple-touch-icon-v226.png','./apple-touch-icon.png','./apple-touch-icon-v226.png','./apple-touch-icon-precomposed.png','./icons/favicon-48.png'];
+const CACHE='narcotic-audit-v247';
+const ASSETS=['./','./index.html','./styles.css?v=20261018-247','./packet-pdf.js?v=20261018-247','./app.js?v=20261018-247','./manifest.webmanifest','./gfd-patch.jpg','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png','./icons/apple-touch-icon-v226.png','./apple-touch-icon.png','./apple-touch-icon-v226.png','./apple-touch-icon-precomposed.png','./icons/favicon-48.png'];
 // Install the core PDF/report code atomically. Optional legacy icons are best effort:
  // a missing icon must not prevent users from receiving the new PDF renderer.
 self.addEventListener('install',e=>{
