@@ -1,6 +1,14 @@
 const CACHE='narcotic-audit-v242';
 const ASSETS=['./','./index.html','./styles.css?v=20261018-242','./packet-pdf.js?v=20261018-242','./app.js?v=20261018-242','./manifest.webmanifest','./gfd-patch.jpg','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png','./icons/apple-touch-icon-v226.png','./apple-touch-icon.png','./apple-touch-icon-v226.png','./apple-touch-icon-precomposed.png','./icons/favicon-48.png'];
-self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
+// Install the core PDF/report code atomically. Optional legacy icons are best effort:
+ // a missing icon must not prevent users from receiving the new PDF renderer.
+self.addEventListener('install',e=>{
+ self.skipWaiting();
+ e.waitUntil(caches.open(CACHE).then(async cache=>{
+   await cache.addAll(ASSETS.slice(0,7));
+   await Promise.allSettled(ASSETS.slice(7).map(url=>cache.add(url)));
+ }));
+});
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))])));
 // Cache-first for versioned app assets; iPhone should not download large
 // report/PDF bundles on every launch. Navigation remains network-first so
