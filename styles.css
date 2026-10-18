@@ -7239,3 +7239,85 @@ body.report-open{overflow:hidden}
   width:min(5.7in,100%)!important;
   margin:0 auto!important;
 }
+
+
+/* v226: one native vertical scroll on iPhone; no hidden audit steps or sticky pager.
+   Touching a small signature preview should scroll the page; tap Open larger to sign. */
+@media(max-width:700px){
+  html,body{max-width:100%;overflow-x:clip}
+  .app-header{
+    display:flex!important;
+    flex-direction:column!important;
+    align-items:stretch!important;
+    gap:12px!important;
+    padding:14px max(14px,env(safe-area-inset-right)) 14px max(14px,env(safe-area-inset-left))!important;
+  }
+  .app-header .brand-wrap{
+    display:grid!important;
+    grid-template-columns:76px minmax(0,1fr)!important;
+    gap:12px!important;
+    width:100%!important;
+    min-width:0!important;
+    align-items:center!important;
+  }
+  .app-header .brand-wrap > div{min-width:0!important;max-width:100%!important}
+  .app-header .gfd-logo{
+    width:76px!important;
+    height:76px!important;
+    display:block!important;
+    object-fit:contain!important;
+    object-position:center center!important;
+    flex:0 0 76px!important;
+    min-width:76px!important;
+    min-height:76px!important;
+    padding:3px!important;
+  }
+  .app-header h1{font-size:clamp(1.12rem,5vw,1.55rem)!important;overflow-wrap:break-word}
+  .app-header p{font-size:.78rem!important;overflow-wrap:anywhere}
+  .app-header .header-actions{
+    display:flex!important;
+    width:100%!important;
+    max-width:100%!important;
+    flex-direction:row!important;
+    flex-wrap:wrap!important;
+    align-items:center!important;
+    justify-content:flex-start!important;
+  }
+  .app-header .account-btn{max-width:100%!important}
+  #audit .audit-workspace-shell{padding-bottom:14px!important}
+  #audit .audit-route{
+    position:static!important;
+    top:auto!important;
+    overflow:visible!important;
+    height:auto!important;
+    max-height:none!important;
+    flex-wrap:wrap!important;
+    touch-action:pan-y!important;
+    margin:0 0 14px!important;
+  }
+  #audit .audit-route a{
+    flex:0 1 auto!important;
+    min-width:0!important;
+    white-space:normal!important;
+    touch-action:manipulation!important;
+  }
+  #audit .audit-step-card,
+  #audit .audit-step-card:not(.active-step){
+    display:block!important;
+    visibility:visible!important;
+    animation:none!important;
+    margin-bottom:14px!important;
+    scroll-margin-top:62px!important;
+  }
+  #audit .mobile-card-nav{display:none!important}
+  /* The large signing dialog remains interactive; embedded previews no longer
+     swallow vertical swipes on iOS. Use Open larger for a new signature. */
+  #audit .signature-box [data-canvas],
+  #audit .signature-box [data-witness-canvas],
+  #audit #finalSignatureCanvas,
+  #txDialog #txRecordedSignature,
+  #txDialog #txWitnessSignature{
+    pointer-events:none!important;
+    touch-action:pan-y!important;
+  }
+}

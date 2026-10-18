@@ -756,40 +756,41 @@ async function handleAdministrationPdf(auditId,file){
  }
 }
 
+// All audit sections stay in the normal document flow on phones so staff can
+// scroll from one site to the next, or jump directly using the section links.
 function setupMobileAuditCards(auditId){
  const shell=document.querySelector('.audit-workspace-shell');
  if(!shell)return;
  const steps=[...shell.querySelectorAll('[data-audit-step]')];
+ const links=[...shell.querySelectorAll('[data-step-target]')];
  const prev=document.getElementById('auditStepPrev'),next=document.getElementById('auditStepNext');
  const title=document.getElementById('auditStepTitle'),count=document.getElementById('auditStepCount');
- if(!steps.length||!prev||!next)return;
+ if(!steps.length)return;
  const isMobile=()=>window.matchMedia('(max-width:700px)').matches;
  let current=Number(sessionStorage.getItem('narcoticAuditStep:'+auditId)||0);
  if(!Number.isFinite(current)||current<0||current>=steps.length)current=0;
- const show=index=>{
+ const select=(index,scroll=false)=>{
    current=Math.max(0,Math.min(Number(index)||0,steps.length-1));
-   steps.forEach((s,i)=>s.classList.toggle('active-step',!isMobile()||i===current));
-   shell.querySelectorAll('[data-step-target]').forEach(x=>x.classList.toggle('current-step',Number(x.dataset.stepTarget)===current));
+   // Never hide other sections: the whole monthly audit is one scrollable page.
+   steps.forEach(step=>step.classList.add('active-step'));
+   links.forEach(link=>link.classList.toggle('current-step',Number(link.dataset.stepTarget)===current));
    if(title)title.textContent=steps[current]?.dataset.stepTitle||'Audit';
    if(count)count.textContent='Section '+(current+1)+' of '+steps.length;
-   prev.textContent='Sections';
-   prev.disabled=false;
-   next.textContent='Next section';
-   next.disabled=false;
    sessionStorage.setItem('narcoticAuditStep:'+auditId,String(current));
-   if(isMobile())window.scrollTo({top:Math.max(0,(document.querySelector('.audit-route')?.offsetTop||0)-8),behavior:'smooth'});
+   // Only intentional navigation may change scroll position. iOS resizes the
+   // viewport on keyboard and toolbar changes; those must not move the page.
+   if(scroll)steps[current]?.scrollIntoView({behavior:'auto',block:'start'});
  };
- prev.onclick=()=>{
-   const route=document.querySelector('.audit-route');
-   if(route)route.scrollIntoView({behavior:'smooth',block:'start'});
- };
- next.onclick=()=>show((current+1)%steps.length);
- document.querySelectorAll('[data-step-target]').forEach(link=>{
-   link.addEventListener('click',e=>{if(!isMobile())return;e.preventDefault();show(Number(link.dataset.stepTarget)||0)});
- });
- show(current);
- window.addEventListener('resize',()=>show(current));
+ if(prev)prev.onclick=()=>shell.querySelector('.audit-route')?.scrollIntoView({behavior:'auto',block:'start'});
+ if(next)next.onclick=()=>select((current+1)%steps.length,true);
+ links.forEach(link=>link.addEventListener('click',e=>{
+   if(!isMobile())return;
+   e.preventDefault();
+   select(Number(link.dataset.stepTarget)||0,true);
+ }));
+ select(current,false);
 }
+
 async function editAudit(id){
  const a=await getOne('audits',id);if(!a)return;
  if(String(a.status||'').toLowerCase()!=='draft'){
@@ -2722,7 +2723,7 @@ window.addEventListener('pagehide',()=>{if(activeAuditId)scheduleAuditAutosave(a
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeAuditId)flushAuditAutosave()});
 (async()=>{await openDB();await initCloud();await seedInventory();fillSelects();bind();await refreshAll();if(!cloudSession)setTimeout(()=>document.getElementById('authDialog')?.showModal(),300);const active=await getOne('meta','activeAudit');if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-225',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-226',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
