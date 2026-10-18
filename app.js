@@ -944,12 +944,13 @@ async function editAudit(id){
  updateAuditRouteProgress();
  setAutosaveStatus('Saved '+fmtDate(a.updatedAt));
 }
-async function enterSignatureLandscape(dialog){
- const mobile=window.matchMedia('(max-width:900px)').matches;
- if(!mobile||!dialog)return;
+// The modal already fills the mobile viewport through CSS. Native fullscreen and
+// screen-orientation locks are unreliable on iOS and can trap the Save button.
+function enterSignatureLandscape(dialog){
+ if(!dialog||!window.matchMedia('(max-width:900px)').matches)return;
  dialog.classList.add('signature-landscape-mode');
-
  const syncLandscapeState=()=>{
+   if(!dialog.open)return;
    const landscape=window.innerWidth>window.innerHeight;
    dialog.classList.toggle('is-landscape',landscape);
    dialog.classList.toggle('is-portrait',!landscape);
@@ -963,28 +964,27 @@ async function enterSignatureLandscape(dialog){
  window.addEventListener('orientationchange',syncLandscapeState,{passive:true});
  if(window.visualViewport)window.visualViewport.addEventListener('resize',syncLandscapeState,{passive:true});
  syncLandscapeState();
-
- try{
-   if(document.fullscreenElement!==dialog&&dialog.requestFullscreen)await dialog.requestFullscreen({navigationUI:'hide'});
- }catch(e){}
- try{
-   if(screen.orientation?.lock)await screen.orientation.lock('landscape');
- }catch(e){}
- setTimeout(syncLandscapeState,120);
 }
-async function exitSignatureLandscape(dialog){
- if(dialog){
-   dialog.classList.remove('signature-landscape-mode','is-landscape','is-portrait');
-   const handler=dialog._signatureOrientationHandler;
-   if(handler){
-     window.removeEventListener('resize',handler);
-     window.removeEventListener('orientationchange',handler);
-     if(window.visualViewport)window.visualViewport.removeEventListener('resize',handler);
-     delete dialog._signatureOrientationHandler;
-   }
+function exitSignatureLandscape(dialog){
+ if(!dialog)return;
+ dialog.classList.remove('signature-landscape-mode','is-landscape','is-portrait');
+ const handler=dialog._signatureOrientationHandler;
+ if(!handler)return;
+ window.removeEventListener('resize',handler);
+ window.removeEventListener('orientationchange',handler);
+ if(window.visualViewport)window.visualViewport.removeEventListener('resize',handler);
+ delete dialog._signatureOrientationHandler;
+}
+function finishSignatureCapture(dialog,apply){
+ if(!dialog?.open)return;
+ try{
+   apply(); // Update the source canvas and queue the audit autosave first.
+   dialog.close(); // Close synchronously so iPhone buttons cannot hang on orientation changes.
+   exitSignatureLandscape(dialog);
+ }catch(err){
+   console.error('Unable to use signature',err);
+   alert('The signature could not be applied. Please try again; the signing window is still open.');
  }
- try{if(screen.orientation?.unlock)screen.orientation.unlock();}catch(e){}
- try{if(document.fullscreenElement===dialog&&document.exitFullscreen)await document.exitFullscreen();}catch(e){}
 }
 
 function openSignatureCapture(box,kind,onChange){
@@ -1023,8 +1023,8 @@ function openSignatureCapture(box,kind,onChange){
    updateAuditRouteProgress();if(onChange)onChange();
  };
  dialog.querySelector('#signatureCaptureClear').onclick=()=>{lctx.clearRect(0,0,live.width,live.height);live.dataset.hasSignature='false'};
- dialog.querySelector('#signatureCaptureSave').onclick=async()=>{apply();await exitSignatureLandscape(dialog);dialog.close()};
- dialog.querySelector('#signatureCaptureClose').onclick=async()=>{apply();await exitSignatureLandscape(dialog);dialog.close()};
+ dialog.querySelector('#signatureCaptureSave').onclick=()=>finishSignatureCapture(dialog,apply);
+ dialog.querySelector('#signatureCaptureClose').onclick=()=>finishSignatureCapture(dialog,apply);
  dialog.showModal();
  enterSignatureLandscape(dialog);
  setTimeout(()=>dialog.scrollTop=0,0);
@@ -1056,8 +1056,8 @@ function openStandaloneSignatureCapture(source,titleText,onChange){
  live.addEventListener('touchstart',start,{passive:false});live.addEventListener('touchmove',move,{passive:false});live.addEventListener('touchend',end);
  const apply=()=>{const sctx=source.getContext('2d');sctx.clearRect(0,0,source.width,source.height);sctx.drawImage(live,0,0,source.width,source.height);source.dataset.hasSignature=live.dataset.hasSignature||'false';if(onChange)onChange()};
  dialog.querySelector('#signatureCaptureClear').onclick=()=>{lctx.clearRect(0,0,live.width,live.height);live.dataset.hasSignature='false'};
- dialog.querySelector('#signatureCaptureSave').onclick=async()=>{apply();await exitSignatureLandscape(dialog);dialog.close()};
- dialog.querySelector('#signatureCaptureClose').onclick=async()=>{apply();await exitSignatureLandscape(dialog);dialog.close()};
+ dialog.querySelector('#signatureCaptureSave').onclick=()=>finishSignatureCapture(dialog,apply);
+ dialog.querySelector('#signatureCaptureClose').onclick=()=>finishSignatureCapture(dialog,apply);
  dialog.showModal();
  enterSignatureLandscape(dialog);
 }
