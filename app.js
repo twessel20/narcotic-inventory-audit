@@ -2194,8 +2194,8 @@ async function administrationAppendixPageRanges(bytes,expectedRows=0){
    const rightText=Math.max(...cells.map(item=>item.x+Math.max(12,item.text.length*5.3)));
    const size=page.getViewport({scale:1,rotation:0});
    const right=Math.min(size.width,rightText+11);
-   const bottom=Math.max(0,lastY-9);
-   const top=Math.min(size.height,headY+15);
+   const bottom=Math.max(0,lastY-3);
+   const top=Math.min(size.height,headY+8);
    const crop=right-left>size.width*.4&&top-bottom>45?
     {x:left,y:bottom,width:right-left,height:top-bottom}:null;
    selected.push({index,crop,incidentCount:incidents.length});
