@@ -9,6 +9,30 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
   const isMonthlySummary=sheet.classList.contains('monthly-summary-report');
   const isAnnualSummary=!isMonthlySummary&&sheet.classList.contains('annual-report');
   const isSummary=isMonthlySummary||isAnnualSummary;
+  // Never quietly emit an official "signed" packet that contains only empty
+  // signature boxes. Verify the *actual selected report* has five signed
+  // locations and its final attestation image before rendering.
+  if(!isSummary){
+    const expected=['Medic 1','Medic 2','Medic 3','Safe','Expired'];
+    const cards=[...sheet.querySelectorAll('.report-signature-section .report-cert')];
+    const missing=[];
+    for(const site of expected){
+      const card=cards.find(c=>(c.querySelector('h2')?.textContent||'')
+        .trim().toLowerCase()===site.toLowerCase()+' certification');
+      if(!card){missing.push(site+' site certification');continue;}
+      const boxes=[...card.querySelectorAll('.report-signature-box')];
+      if(!boxes[0]?.querySelector('img')?.getAttribute('src'))
+        missing.push(site+' auditor signature');
+      if(!boxes[1]?.querySelector('img')?.getAttribute('src'))
+        missing.push(site+' witness signature');
+    }
+    if(!sheet.querySelector('.report-attestation .report-final-signature img')?.getAttribute('src'))
+      missing.push('final certifying auditor signature');
+    if(missing.length){
+      throw new Error('The selected finalized audit is missing actual stored signature images: '+
+        missing.join(', ')+'. A complete signed PDF cannot be produced from this record until the source signatures are verified.');
+    }
+  }
   await ensurePdfMerger();
   const {PDFDocument,StandardFonts,rgb}=window.PDFLib;
   const doc=await PDFDocument.create();
