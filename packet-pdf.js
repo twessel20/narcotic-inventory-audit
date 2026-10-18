@@ -208,6 +208,24 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
   }
   function renderTable(table,label){
     const data=tableData(table);if(!data)return;
+    // August's medication-by-location matrix is the authoritative printed
+    // inventory. Show ALL five locations, prior/current counts, and the
+    // current total at each location. Totals are derived only from the
+    // recorded current values, never from the prior count or live inventory.
+    if(/^inventory comparison$/i.test(label)&&data.headers.length===7){
+      const sums=[1,2,3,4,5].map(col=>{
+        let sum=0;
+        for(const record of data.rows){
+          const raw=String(record[col]||'').split('/').pop().trim();
+          if(!/^\\d+$/.test(raw))return '—';
+          sum+=Number(raw);
+        }
+        return String(sum);
+      });
+      const active=sums.slice(0,4).every(v=>/^\\d+$/.test(v))?
+        String(sums.slice(0,4).reduce((n,v)=>n+Number(v),0)):'—';
+      data.rows.push(['TOTAL VIALS',...sums,active]);
+    }
     const cols=Math.max(data.headers.length,...data.rows.map(r=>r.length),1);
     // Preserve the August form's side-by-side location comparison.
     let weights=cols===7?[1.55,1.08,1.08,1.08,1.08,1.08,.90]:
@@ -226,15 +244,17 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     const fullCap=TOP-BOTTOM-55;
     if(fullH<fullCap&&y-fullH<BOTTOM)newPage(label+' (continued)');
     const drawRow=(cells,height,isHeader,index)=>{
+      const isTotal=/^inventory comparison$/i.test(label)&&
+        index===data.rows.length-1&&String(cells[0]).toUpperCase()==='TOTAL VIALS';
       page.drawRectangle({x:L,y:y-height,width:W,height,borderColor:colors.rule,borderWidth:.55,
-        color:isHeader?colors.navy:index%2===0?colors.white:rgb(.965,.976,.99)});
+        color:isHeader?colors.navy:isTotal?colors.pale:index%2===0?colors.white:rgb(.965,.976,.99)});
       let x=L;
       const highlightNewSeal=/breakaway tag/i.test(label);
       rowLines(cells,isHeader).forEach((lines,i)=>{
         if(i)page.drawLine({start:{x,y:y-height},end:{x,y},thickness:.45,color:colors.rule});
         let yy=y-pad-fontSize;
         lines.forEach(line=>{if(line)page.drawText(line,{x:x+pad,y:yy,size:fontSize,
-          font:isHeader||(highlightNewSeal&&i===2)?bold:regular,
+          font:isHeader||isTotal||(highlightNewSeal&&i===2)?bold:regular,
           color:isHeader?colors.white:colors.ink});yy-=lead;});
         x+=widths[i];
       });
@@ -339,7 +359,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
           wrap(cells[i]||'',regular,7.05,width-10).length*7.05*1.3+10));
         const hHead=Math.max(25,...widths.map((width,i)=>
           wrap(data.headers[i]||'',bold,7.05,width-10).length*7.05*1.3+10));
-        const required=48+hHead+data.rows.reduce((sum,row)=>sum+hRow(row),0)+15;
+        const required=48+hHead+data.rows.reduce((sum,row)=>sum+hRow(row),0)+35;
         if(required<TOP-BOTTOM-35&&y-required<BOTTOM)
           newPage('Audit data and supporting records (continued)');
       }
