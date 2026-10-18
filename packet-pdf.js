@@ -16,7 +16,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     muted:rgb(.31,.39,.46),rule:rgb(.82,.87,.91),pale:rgb(.95,.97,.985),
     white:rgb(1,1,1)
   };
-  const PW=612,PH=792,L=44,R=568,TOP=711,BOTTOM=56,W=R-L;
+  const PW=612,PH=792,L=40,R=572,TOP=681,BOTTOM=63,W=R-L;
   const safeText=value=>String(value??'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'')
     .replace(/[\u2018\u2019]/g,"'").replace(/[\u201c\u201d]/g,'"')
     .replace(/[\u2013\u2014\u2212]/g,'-').replace(/\u2192/g,' -> ')
@@ -106,30 +106,41 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
   }
   const pageInfo=[];
   let page,y,sectionLabel='';
+  // August 2026 signed-packet header: department patch and report title at
+  // left, audit period and date at right, single navy rule beneath.
   function newPage(label='Audit Details'){
     sectionLabel=label;
     page=doc.addPage([PW,PH]);
     pageInfo.push({page,label});
-    page.drawRectangle({x:0,y:PH-8,width:PW,height:8,color:colors.navy});
-    imageFit(page,patch,L,PH-61,34,34);
-    page.drawText('GLADSTONE FIRE DEPARTMENT',{x:L+43,y:PH-34,size:11.4,font:bold,color:colors.navy});
-    page.drawText('NARCOTIC INVENTORY / AUDIT REPORT',{x:L+43,y:PH-49,size:8.1,font:regular,color:colors.muted});
-    const m=wrap(auditMonth,bold,8,170)[0];
-    page.drawText(m,{x:R-bold.widthOfTextAtSize(m,8),y:PH-34,size:8,font:bold,color:colors.blue});
-    page.drawLine({start:{x:L,y:PH-69},end:{x:R,y:PH-69},thickness:1,color:colors.rule});
+    imageFit(page,patch,L,PH-61,31,31);
+    page.drawText('NARCOTIC INVENTORY AUDIT REPORT',
+      {x:L+39,y:PH-35,size:9.0,font:bold,color:colors.ink});
+    page.drawText('Gladstone Fire Department  |  Record #'+safeText(recordNumber||'--'),
+      {x:L+39,y:PH-48,size:7.6,font:regular,color:colors.muted});
+    const right1=safeText(auditPeriod||auditMonth),right2='Audit: '+safeText(auditDate||'Not recorded');
+    const rr=wrap(right1,bold,7.7,180)[0];
+    page.drawText(rr,{x:R-bold.widthOfTextAtSize(rr,7.7),y:PH-35,size:7.7,font:bold,color:colors.ink});
+    page.drawText(right2,{x:R-regular.widthOfTextAtSize(right2,7.5),y:PH-47,
+      size:7.5,font:regular,color:colors.ink});
+    page.drawLine({start:{x:L,y:PH-71},end:{x:R,y:PH-71},thickness:1.8,color:colors.navy});
     y=TOP;
-    if(label)heading(label,14,{skipCheck:true});
+    if(label){
+      page.drawText(safeText(label),{x:L,y,size:10.2,font:bold,color:colors.blue});
+      y-=35;
+    }
   }
   function ensure(height,label='Audit Details'){
     if(!page || y-height<BOTTOM)newPage(label);
   }
-  function heading(label,size=12,opts={}){
+  function heading(label,size=13,opts={}){
     const lines=wrap(label,bold,size,W);
-    const h=lines.length*(size+3)+15;
+    const h=lines.length*(size+3)+14;
     if(!opts.skipCheck)ensure(h+20,label+' (continued)');
-    for(const line of lines){page.drawText(line,{x:L,y,size,font:bold,color:colors.navy});y-=size+3;}
-    page.drawLine({start:{x:L,y:y+1},end:{x:R,y:y+1},thickness:.65,color:colors.rule});
-    y-=13;
+    for(const line of lines){
+      page.drawText(line,{x:L,y,size,font:bold,color:colors.ink});
+      y-=size+4;
+    }
+    y-=9;
   }
   function paragraph(value,opts={}){
     const size=opts.size||9.3,lead=opts.leading||size*1.42;
@@ -193,7 +204,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     if(fullH<fullCap&&y-fullH<BOTTOM)newPage(label+' (continued)');
     const drawRow=(cells,height,isHeader,index)=>{
       page.drawRectangle({x:L,y:y-height,width:W,height,borderColor:colors.rule,borderWidth:.55,
-        color:isHeader?rgb(.91,.95,.97):index%2===0?colors.white:rgb(.985,.992,.997)});
+        color:isHeader?colors.navy:index%2===0?colors.white:rgb(.965,.976,.99)});
       let x=L;
       const highlightNewSeal=/breakaway tag/i.test(label);
       rowLines(cells,isHeader).forEach((lines,i)=>{
@@ -201,7 +212,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
         let yy=y-pad-fontSize;
         lines.forEach(line=>{if(line)page.drawText(line,{x:x+pad,y:yy,size:fontSize,
           font:isHeader||(highlightNewSeal&&i===2)?bold:regular,
-          color:isHeader?colors.navy:colors.ink});yy-=lead;});
+          color:isHeader?colors.white:colors.ink});yy-=lead;});
         x+=widths[i];
       });
       y-=height;
@@ -221,33 +232,39 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     }
     y-=15;
   }
+  // August certification spread: two locations per page, each with two
+  // spacious side-by-side signature panels. Never split a site certification.
   async function certification(card){
     const name=txt(card.querySelector(':scope > h2'))||'Location Certification';
     const boxes=[...card.querySelectorAll('.report-signature-box')];
-    const statement=txt(card.querySelector(':scope > p'))||txt(card.querySelector('.report-cert-statement'));
-    const detailLines=wrap(statement,regular,8.8,W-28);
-    const h=64+Math.max(0,detailLines.length-1)*13+96;
+    const statement=txt(card.querySelector(':scope > p'))||
+      txt(card.querySelector('.report-cert-statement'));
+    const desc=wrap(statement,regular,9,W);
+    const h=225+Math.max(0,desc.length-2)*12;
     ensure(h+12,'Audit Site Certifications (continued)');
-    page.drawRectangle({x:L,y:y-h,width:W,height:h,borderColor:colors.rule,borderWidth:.8,color:colors.white});
-    page.drawRectangle({x:L,y:y-29,width:W,height:29,color:colors.pale});
-    page.drawText(safeText(name),{x:L+13,y:y-19,size:11,font:bold,color:colors.navy});
-    let yy=y-45;
-    detailLines.forEach(line=>{if(line)page.drawText(line,{x:L+13,y:yy,size:8.8,font:regular,color:colors.muted});yy-=13;});
-    const colW=(W-39)/2;
-    const baseY=y-h+19;
+    page.drawText(safeText(name.charAt(0).toUpperCase()+name.slice(1)),
+      {x:L,y,size:14,font:bold,color:colors.ink});
+    let sy=y-24;
+    desc.forEach(line=>{if(line)page.drawText(line,{x:L,y:sy,size:9,font:regular,color:colors.ink});sy-=13;});
+    const boxesTop=y-44-Math.max(0,desc.length-2)*12;
+    const gap=21,boxW=(W-gap)/2,boxH=150;
     for(let i=0;i<2;i++){
-      const box=boxes[i],x=L+13+i*(colW+13);
-      page.drawRectangle({x,y:baseY,width:colW,height:90,borderColor:colors.rule,borderWidth:.8});
-      const label=txt(box?.querySelector('.report-signature-label'))||(i?'WITNESS SIGNATURE':'AUDITOR SIGNATURE');
-      page.drawText(safeText(label).slice(0,40),{x:x+8,y:baseY+72,size:8,font:bold,color:colors.blue});
+      const box=boxes[i],x=L+i*(boxW+gap);
+      const base=boxesTop-boxH;
+      page.drawRectangle({x,y:base,width:boxW,height:boxH,
+        borderColor:colors.navy,borderWidth:.8,color:colors.white});
+      const label=i?'WITNESS SIGNATURE':'SIGNER SIGNATURE';
+      page.drawText(label,{x:x+12,y:boxesTop-20,size:8.2,font:bold,color:colors.blue});
       const sign=await signatureFor(box?.querySelector('img'));
-      if(sign)imageFit(page,sign,x+8,baseY+28,colW-16,40);
-      else page.drawLine({start:{x:x+9,y:baseY+34},end:{x:x+colW-9,y:baseY+34},
-        color:colors.rule,thickness:1});
-      const identity=wrap(txt(box?.querySelector('.report-signature-name'))||'Not recorded',regular,7.5,colW-16);
-      identity.slice(0,2).forEach((line,j)=>page.drawText(line,{x:x+8,y:baseY+16-j*9,size:7.5,font:regular,color:colors.ink}));
+      if(sign)imageFit(page,sign,x+13,base+52,boxW-26,68);
+      page.drawLine({start:{x:x+12,y:base+49},end:{x:x+boxW-12,y:base+49},
+        thickness:.6,color:colors.navy});
+      const identity=txt(box?.querySelector('.report-signature-name'))||'Not recorded';
+      const lines=wrap(identity,regular,8.5,boxW-24);
+      lines.slice(0,3).forEach((line,j)=>page.drawText(line,
+        {x:x+12,y:base+35-j*11,size:8.5,font:regular,color:colors.ink}));
     }
-    y-=h+16;
+    y-=h;
   }
   async function renderSection(section){
     const name=txt(section.querySelector(':scope > h2'))||
@@ -300,59 +317,89 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     }
   }
 
-  // September 2026 report style: no oversized patch and no separate,
-  // largely empty cover or executive-summary page.
-  newPage('Monthly Audit Overview');
-  const introH=95;
-  page.drawRectangle({x:L,y:y-introH,width:W,height:introH,borderColor:colors.rule,
-    borderWidth:.9,color:colors.pale});
-  page.drawRectangle({x:L,y:y-introH,width:3.5,height:introH,color:colors.blue});
-  imageFit(page,patch,L+14,y-introH+17,66,61);
-  page.drawText('CONTROLLED-SUBSTANCE AUDIT',{x:L+92,y:y-20,size:8.3,font:bold,color:colors.blue});
-  page.drawText('Narcotic Inventory / Audit Report',{x:L+92,y:y-44,size:16.4,font:bold,color:colors.ink});
-  page.drawText(safeText(auditMonth),{x:L+92,y:y-67,size:12,font:bold,color:colors.blue});
-  if(isTest)page.drawText('TEST - SYNTHETIC DATA',{x:L+92,y:y-82,size:8,font:bold,color:colors.blue});
-  y-=introH+14;
-  const metaEntries=[
-    ['AUDIT PERIOD',auditPeriod||'Not recorded'],
-    ['AUDIT DATE',auditDate||'Not recorded'],
-    ['FINALIZED',finalizedDate||'Finalized record'],
-    ['CERTIFYING AUDITOR',auditor||'Not recorded'],
-    ['EMPLOYEE NUMBER',employee||'Not recorded'],
-    ['RECORD NUMBER',recordNumber||'Finalized snapshot']
-  ];
-  // Match the September report's compact two-column metadata arrangement.
-  const metaRowH=36,metaH=metaRowH*3+10;
-  ensure(metaH+9,'Monthly Audit Overview (continued)');
-  page.drawRectangle({x:L,y:y-metaH,width:W,height:metaH,borderColor:colors.rule,borderWidth:.7,color:colors.white});
-  for(let i=0;i<metaEntries.length;i++){
-    const [label,value]=metaEntries[i],col=i%2,row=Math.floor(i/2);
-    const x=L+13+col*(W/2),yy=y-18-row*metaRowH;
-    page.drawText(label,{x,y:yy,size:7.2,font:bold,color:colors.muted});
-    const lines=wrap(value,regular,9.3,W/2-29);
-    lines.slice(0,2).forEach((line,j)=>{if(line)page.drawText(line,{x,y:yy-14-j*10,size:9.3,font:regular,color:colors.ink});});
-  }
-  y-=metaH+16;
-  const finalSign=await signatureFor(coverEl?.querySelector('.cover-auditor-signature img')||
-    attestation?.querySelector('.report-final-signature img'));
-  if(finalSign){
-    ensure(56,'Monthly Audit Overview (continued)');
-    page.drawText('CERTIFYING AUDITOR SIGNATURE',{x:L,y:y-13,size:7.6,font:bold,color:colors.muted});
-    imageFit(page,finalSign,L+202,y-39,160,39);
-    y-=52;
-  }
-  heading('Audit Summary');
-  paragraph('Finalized physical inventory snapshot for '+auditMonth+'. Supporting administration records and signed site certifications follow.',{size:9.1,gap:8});
-  const executive=sheet.querySelector('.report-executive-summary');
-  if(executive){
-    for(const child of [...executive.children]){
-      if(child.matches('h2'))continue;
-      if(child.matches('p'))notePanel('Audit Summary',txt(child));
-      else if(txt(child))notePanel('Audit Context',txt(child));
+  // Match the original August 2026 signed report: full standalone cover.
+  newPage('Report cover');
+  imageFit(page,patch,241,478,130,130);
+  const centered=(value,yPos,size,font=bold,color=colors.ink)=>{
+    const lines=wrap(value,font,size,W-40);
+    for(const line of lines){
+      page.drawText(line,{x:(PW-font.widthOfTextAtSize(line,size))/2,
+        y:yPos,size,font,color});
+      yPos-=size+5;
     }
-  }else paragraph('No calculated executive summary was included in the historical audit record.');
+  };
+  centered('FINALIZED MONTHLY AUDIT',456,11,regular,colors.ink);
+  centered('Narcotic Inventory',415,25,bold,colors.ink);
+  centered('Audit Report',385,25,bold,colors.ink);
+  centered('Gladstone Fire Department',344,13,regular,colors.ink);
+  const frontFields=[
+    ['Reporting period',auditPeriod||auditMonth||'Not recorded'],
+    ['Date of audit',auditDate||'Not recorded'],
+    ['Certifying auditor',auditor||'Not recorded'],
+    ['Employee number',employee||'Not recorded'],
+    ['Certified',finalizedDate||'Finalized audit'],
+    ['Contact',meta.match(/Email:\\s*(\\S+)/i)?.[1]||'Not recorded']
+  ];
+  let fieldY=294;
+  for(const [label,value] of frontFields){
+    page.drawText(label,{x:82,y:fieldY,size:9,font:regular,color:colors.ink});
+    const lines=wrap(value,regular,9,250);
+    lines.slice(0,2).forEach((line,j)=>page.drawText(line,
+      {x:300,y:fieldY-j*11,size:9,font:regular,color:colors.ink}));
+    fieldY-=29;
+  }
+
+  // August's executive summary occupies its own page.
+  newPage('Executive summary');
+  paragraph('This packet documents the physical inventory audit for '+safeText(auditPeriod||auditMonth)+
+    '. Locations covered: Medic 1, Medic 2, Medic 3, Safe, Expired. It includes inventory comparisons, tag records, activity, signatures, notes, and referenced supporting documents.',{size:9.3});
+  heading('Inventory and recorded activity',11.4);
+  const invTable=sheet.querySelector('.report-inventory');
+  const invData=tableData(invTable);
+  const countCurrent=()=>{
+    if(!invData)return null;
+    let total=0,active=0,expired=0,ok=false;
+    for(const row of invData.rows){
+      for(let j=1;j<=5;j++){
+        const v=String(row[j]||'').split('/').pop().trim();
+        if(/^\\d+$/.test(v)){
+          total+=Number(v);if(j===5)expired+=Number(v);else active+=Number(v);ok=true;
+        }
+      }
+    }
+    return ok?{total,active,expired}:null;
+  };
+  const c=countCurrent();
+  const txn=sheet.querySelector('.report-transactions-section table');
+  const transactionRows=tableData(txn)?.rows||[];
+  const facts=[
+    ['Current physical inventory (all locations)',c?c.total+' vials':'See signed inventory comparison'],
+    ['Active inventory (Medic 1, 2, 3 and Safe)',c?c.active+' vials':'See signed inventory comparison'],
+    ['Expired stock',c?c.expired+' vials':'See signed inventory comparison'],
+    ['Recorded transactions',transactionRows.length?String(transactionRows.length):'None recorded'],
+    ['Seals', 'Five locations - original and replacement tags documented']
+  ];
+  const factRows=facts.map(([label,value])=>[label,value]);
+  const factTable={
+    querySelectorAll(q){
+      if(q==='thead tr:last-child th')return [ {innerText:'Inventory and audit evidence'},{innerText:'Finalized values'} ];
+      if(q==='tbody tr')return factRows.map(row=>({children:row.map(value=>({tagName:'TD',innerText:value}))}));
+      return [];
+    }
+  };
+  renderTable(factTable,'Executive summary');
+  const execSummary=sheet.querySelector('.report-executive-summary');
+  if(execSummary){
+    for(const p of execSummary.querySelectorAll('p')){
+      if(txt(p))paragraph(txt(p),{size:9.1,continuation:'Executive summary (continued)'});
+    }
+  }
+  paragraph('Physical counts are the verified audit inventory. Source documents and administration calculations are supporting evidence and do not replace the final signed physical count.',
+    {size:8.7,muted:true});
+  // Data tables follow August's standalone summary page.
+  newPage('Audit data and supporting records');
   for(const section of [...sheet.children]){
-    if(section===executive||section.matches('.report-cover-page'))continue;
+    if(section===execSummary||section.matches('.report-cover-page'))continue;
     // Only audit report sections contain printable evidence. Rendering the
     // header, toolbar, metadata grid and footer as extra "Audit Details"
     // sections duplicated content and made the previous export cluttered.
@@ -362,12 +409,14 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
   }
   const certCards=[...sheet.querySelectorAll('.report-signature-section .report-cert')];
   if(certCards.length){
-    ensure(210,'Location Certifications');
-    heading('Audit Site Certifications');
-    for(const card of certCards)await certification(card);
+    for(let i=0;i<certCards.length;i++){
+      if(i%2===0)newPage('Audit site certifications');
+      await certification(certCards[i]);
+    }
   }
   const notes=sheet.querySelector('.report-notes');
   if(notes){
+    newPage('Audit notes / discrepancies');
     const typed=multiline(notes.querySelector('.audit-notes-text'));
     const summary=notes.querySelector('.report-usage-summary');
     if(typed||summary){
@@ -377,13 +426,13 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     }
   }
   if(attestation){
-    ensure(230,'Final Audit Attestation');
-    heading('Final Audit Attestation');
+    newPage('Final audit attestation');
+    heading('Final audit attestation');
     for(const p of attestation.querySelectorAll(':scope > p'))notePanel('Certification Statement',txt(p));
     const sign=await signatureFor(attestation.querySelector('.report-final-signature img'));
     ensure(150,'Final Audit Attestation (continued)');
     page.drawRectangle({x:L,y:y-135,width:W,height:135,borderColor:colors.rule,borderWidth:.8,color:colors.pale});
-    page.drawText('FINAL CERTIFYING AUDITOR SIGNATURE',{x:L+14,y:y-24,size:9,font:bold,color:colors.navy});
+    page.drawText('FINAL CERTIFYING AUDITOR SIGNATURE',{x:L+14,y:y-24,size:9,font:bold,color:colors.blue});
     if(sign)imageFit(page,sign,L+130,y-95,266,67);
     else page.drawLine({start:{x:L+125,y:y-85},end:{x:R-125,y:y-85},thickness:.8,color:colors.rule});
     page.drawText(safeText(finalName||auditor),{x:L+15,y:y-119,size:9.5,font:regular,color:colors.ink});
@@ -395,12 +444,15 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     docs.forEach((entry,index)=>paragraph('Appendix '+String.fromCharCode(65+index%26)+': '+String(entry.name||'Supporting PDF'),{size:9.2,bold:true,gap:5}));
   }
   for(let i=0;i<pageInfo.length;i++){
-    const {page:p,label}=pageInfo[i];
-    p.drawLine({start:{x:L,y:44},end:{x:R,y:44},color:colors.rule,thickness:.65});
-    const foot='Gladstone Fire Department  |  '+safeText(auditMonth)+(isTest?'  |  TEST':'');
-    p.drawText(foot,{x:L,y:30,size:7.6,font:regular,color:colors.muted});
-    const num='Report page '+(i+1)+' of '+pageInfo.length;
-    p.drawText(num,{x:R-regular.widthOfTextAtSize(num,7.6),y:30,size:7.6,font:regular,color:colors.muted});
+    const {page:p}=pageInfo[i];
+    const textFooter='Gladstone Fire/EMS  |  Record #'+safeText(recordNumber||'--')+
+      '  |  '+safeText(auditPeriod||auditMonth);
+    p.drawLine({start:{x:L,y:55},end:{x:R,y:55},color:colors.rule,thickness:.55});
+    p.drawText(textFooter,{x:(PW-regular.widthOfTextAtSize(textFooter,7))/2,y:42,
+      size:7,font:regular,color:colors.muted});
+    const label='Page '+(i+1)+' of '+pageInfo.length;
+    p.drawText(label,{x:R-regular.widthOfTextAtSize(label,7),y:24,
+      size:7,font:regular,color:colors.muted});
   }
   const baseBlob=new Blob([await doc.save()],{type:'application/pdf'});
   const blob=await appendSupportingPdfs(baseBlob,docs);
