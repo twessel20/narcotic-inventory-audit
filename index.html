@@ -7,15 +7,15 @@
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <title>Narcotic Inventory Audit</title>
-  <link rel="manifest" href="manifest.webmanifest">
-  <link rel="icon" type="image/jpeg" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
-  <link rel="apple-touch-icon" href="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg">
+  <link rel="manifest" href="manifest.webmanifest?v=223">
+  <link rel="icon" type="image/png" sizes="48x48" href="icons/favicon-48.png?v=223">
+  <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png?v=223">
   <link rel="stylesheet" href="styles.css?v=20260930-222">
 </head>
 <body>
   <header class="app-header">
     <div class="brand-wrap">
-      <img class="gfd-logo" src="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg" alt="Gladstone Fire Department patch">
+      <img class="gfd-logo" src="gfd-patch.jpg" alt="Gladstone Fire Department patch">
       <div>
         <div class="eyebrow">GLADSTONE FIRE / EMS</div>
         <h1>Narcotic Inventory / Audit</h1>
@@ -243,7 +243,7 @@
   <script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.1/dist/html2pdf.bundle.min.js"></script>
   <script>
   if('serviceWorker' in navigator){
-    navigator.serviceWorker.register('./sw.js?v=20260930-222',{updateViaCache:'none'})
+    navigator.serviceWorker.register('./sw.js?v=20261017-223',{updateViaCache:'none'})
       .then(reg=>{reg.update();if(reg.waiting)reg.waiting.postMessage({type:'SKIP_WAITING'});})
       .catch(()=>{});
   }
