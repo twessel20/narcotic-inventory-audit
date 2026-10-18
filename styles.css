@@ -8090,3 +8090,97 @@ body.report-open{overflow:hidden}
 .physical-vial-tally>div:nth-child(2){border-left:4px solid #a56a35}
 .dashboard-tally{grid-column:1/-1}
 @media(max-width:560px){.physical-vial-tally{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;padding:8px}.physical-vial-tally>div{padding:9px 7px}.physical-vial-tally strong{font-size:1.2rem}.physical-vial-tally span{font-size:.67rem}}
+
+
+/* v238: Completed site cards fold away after full physical count, seals,
+   valid auditor/witness identity, and both signatures. No audit-data writes. */
+#audit .unit-audit-card > .audit-site-details{
+  display:block;
+  width:100%;
+  min-width:0;
+}
+#audit .audit-site-details > .audit-site-summary{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  flex-wrap:nowrap;
+  gap:10px;
+  width:100%;
+  cursor:default;
+  list-style:none;
+  box-sizing:border-box;
+  padding:12px 14px;
+}
+#audit .audit-site-details > .audit-site-summary::-webkit-details-marker{display:none}
+#audit .audit-site-heading{min-width:0;flex:1 1 auto}
+#audit .audit-site-heading h3{margin:2px 0 0}
+#audit .audit-site-state{
+  display:inline-flex;
+  flex:0 0 auto;
+  justify-content:center;
+  align-items:center;
+  border:1px solid #c5d4df;
+  background:#f9fbfd;
+  color:#4d6576;
+  border-radius:999px;
+  padding:6px 9px;
+  font-weight:850;
+  font-size:.75rem;
+  white-space:nowrap;
+}
+#audit .audit-site-recap{
+  margin-top:4px;
+  display:block;
+  font-size:.73rem;
+  line-height:1.35;
+  font-weight:650;
+  color:#286342;
+}
+#audit .audit-site-recap[hidden]{display:none!important}
+#audit .audit-site-details[data-complete="true"] > .audit-site-summary{
+  background:#eaf5ed!important;
+  color:#1e5636!important;
+  cursor:pointer;
+}
+#audit .audit-site-details[data-complete="true"] .audit-site-heading h3{
+  color:#205638;
+}
+#audit .audit-site-details[data-complete="true"] .audit-site-state{
+  border-color:#8eb9a0;
+  background:#d5eadd;
+  color:#1d5937;
+}
+#audit .audit-site-details[data-complete="true"] > .audit-site-summary:focus-visible{
+  outline:3px solid #387c57;
+  outline-offset:-3px;
+}
+#audit .audit-site-details[data-complete="true"][open] > .audit-site-summary{
+  border-bottom:1px solid #bdd8c5;
+}
+#audit .audit-site-details[data-complete="true"] > .audit-site-summary::after{
+  content:"▾";
+  display:inline-block;
+  flex:0 0 auto;
+  color:#255e3c;
+  font-size:1.1rem;
+  transition:transform .15s ease;
+}
+#audit .audit-site-details[data-complete="true"]:not([open]) > .audit-site-summary::after{
+  transform:rotate(-90deg);
+}
+#audit .audit-site-details:not([open]) > .unit-compact-grid{
+  display:none!important;
+}
+@media(max-width:420px){
+  #audit .audit-site-details > .audit-site-summary{
+    padding:10px 9px;
+    gap:7px;
+  }
+  #audit .audit-site-state{
+    font-size:.68rem;
+    padding:5px 7px;
+  }
+  #audit .audit-site-recap{
+    font-size:.69rem;
+  }
+}

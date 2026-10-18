@@ -676,12 +676,16 @@ function unitAuditSection(a,loc,index){
      issue+'<button type="button" class="audit-incident-btn" data-audit-incident data-loc="'+l+'" data-med="'+med+'">Discrepancy / incident</button></div></div>';
  }).join('');
  return '<section class="audit-card unit-audit-card compact-unit" data-unit-section="'+esc(loc)+'">'+
- '<div class="unit-audit-head compact-head"><div><span class="kicker">LOCATION '+(index+1)+' OF '+LOCS.length+'</span><h3>'+esc(loc)+'</h3></div><span class="unit-step-badge">'+esc(loc)+'</span></div>'+
+ '<details class="audit-site-details" data-site-loc="'+esc(loc)+'" open>'+
+ '<summary class="unit-audit-head compact-head audit-site-summary">'+
+ '<div class="audit-site-heading"><span class="kicker">LOCATION '+(index+1)+' OF '+LOCS.length+'</span><h3>'+esc(loc)+'</h3>'+
+ '<span class="audit-site-recap" data-site-recap hidden>5/5 counts confirmed · Seals recorded · Both signatures captured</span></div>'+
+ '<span class="audit-site-state" data-site-state>In progress</span></summary>'+
  '<div class="unit-compact-grid">'+
  '<div class="unit-compact-panel seal-panel"><h4>Seals</h4><div class="tag-entry-fields seal-pair"><label>Tag found / removed<input inputmode="numeric" autocomplete="off" placeholder="Tag #" data-tag-loc="'+loc+'" data-tag-kind="foundRemoved" aria-label="'+loc+' tag found or removed" value="'+esc(tag.foundRemoved||'')+'"></label><label>New tag installed<input inputmode="numeric" autocomplete="off" placeholder="Tag #" data-tag-loc="'+loc+'" data-tag-kind="newInstalled" aria-label="'+loc+' new tag installed" value="'+esc(tag.newInstalled||'')+'"></label></div></div>'+
  '<div class="unit-compact-panel inventory-panel"><div class="inventory-panel-head"><h4>Physical inventory</h4><span class="inventory-panel-help">Count each vial physically present at this location.</span></div><div class="unit-med-list">'+medRows+'</div></div>'+
  '<div class="unit-compact-panel certification-panel"><h4>Certification</h4>'+sigBlock(loc,sig,true)+'</div>'+
- '</div></section>';
+ '</div></details></section>';
 }
 function sigBlock(loc,s={},embedded=false){return '<div class="signature-box audit-signature-block'+(embedded?' embedded-signature':'')+'" data-sig-loc="'+loc+'">'+(!embedded?'<div class="signature-location">'+loc+'</div>':'')+'<div class="audit-signature-cards">'+
 '<section class="audit-signature-card auditor-card"><div class="audit-signature-card-head"><strong>Auditor</strong><span>Certification signature</span></div><div class="audit-signature-fields"><label>Name<input placeholder="Full name" data-signer required value="'+esc(s.signer||'')+'"></label><label>Employee number<input placeholder="Employee #" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" data-integer-only data-employee-number required value="'+esc(s.employeeNumber||'')+'"></label></div><div class="audit-signature-canvas-wrap"><canvas width="500" height="150" data-canvas></canvas></div><div class="audit-signature-actions"><button type="button" class="clear-signature-btn" data-clear-signature="auditor">Clear</button><button type="button" class="expand-signature" data-expand-signature="auditor">Open larger</button></div></section>'+
@@ -1022,6 +1026,25 @@ function updateAuditRouteProgress(){
    link.classList.toggle('complete',complete);
    const indicator=link.querySelector('.route-status-mark');
    if(indicator)indicator.textContent=complete?'✓':'';
+   const details=section.querySelector('.audit-site-details');
+   if(details){
+     const previouslyComplete=details.dataset.complete==='true';
+     details.dataset.complete=complete?'true':'false';
+     const status=details.querySelector('[data-site-state]');
+     const recap=details.querySelector('[data-site-recap]');
+     if(status)status.textContent=complete?'✓ Complete':'In progress';
+     if(recap)recap.hidden=!complete;
+     if(complete){
+       // Collapse on completion, but do not interrupt review of a
+       // manually reopened completed location.
+       if(!previouslyComplete&&details.dataset.manuallyOpened!=='true')details.open=false;
+     }else{
+       // Any removed signature, seal or count confirmation restores
+       // the full location form for completion.
+       details.dataset.manuallyOpened='false';
+       details.open=true;
+     }
+   }
  });
 }
 function setupMobileAuditCards(auditId){
@@ -1029,6 +1052,15 @@ function setupMobileAuditCards(auditId){
  if(!shell)return;
  const steps=[...shell.querySelectorAll('[data-audit-step]')];
  const links=[...shell.querySelectorAll('[data-step-target]')];
+ shell.querySelectorAll('.audit-site-details').forEach(details=>{
+   const summary=details.querySelector('summary');
+   if(!summary)return;
+   summary.addEventListener('click',event=>{
+     // Only completed locations can be manually collapsed or reopened.
+     if(details.dataset.complete!=='true'){event.preventDefault();return}
+     details.dataset.manuallyOpened=details.open?'false':'true';
+   });
+ });
  const prev=document.getElementById('auditStepPrev');
  const next=document.getElementById('auditStepNext');
  const title=document.getElementById('auditStepTitle');
@@ -3380,7 +3412,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}
  if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-237',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-238',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
