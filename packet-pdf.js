@@ -5,7 +5,10 @@
 async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Audit Report'){
   const sheet=preview?.querySelector('.report-sheet.report-finalized');
   if(!sheet || (sheet.textContent||'').trim().length<60)
-    throw new Error('The finalized report is empty. Reopen the report before exporting.');
+    throw new Error('The report is empty. Reopen the report before exporting.');
+  const isMonthlySummary=sheet.classList.contains('monthly-summary-report');
+  const isAnnualSummary=!isMonthlySummary&&sheet.classList.contains('annual-report');
+  const isSummary=isMonthlySummary||isAnnualSummary;
   await ensurePdfMerger();
   const {PDFDocument,StandardFonts,rgb}=window.PDFLib;
   const doc=await PDFDocument.create();
@@ -32,16 +35,17 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
   const auditMonth=txt(coverEl?.querySelector('.report-cover-month'))||
     (meta.match(/Audit month:\s*(.+?)\s*Created:/i)?.[1]||'Monthly Audit');
   const metaValue=label=>{
-    const cells=[...(coverEl?.querySelectorAll('.cover-meta-cell')||[])];
+    const cells=[...(coverEl?.querySelectorAll('.cover-meta-cell,.report-cover-meta > div')||[])];
     return txt(cells.find(c=>txt(c.querySelector('span')).toLowerCase()===label.toLowerCase())?.querySelector('strong'));
   };
   const auditDate=metaValue('Audit date')||(meta.match(/Date of audit:\s*(.+?)(?:Audit period:|$)/i)?.[1]||'').trim();
-  const auditPeriod=metaValue('Audit date range')||(meta.match(/Audit period:\s*(.+?)\s*\(both dates/i)?.[1]||'').trim();
+  const auditPeriod=metaValue('Audit date range')||metaValue('Audit period')||
+    (meta.match(/Audit period:\s*(.+?)\s*\(both dates/i)?.[1]||'').trim();
   const finalizedDate=metaValue('Finalized date')||'';
   const attestation=sheet.querySelector('.report-attestation');
   const finalName=txt(attestation?.querySelector('.report-signature-name'));
   const auditor=txt(coverEl?.querySelector('.cover-auditor-row > div:first-child strong'))||
-    finalName.split(/\s+[\u00b7#]/)[0]||'Not recorded';
+    metaValue('Certifying auditor')||finalName.split(/\s+[\u00b7#]/)[0]||'Not recorded';
   const employee=txt(coverEl?.querySelector('.cover-auditor-row > div:last-child strong'))||
     finalName.match(/Employee\s*#?\s*(\d+)/i)?.[1]||'Not recorded';
   const recordNumber=txt(sheet.querySelector('.report-footer')).match(/Record\s*#\s*([A-Za-z0-9-]+)/i)?.[1]||'';
@@ -337,7 +341,9 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     }
   }
 
-  // Match the original August 2026 signed report: full standalone cover.
+  // All report families share the August 2026 audit packet's running
+  // header, full cover, separate executive summary and navy evidence tables.
+  // Summaries remain explicitly labeled as summaries, not signed audits.
   newPage('Report cover');
   imageFit(page,patch,241,478,130,130);
   const centered=(value,yPos,size,font=bold,color=colors.ink)=>{
@@ -348,11 +354,28 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
       yPos-=size+5;
     }
   };
-  centered('FINALIZED MONTHLY AUDIT',456,11,regular,colors.ink);
+  centered(isAnnualSummary?'YEAR-END CONTROLLED-SUBSTANCE REVIEW':
+    isMonthlySummary?'MONTHLY CONTROLLED-SUBSTANCE REVIEW':'FINALIZED MONTHLY AUDIT',
+    456,10.5,regular,colors.ink);
   centered('Narcotic Inventory',415,25,bold,colors.ink);
-  centered('Audit Report',385,25,bold,colors.ink);
+  centered(isAnnualSummary?'Annual Summary':isMonthlySummary?'Monthly Summary':'Audit Report',
+    385,25,bold,colors.ink);
   centered('Gladstone Fire Department',344,13,regular,colors.ink);
-  const frontFields=[
+  const frontFields=isAnnualSummary?[
+    ['Reporting year',auditMonth||'Not recorded'],
+    ['Monthly reports included',metaValue('Monthly reports included')||'Not recorded'],
+    ['First audit',metaValue('First audit')||'Not recorded'],
+    ['Last audit',metaValue('Last audit')||'Not recorded'],
+    ['Generated',metaValue('Generated')||'Not recorded'],
+    ['Document type','Annual summary - source audits retained separately']
+  ]:isMonthlySummary?[
+    ['Reporting month',auditMonth||'Not recorded'],
+    ['Reporting period',auditPeriod||'Not recorded'],
+    ['Date of audit',auditDate||'Not recorded'],
+    ['Certifying auditor',auditor||'Not recorded'],
+    ['Generated',metaValue('Generated')||'Not recorded'],
+    ['Document type','Monthly summary - not a signed audit']
+  ]:[
     ['Reporting period',auditPeriod||auditMonth||'Not recorded'],
     ['Date of audit',auditDate||'Not recorded'],
     ['Certifying auditor',auditor||'Not recorded'],
@@ -362,63 +385,78 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
   ];
   let fieldY=294;
   for(const [label,value] of frontFields){
-    page.drawText(label,{x:82,y:fieldY,size:9,font:regular,color:colors.ink});
+    page.drawText(safeText(label),{x:82,y:fieldY,size:9,font:regular,color:colors.ink});
     const lines=wrap(value,regular,9,250);
     lines.slice(0,2).forEach((line,j)=>page.drawText(line,
       {x:300,y:fieldY-j*11,size:9,font:regular,color:colors.ink}));
     fieldY-=29;
   }
 
-  // August's executive summary occupies its own page.
   newPage('Executive summary');
-  paragraph('This packet documents the physical inventory audit for '+safeText(auditPeriod||auditMonth)+
-    '. Locations covered: Medic 1, Medic 2, Medic 3, Safe, Expired. It includes inventory comparisons, tag records, activity, signatures, notes, and referenced supporting documents.',{size:9.3});
-  heading('Inventory and recorded activity',11.4);
-  const invTable=sheet.querySelector('.report-inventory');
-  const invData=tableData(invTable);
-  const countCurrent=()=>{
-    if(!invData)return null;
-    let total=0,active=0,expired=0,ok=false;
-    for(const row of invData.rows){
-      for(let j=1;j<=5;j++){
-        const v=String(row[j]||'').split('/').pop().trim();
-        if(/^\d+$/.test(v)){
-          total+=Number(v);if(j===5)expired+=Number(v);else active+=Number(v);ok=true;
+  const execSummary=sheet.querySelector('.report-executive-summary');
+  if(isSummary){
+    if(!execSummary){
+      paragraph('No executive summary was available in the selected report.');
+    }else{
+      const h=txt(execSummary.querySelector(':scope > h2'))||
+        (isAnnualSummary?'Year-end audit summary':'Monthly audit summary');
+      heading(h,11.5);
+      for(const child of [...execSummary.children]){
+        if(child.matches('h2'))continue;
+        if(child.matches('p'))paragraph(txt(child),{size:9.2,gap:12,continuation:'Executive summary (continued)'});
+        else if(child.matches('ul,ol')){
+          for(const li of child.querySelectorAll('li'))
+            paragraph('- '+txt(li),{size:9.2,indent:8,gap:6,continuation:'Executive summary (continued)'});
         }
       }
     }
-    return ok?{total,active,expired}:null;
-  };
-  const c=countCurrent();
-  const txn=sheet.querySelector('.report-transactions-section table');
-  const transactionRows=tableData(txn)?.rows||[];
-  const facts=[
-    ['Current physical inventory (all locations)',c?c.total+' vials':'See signed inventory comparison'],
-    ['Active inventory (Medic 1, 2, 3 and Safe)',c?c.active+' vials':'See signed inventory comparison'],
-    ['Expired stock',c?c.expired+' vials':'See signed inventory comparison'],
-    ['Recorded transactions',transactionRows.length?String(transactionRows.length):'None recorded'],
-    ['Seals', 'Five locations - original and replacement tags documented']
-  ];
-  // August executive-summary style: simple two-column rows separated by
-  // thin rules, rather than the dark audit-data table used later.
-  for(const [label,value] of facts){
-    ensure(30,'Executive summary (continued)');
-    page.drawText(safeText(label),{x:L+6,y:y-9,size:8.7,font:regular,color:colors.ink});
-    const valueLines=wrap(value,regular,8.7,205);
-    valueLines.slice(0,2).forEach((line,j)=>page.drawText(line,
-      {x:R-210,y:y-9-j*11,size:8.7,font:regular,color:colors.ink}));
-    page.drawLine({start:{x:L,y:y-20},end:{x:R,y:y-20},thickness:.6,color:colors.rule});
-    y-=Math.max(30,20+valueLines.length*11);
-  }
-  y-=12;
-  const execSummary=sheet.querySelector('.report-executive-summary');
-  if(execSummary){
-    for(const p of execSummary.querySelectorAll('p')){
-      if(txt(p))paragraph(txt(p),{size:9.1,continuation:'Executive summary (continued)'});
+  }else{
+    paragraph('This packet documents the physical inventory audit for '+safeText(auditPeriod||auditMonth)+
+      '. Locations covered: Medic 1, Medic 2, Medic 3, Safe, Expired. It includes inventory comparisons, tag records, activity, signatures, notes, and referenced supporting documents.',{size:9.3});
+    heading('Inventory and recorded activity',11.4);
+    const invTable=sheet.querySelector('.report-inventory');
+    const invData=tableData(invTable);
+    const countCurrent=()=>{
+      if(!invData)return null;
+      let total=0,active=0,expired=0,ok=false;
+      for(const row of invData.rows){
+        for(let j=1;j<=5;j++){
+          const v=String(row[j]||'').split('/').pop().trim();
+          if(/^\d+$/.test(v)){
+            total+=Number(v);if(j===5)expired+=Number(v);else active+=Number(v);ok=true;
+          }
+        }
+      }
+      return ok?{total,active,expired}:null;
+    };
+    const c=countCurrent();
+    const txn=sheet.querySelector('.report-transactions-section table');
+    const transactionRows=tableData(txn)?.rows||[];
+    const facts=[
+      ['Current physical inventory (all locations)',c?c.total+' vials':'See signed inventory comparison'],
+      ['Active inventory (Medic 1, 2, 3 and Safe)',c?c.active+' vials':'See signed inventory comparison'],
+      ['Expired stock',c?c.expired+' vials':'See signed inventory comparison'],
+      ['Recorded transactions',transactionRows.length?String(transactionRows.length):'None recorded'],
+      ['Seals','Five locations - original and replacement tags documented']
+    ];
+    for(const [label,value] of facts){
+      ensure(30,'Executive summary (continued)');
+      page.drawText(safeText(label),{x:L+6,y:y-9,size:8.7,font:regular,color:colors.ink});
+      const valueLines=wrap(value,regular,8.7,205);
+      valueLines.slice(0,2).forEach((line,j)=>page.drawText(line,
+        {x:R-210,y:y-9-j*11,size:8.7,font:regular,color:colors.ink}));
+      page.drawLine({start:{x:L,y:y-20},end:{x:R,y:y-20},thickness:.6,color:colors.rule});
+      y-=Math.max(30,20+valueLines.length*11);
     }
+    y-=12;
+    if(execSummary){
+      for(const p of execSummary.querySelectorAll('p')){
+        if(txt(p))paragraph(txt(p),{size:9.1,continuation:'Executive summary (continued)'});
+      }
+    }
+    paragraph('Physical counts are the verified audit inventory. Source documents and administration calculations are supporting evidence and do not replace the final signed physical count.',
+      {size:8.7,muted:true});
   }
-  paragraph('Physical counts are the verified audit inventory. Source documents and administration calculations are supporting evidence and do not replace the final signed physical count.',
-    {size:8.7,muted:true});
   // Data tables follow August's standalone summary page.
   newPage('Audit data and supporting records');
   for(const section of [...sheet.children]){
@@ -438,7 +476,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     }
   }
   const notes=sheet.querySelector('.report-notes');
-  if(notes){
+  if(notes&&!isSummary){
     newPage('Audit notes / discrepancies');
     const typed=multiline(notes.querySelector('.audit-notes-text'));
     const summary=notes.querySelector('.report-usage-summary');
@@ -446,7 +484,7 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     notePanel('Auditor Notes',typed||'No audit notes recorded.');
     if(summary)notePanel('Imported Administration / Usage Notes',multiline(summary));
   }
-  if(attestation){
+  if(attestation&&!isSummary){
     newPage('Final audit attestation');
     heading('Final audit attestation');
     for(const p of attestation.querySelectorAll(':scope > p'))paragraph(txt(p),
