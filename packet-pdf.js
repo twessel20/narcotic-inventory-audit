@@ -1,6 +1,6 @@
-/* Gladstone FD audit packet PDF renderer.
- * September 2026-style audit layout, with PDFLib vector text, compact
- * page flow and atomic evidence blocks. Never edits finalized records.
+/* Gladstone FD August 2026-style controlled-substance audit PDF.
+ * All report families share the signed packet typography. Finalized audit
+ * records and original attachments are never edited by PDF generation.
  */
 async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Audit Report'){
   const sheet=preview?.querySelector('.report-sheet.report-finalized');
@@ -276,10 +276,12 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
       const base=boxesTop-boxH;
       page.drawRectangle({x,y:base,width:boxW,height:boxH,
         borderColor:colors.navy,borderWidth:.8,color:colors.white});
-      const label=i?'WITNESS SIGNATURE':'SIGNER SIGNATURE';
+      const label=i?'WITNESS SIGNATURE':'AUDITOR SIGNATURE';
       page.drawText(label,{x:x+12,y:boxesTop-20,size:8.2,font:bold,color:colors.blue});
       const sign=await signatureFor(box?.querySelector('img'));
       if(sign)imageFit(page,sign,x+13,base+52,boxW-26,68);
+      else page.drawText('Signature image not recorded',
+        {x:x+14,y:base+82,size:8,font:regular,color:colors.muted});
       page.drawLine({start:{x:x+12,y:base+49},end:{x:x+boxW-12,y:base+49},
         thickness:.6,color:colors.navy});
       const identity=txt(box?.querySelector('.report-signature-name'))||'Not recorded';
@@ -433,7 +435,26 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     const lines=wrap(value,regular,9,250);
     lines.slice(0,2).forEach((line,j)=>page.drawText(line,
       {x:300,y:fieldY-j*11,size:9,font:regular,color:colors.ink}));
-    fieldY-=29;
+    fieldY-=25;
+  }
+
+  // The final certifying signature is the SAME stored image used on the
+  // attestation page. Repeat it on the cover without modifying the record.
+  const finalSignatureElement=attestation?.querySelector('.report-final-signature img')||
+    coverEl?.querySelector('.cover-auditor-signature img');
+  const finalSignature=!isSummary?await signatureFor(finalSignatureElement):null;
+  if(!isSummary){
+    page.drawText('FINAL CERTIFYING AUDITOR SIGNATURE',
+      {x:197,y:145,size:8.1,font:bold,color:colors.blue});
+    if(finalSignature)imageFit(page,finalSignature,191,88,230,52);
+    else page.drawText('Signature image not recorded',
+      {x:217,y:105,size:8.6,font:regular,color:colors.muted});
+    page.drawLine({start:{x:187,y:83},end:{x:425,y:83},
+      thickness:.8,color:colors.navy});
+    const coverIdentity=safeText(finalName||auditor);
+    const firstLine=wrap(coverIdentity,regular,8.4,330)[0];
+    page.drawText(firstLine,{x:(PW-regular.widthOfTextAtSize(firstLine,8.4))/2,
+      y:67,size:8.4,font:regular,color:colors.ink});
   }
 
   newPage('Executive summary');
@@ -533,18 +554,27 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     heading('Final audit attestation');
     for(const p of attestation.querySelectorAll(':scope > p'))paragraph(txt(p),
       {size:9.5,leading:14.6,continuation:'Final audit attestation (continued)',gap:14});
-    const sign=await signatureFor(attestation.querySelector('.report-final-signature img'));
-    ensure(150,'Final Audit Attestation (continued)');
-    page.drawRectangle({x:L,y:y-135,width:W,height:135,borderColor:colors.rule,borderWidth:.8,color:colors.pale});
-    page.drawText('FINAL CERTIFYING AUDITOR SIGNATURE',{x:L+14,y:y-24,size:9,font:bold,color:colors.blue});
-    if(sign)imageFit(page,sign,L+130,y-95,266,67);
-    else page.drawLine({start:{x:L+125,y:y-85},end:{x:R-125,y:y-85},thickness:.8,color:colors.rule});
-    page.drawText(safeText(finalName||auditor),{x:L+15,y:y-119,size:9.5,font:regular,color:colors.ink});
-    y-=155;
+    // Use the identical stored finalization signature drawn on the cover.
+    const sign=finalSignature||await signatureFor(attestation.querySelector('.report-final-signature img'));
+    ensure(190,'Final Audit Attestation (continued)');
+    const signBoxHeight=168;
+    page.drawRectangle({x:L,y:y-signBoxHeight,width:W,height:signBoxHeight,
+      borderColor:colors.rule,borderWidth:.9,color:colors.white});
+    page.drawText('FINAL CERTIFYING AUDITOR SIGNATURE',
+      {x:L+15,y:y-23,size:9,font:bold,color:colors.blue});
+    if(sign)imageFit(page,sign,L+95,y-122,W-190,85);
+    else page.drawText('Signature image not recorded',
+      {x:L+160,y:y-85,size:9,font:regular,color:colors.muted});
+    page.drawLine({start:{x:L+75,y:y-128},end:{x:R-75,y:y-128},
+      thickness:.8,color:colors.navy});
+    const signerLines=wrap(finalName||auditor,regular,9.5,W-30);
+    signerLines.slice(0,2).forEach((line,i)=>page.drawText(line,
+      {x:L+15,y:y-145-i*12,size:9.5,font:regular,color:colors.ink}));
+    y-=signBoxHeight+19;
   }
   if(docs.length){
     heading('Supporting Documents / Appendix');
-    paragraph('Original supporting PDFs are appended without alteration. The certified physical inventory remains the primary audit record.',{size:9.1});
+    paragraph('Imported administration PDFs display the pages containing actual dose rows, trimmed to the data table where the source permits reliable extraction. Other supporting PDFs are appended as received. Original source files remain unchanged in department storage.',{size:9.1});
     docs.forEach((entry,index)=>paragraph('Appendix '+String.fromCharCode(65+index%26)+': '+String(entry.name||'Supporting PDF'),{size:9.2,bold:true,gap:5}));
   }
   for(let i=0;i<pageInfo.length;i++){
@@ -561,6 +591,6 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
       size:7,font:regular,color:colors.muted});
   }
   const baseBlob=new Blob([await doc.save()],{type:'application/pdf'});
-  const blob=await appendSupportingPdfs(baseBlob,docs);
+  const blob=await appendSupportingPdfs(baseBlob,docs,{dataOnlyAdministrationAppendix:true});
   return {blob,file:new File([blob],fileName,{type:'application/pdf'}),safeName:fileName.slice(0,-4)};
 }
