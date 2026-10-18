@@ -1587,7 +1587,12 @@ function openStandaloneSignatureCapture(source,titleText,onChange){
    const dst=source.getContext('2d');
    if(!dst)throw new Error('Unable to update the original signature');
    dst.clearRect(0,0,source.width,source.height);
-   dst.drawImage(live,0,0,source.width,source.height);
+   // Keep the signer’s original handwriting proportions when transferring
+   // a landscape 1200x500 capture into the high-resolution 1200x360 audit
+   // signature field. Do not stretch it vertically or horizontally.
+   const factor=Math.min(source.width/live.width,source.height/live.height);
+   const printW=live.width*factor,printH=live.height*factor;
+   dst.drawImage(live,(source.width-printW)/2,(source.height-printH)/2,printW,printH);
    source.dataset.hasSignature='true';
    if(onChange)onChange();
  };
