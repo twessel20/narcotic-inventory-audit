@@ -3086,15 +3086,77 @@ function initialImplementationExplainerHtml(r){
  if(!isInitialImplementationAudit(r))return '';
  return '<div class="report-implementation-note"><strong>Implementation note — August 2026:</strong> This was the first audit completed in this application. Because the application was implemented after prior audit activity had already occurred, it could not reliably reconstruct or account for audits and inventory counts completed before implementation. Prior-audit comparison values may therefore be unavailable or incomplete in this report. This August 2026 audit establishes the application baseline for subsequent monthly comparisons.</div>';
 }
-function newReportSummaryHtml(r){
- try{
-   const summary=executiveSummaryHtml(r);
-   const note=initialImplementationExplainerHtml(r);
-   return note?summary.replace('</section>',note+'</section>'):summary;
- }catch(err){
-   console.error('Executive summary failed',err);
-   return '<section class="report-executive-summary simple-summary paragraph-summary pdf-executive-page"><h2>Audit Summary</h2><p>The summary could not be calculated from this preview. The detailed audit sections below remain available and unchanged.</p>'+initialImplementationExplainerHtml(r)+'</section>';
+// Build a concise source-grounded narrative from the finalized auditor's
+// notes. This is a presentation-only summary: never alter saved notes,
+// signatures, counts, and no inferred audit finding or clearance is added.
+function summarizeAuditNotes(notes){
+ const input=String(notes||'').replace(/\r/g,'').replace(/\s+/g,' ').trim();
+ if(!input)return 'No overall auditor notes were recorded for this audit.';
+ const sentences=input.split(/(?<=[.!?])\s+(?=[A-Z0-9])/).map(x=>x.trim()).filter(Boolean);
+ const compact=[],transfers=[],absorbed=new Set();
+ for(let i=0;i<sentences.length;i++){
+   const sentence=sentences[i];
+   const movement=sentence.match(/^(\d+)\s+vials?\s+of\s+(.+?)\s+were\s+(?:moved|distributed|transferred)\s+from\s+the\s+safe\b/i);
+   if(movement&&/\b(?:to|distributed to)\s+(?:both\s+)?(?:medic units|medics)\b/i.test(sentence)){
+     transfers.push(movement[1]+' vial'+(Number(movement[1])===1?'':'s')+' of '+movement[2].trim());
+     absorbed.add(i);
+   }
  }
+ const joinItems=items=>items.length===1?items[0]:
+  items.length===2?items[0]+' and '+items[1]:
+  items.slice(0,-1).join(', ')+', and '+items[items.length-1];
+ let insertedTransfers=false;
+ for(let i=0;i<sentences.length;i++){
+   const sentence=sentences[i];
+   if(absorbed.has(i)){
+     if(!insertedTransfers){
+       compact.push('Transfers from the Safe to the medic units included '+joinItems(transfers)+'.');
+       insertedTransfers=true;
+     }
+     continue;
+   }
+   const administered=sentence.match(/^There were\s+(\d+)\s+vials?\s+of\s+medication\s+administered\s+during\s+this\s+audit\s+period\.?$/i);
+   if(administered){
+     const source=sentences[i+1]||'';
+     const mentionsESO=/\bESO\s+import\b/i.test(source)&&
+       /documented|recorded|imported/i.test(source);
+     compact.push(administered[1]+' vial'+(Number(administered[1])===1?' was':'s were')+
+       ' administered during the audit period'+(mentionsESO?', as documented in the ESO import':'')+'.');
+     if(mentionsESO)i++;
+     continue;
+   }
+   compact.push(sentence);
+ }
+ // Concise extraction for arbitrary user-written notes. Prioritize direct
+ // discrepancies, drug movements and administration details; keep source
+ // wording otherwise rather than risking a misleading paraphrase.
+ const maxWords=120;
+ const weight=s=>/\b(discrepanc|conflict|shortage|overage|missing|damaged|broken|variance|incident|corrective|investigat)\w*/i.test(s)?5:
+  /\b(transfers?|moved|distributed|administered|destroyed|expired|restocked|wast(?:ed|age))\b/i.test(s)?4:1;
+ let included=compact.map((text,index)=>({text,index,weight:weight(text)}));
+ const allWords=included.reduce((sum,x)=>sum+x.text.split(/\s+/).length,0);
+ if(allWords>maxWords){
+   const ranked=[...included].sort((a,b)=>b.weight-a.weight||a.index-b.index);
+   const picked=[];let words=0;
+   for(const x of ranked){
+     const count=x.text.split(/\s+/).length;
+     if(words+count<=maxWords||!picked.length){picked.push(x);words+=count;}
+   }
+   included=picked.sort((a,b)=>a.index-b.index);
+ }
+ return included.map(x=>x.text).join(' ')||
+  'Auditor notes are available in the full Audit Notes section.';
+}
+function newReportSummaryHtml(r){
+ // Historical audit reports also receive a notes-based summary. The first
+ // implementation disclaimer remains separately identified as context.
+ const summary=summarizeAuditNotes(r.notes);
+ return '<section class="report-executive-summary simple-summary paragraph-summary pdf-executive-page">'+
+   '<h2>Audit Summary</h2>'+
+   '<p>'+esc(summary)+'</p>'+
+   '<p class="report-note">Summary derived from the auditor’s recorded notes. The complete, unchanged notes appear later in this packet.</p>'+
+   initialImplementationExplainerHtml(r)+
+   '</section>';
 }
 
 function reportHtml(r){
@@ -3142,7 +3204,7 @@ function reportHtml(r){
  '<div class="report-meta-grid"><div><b>Audit month:</b> '+esc(r.month||'')+'</div><div><b>Created:</b> '+esc(formatDisplayDate(r.createdDisplay||r.createdAt)||'')+'</div><div><b>Email:</b> '+esc(r.email||'travisw@gladstone.mo.us')+'</div><div></div><div><b>Date of audit:</b> '+esc(formatDisplayDate(r.auditDate)||'')+'</div><div></div><div class="wide"><b>Audit period:</b> '+esc(formatDisplayDate(r.dateRangeStart)||'—')+' through '+esc(formatDisplayDate(r.dateRangeEnd)||'—')+' (both dates included)</div></div>'+
  '<hr class="report-blue-rule">'+
  reportingMonthCorrectionHtml(r)+
- ((r.isTest||!r.legacyRecordNumber)?newReportSummaryHtml(r):'')+
+ newReportSummaryHtml(r)+
  (amendment?'<section class="report-amendment"><h2>Amended inventory record — correction history</h2><p>The table below includes these corrections. Signatures were recorded before these amendments and certify the original record, not the corrected entries.</p>'+amendment+'</section>':'')+
  '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+medicationDisplayHtml(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
  '<section><h2>Breakaway tag record</h2><table class="report-table"><thead><tr><th>Location</th><th>Tag found / removed</th><th>New tag installed</th></tr></thead><tbody>'+tagRows+'</tbody></table></section>'+
