@@ -758,37 +758,50 @@ async function handleAdministrationPdf(auditId,file){
 
 // All audit sections stay in the normal document flow on phones so staff can
 // scroll from one site to the next, or jump directly using the section links.
+// Single-section audit workflow on phones, with a stable native page scroll.
+// Sections switch only when the user explicitly navigates; keyboard and Safari
+// toolbar viewport changes must never cause the page to jump.
 function setupMobileAuditCards(auditId){
  const shell=document.querySelector('.audit-workspace-shell');
  if(!shell)return;
  const steps=[...shell.querySelectorAll('[data-audit-step]')];
  const links=[...shell.querySelectorAll('[data-step-target]')];
- const prev=document.getElementById('auditStepPrev'),next=document.getElementById('auditStepNext');
- const title=document.getElementById('auditStepTitle'),count=document.getElementById('auditStepCount');
+ const prev=document.getElementById('auditStepPrev');
+ const next=document.getElementById('auditStepNext');
+ const title=document.getElementById('auditStepTitle');
+ const count=document.getElementById('auditStepCount');
  if(!steps.length)return;
- const isMobile=()=>window.matchMedia('(max-width:700px)').matches;
+ const mq=window.matchMedia('(max-width:700px)');
  let current=Number(sessionStorage.getItem('narcoticAuditStep:'+auditId)||0);
  if(!Number.isFinite(current)||current<0||current>=steps.length)current=0;
- const select=(index,scroll=false)=>{
+ const show=(index,scroll=false)=>{
    current=Math.max(0,Math.min(Number(index)||0,steps.length-1));
-   // Never hide other sections: the whole monthly audit is one scrollable page.
-   steps.forEach(step=>step.classList.add('active-step'));
+   // Keep desktop's full-page audit; show one location at a time on mobile.
+   steps.forEach((section,i)=>section.classList.toggle('active-step',!mq.matches||i===current));
    links.forEach(link=>link.classList.toggle('current-step',Number(link.dataset.stepTarget)===current));
    if(title)title.textContent=steps[current]?.dataset.stepTitle||'Audit';
    if(count)count.textContent='Section '+(current+1)+' of '+steps.length;
+   if(prev)prev.textContent='Sections';
+   if(next)next.textContent=current===steps.length-1?'Back to details':'Next section';
    sessionStorage.setItem('narcoticAuditStep:'+auditId,String(current));
-   // Only intentional navigation may change scroll position. iOS resizes the
-   // viewport on keyboard and toolbar changes; those must not move the page.
-   if(scroll)steps[current]?.scrollIntoView({behavior:'auto',block:'start'});
+   if(scroll&&mq.matches)steps[current]?.scrollIntoView({behavior:'auto',block:'start'});
  };
  if(prev)prev.onclick=()=>shell.querySelector('.audit-route')?.scrollIntoView({behavior:'auto',block:'start'});
- if(next)next.onclick=()=>select((current+1)%steps.length,true);
+ if(next)next.onclick=()=>{
+   show((current+1)%steps.length,true);
+   scheduleAuditAutosave(auditId,true);
+ };
  links.forEach(link=>link.addEventListener('click',e=>{
-   if(!isMobile())return;
+   if(!mq.matches)return;
    e.preventDefault();
-   select(Number(link.dataset.stepTarget)||0,true);
+   show(Number(link.dataset.stepTarget)||0,true);
+   scheduleAuditAutosave(auditId,true);
  }));
- select(current,false);
+ // Only a change between desktop and mobile layouts triggers a redraw.
+ // No resize/keyboard listener and no scroll during initialization.
+ if(mq.addEventListener)mq.addEventListener('change',()=>show(current,false));
+ else if(mq.addListener)mq.addListener(()=>show(current,false));
+ show(current,false);
 }
 
 async function editAudit(id){
@@ -2723,7 +2736,7 @@ window.addEventListener('pagehide',()=>{if(activeAuditId)scheduleAuditAutosave(a
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&activeAuditId)flushAuditAutosave()});
 (async()=>{await openDB();await initCloud();await seedInventory();fillSelects();bind();await refreshAll();if(!cloudSession)setTimeout(()=>document.getElementById('authDialog')?.showModal(),300);const active=await getOne('meta','activeAudit');if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-226',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-228',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
