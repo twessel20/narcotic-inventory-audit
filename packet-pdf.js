@@ -120,9 +120,17 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     if(!signatureCache.has(src))signatureCache.set(src,await imageFromSrc(src));
     return signatureCache.get(src);
   }
+  // PDF text, grids, borders and page numbers are vector graphics and
+  // print at the printer's native resolution. For embedded JPG/PNG artwork
+  // enforce at least 300 effective pixels/inch at its actual printed size:
+  // PDF coordinates are points (72 points = 1 inch). Older signatures were
+  // saved as 500x150 PNGs, so those are printed no larger than 120x36 pt.
+  // Never fabricate pixels or resample an original finalized signature.
+  const MIN_PRINT_DPI=300;
   function imageFit(page,image,x,y,width,height){
     if(!image)return;
-    const k=Math.min(width/image.width,height/image.height);
+    const maxPtPerPixel=72/MIN_PRINT_DPI;
+    const k=Math.min(width/image.width,height/image.height,maxPtPerPixel);
     const w=image.width*k,h=image.height*k;
     page.drawImage(image,{x:x+(width-w)/2,y:y+(height-h)/2,width:w,height:h});
   }
