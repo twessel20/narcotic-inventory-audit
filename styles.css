@@ -8184,3 +8184,35 @@ body.report-open{overflow:hidden}
     font-size:.69rem;
   }
 }
+
+
+/* v239: Present an explicit administrative month correction while preserving
+   the immutable signed source and its original attachments. */
+.report-month-administrative-correction{
+  margin:12px 0 14px;
+  padding:10px 12px;
+  border:1px solid #cbd9e3;
+  border-left:4px solid #315f7e;
+  border-radius:5px;
+  background:#f3f7fa;
+  break-inside:avoid;
+  page-break-inside:avoid;
+}
+.report-month-administrative-correction strong{
+  display:block;
+  margin-bottom:4px;
+  color:#183f5a;
+  font-size:.82rem;
+  letter-spacing:.01em;
+}
+.report-month-administrative-correction p{
+  margin:0;
+  color:#425d6d;
+  font-size:.78rem;
+  line-height:1.43;
+}
+.pdf-clean-stage .report-month-administrative-correction{
+  margin:8px 0 10px!important;
+  padding:8px 10px!important;
+  background:#f5f8fa!important;
+}

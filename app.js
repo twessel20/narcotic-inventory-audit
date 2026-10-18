@@ -70,8 +70,36 @@ function nowISO(){return new Date().toISOString()}
 function esc(s=''){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))}
 function openDB(){return new Promise((resolve,reject)=>{const r=indexedDB.open(DB_NAME,DB_VER);r.onupgradeneeded=()=>{const d=r.result;['inventory','transactions','audits','reports','meta','legacyArchive'].forEach(n=>{if(!d.objectStoreNames.contains(n))d.createObjectStore(n,{keyPath:'id'})})};r.onsuccess=()=>{db=r.result;resolve(db)};r.onerror=()=>reject(r.error)})}
 function store(name,mode='readonly'){return db.transaction(name,mode).objectStore(name)}
-function getAll(name){return new Promise((res,rej)=>{const r=store(name).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
-function getOne(name,id){return new Promise((res,rej)=>{const r=store(name).get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+// Keep immutable finalized source data intact. A separate administrative
+// correction record changes only how the reporting month is presented.
+const REPORTING_MONTH_CORRECTION_ID='reporting-month-correction-audit_1';
+function getAllRaw(name){return new Promise((res,rej)=>{const r=store(name).getAll();r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function getOneRaw(name,id){return new Promise((res,rej)=>{const r=store(name).get(id);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)})}
+function applyReportingMonthCorrection(row,correction){
+ if(!row||!correction||correction.kind!=='reportingMonthCorrection')return row;
+ if(!Array.isArray(correction.targetIds)||!correction.targetIds.includes(row.id))return row;
+ if(row.month!==correction.fromMonth||
+   row.dateRangeStart!==correction.originalPeriodStart||
+   row.dateRangeEnd!==correction.originalPeriodEnd)return row;
+ return {...row,month:correction.correctedMonth,monthValue:correction.correctedMonthValue,
+   reportingMonthCorrection:{
+     fromMonth:correction.fromMonth,toMonth:correction.correctedMonth,
+     correctedAt:correction.correctedAt,reason:correction.reason,
+     signatureScope:correction.signatureScope
+   }};
+}
+async function getAll(name){
+ const records=await getAllRaw(name);
+ if((name!=='reports'&&name!=='audits')||!records.some(r=>r.id==='report_audit_1'||r.id==='audit_1'))return records;
+ const correction=await getOneRaw('meta',REPORTING_MONTH_CORRECTION_ID);
+ return records.map(row=>applyReportingMonthCorrection(row,correction));
+}
+async function getOne(name,id){
+ const record=await getOneRaw(name,id);
+ if(!record||(name!=='reports'&&name!=='audits')||(id!=='report_audit_1'&&id!=='audit_1'))return record;
+ const correction=await getOneRaw('meta',REPORTING_MONTH_CORRECTION_ID);
+ return applyReportingMonthCorrection(record,correction);
+}
 function putLocal(name,v){return new Promise((res,rej)=>{const r=store(name,'readwrite').put(v);r.onsuccess=()=>res(v);r.onerror=()=>rej(r.error)})}
 function delLocal(name,id){return new Promise((res,rej)=>{const r=store(name,'readwrite').delete(id);r.onsuccess=()=>res();r.onerror=()=>rej(r.error)})}
 function pendingWrites(){try{return JSON.parse(localStorage.getItem('narcoticPendingWrites')||'[]')}catch{return[]}}
@@ -1717,6 +1745,10 @@ async function saveAuditFromUI(id,finalize){
    try{
      await flushPendingWrites();
      if(pendingWrites().length)throw new Error('Pending offline changes must finish syncing before finalization.');
+     // Read the current correction and finalized records from the cloud
+     // before checking duplicates; older devices may have the legacy label.
+     await pullCloudRecords('meta');
+     await pullCloudRecords('reports');
      const finalizedReports=await getAll('reports');
      const thisMonth=a.monthValue||monthTextToValue(a.month||'');
      const duplicate=finalizedReports.find(r=>r.auditId!==a.id&&(r.monthValue||monthTextToValue(r.month||''))===thisMonth);
@@ -1915,7 +1947,7 @@ function annualSummaryHtml(year,reports){
  medSummary.map(x=>'<tr><td>'+medicationDisplayHtml(x.m)+'</td><td>'+x.first+'</td><td><b>'+x.last+'</b></td><td><b>'+(x.diff>0?'+':'')+x.diff+'</b></td></tr>').join('')+
  '</tbody></table><p class="report-note">Active inventory includes Medic 1, Medic 2, Medic 3, and Safe; Expired inventory is excluded from active totals.</p></section>'+
  '<section><h2>Monthly audit register</h2><table class="report-table"><thead><tr><th>Month</th><th>Audit date</th><th>Auditor</th><th>Administration rows</th><th>Amendments</th></tr></thead><tbody>'+
- sorted.map(r=>'<tr><td>'+esc(r.month||'')+'</td><td>'+esc(reportShareDate(r.auditDate||r.finalizedAt)||'—')+'</td><td>'+esc(r.attestationName||r.auditorName||'—')+'</td><td>'+((r.administrationRows||[]).length)+'</td><td>'+((r.amendments||[]).length)+'</td></tr>').join('')+
+ sorted.map(r=>'<tr><td>'+esc(r.month||'')+(r.reportingMonthCorrection?' <small>(administrative correction)</small>':'')+'</td><td>'+esc(reportShareDate(r.auditDate||r.finalizedAt)||'—')+'</td><td>'+esc(r.attestationName||r.auditorName||'—')+'</td><td>'+((r.administrationRows||[]).length)+'</td><td>'+((r.amendments||[]).length)+'</td></tr>').join('')+
  '</tbody></table></section>'+
  (inventoryFindings.length?'<section><h2>Expired / damaged medications found during audits</h2><p class="report-note">These findings were recorded within the live monthly audits. Retained items moved into Expired inventory; damaged vials that could not be physically retained were documented without increasing the Expired physical count. No separate inventory transactions were created.</p><table class="report-table"><thead><tr><th>Month</th><th>Date</th><th>Finding</th><th>Source</th><th>Medication</th><th>Qty</th><th>Notes</th></tr></thead><tbody>'+inventoryFindings.map(x=>'<tr><td>'+esc(x.auditMonth||'')+'</td><td>'+esc(formatDisplayDate(x.recordedAt)||'')+'</td><td>'+esc(x.typeLabel||x.type||'')+'</td><td>'+esc(x.sourceLocation||'')+' → '+esc(x.destinationLocation||'Expired')+'</td><td>'+medicationDisplayHtml(x.medication||'')+'</td><td>'+esc(x.quantity||'')+'</td><td>'+esc((x.physicalRetained===false?'No physical vial retained. ':'')+(x.note||''))+'</td></tr>').join('')+'</tbody></table></section>':'')+
  '<section><h2>Medication detail by month</h2><table class="report-table"><thead><tr><th>Month</th>'+MEDS.map(m=>'<th>'+medicationDisplayHtml(m)+'</th>').join('')+'</tr></thead><tbody>'+
@@ -1924,6 +1956,13 @@ function annualSummaryHtml(year,reports){
  '<footer class="report-footer">Year-end summary · '+year+'</footer></div>';
 }
 
+function reportingMonthCorrectionHtml(record){
+ const correction=record?.reportingMonthCorrection;
+ if(!correction)return '';
+ return '<section class="report-month-administrative-correction"><strong>Administrative reporting-month correction</strong>'+
+   '<p>Originally labeled '+esc(correction.fromMonth)+'. Displayed as '+esc(correction.toMonth)+
+   ' to match the recorded audit period. The finalized signed record, original source PDF, counts, seals and signatures remain unchanged.</p></section>';
+}
 function reportMonthKey(r){
  const direct=String(r?.monthValue||'').trim();
  if(/^\d{4}-(0[1-9]|1[0-2])$/.test(direct))return direct;
@@ -1999,6 +2038,7 @@ function monthlySummaryHtml(key,report,multipleCount=1){
  '<div><span>Certifying auditor</span><strong>'+esc(auditor)+'</strong></div>'+
  '<div><span>Generated</span><strong>'+esc(formatDisplayDate(new Date()))+'</strong></div></div>'+
  '<div class="report-cover-footer">Gladstone Fire Department · Monthly Narcotic Inventory / Audit Summary</div></section>'+
+ reportingMonthCorrectionHtml(report)+
  '<section class="report-executive-summary"><h2>Monthly audit summary</h2>'+
  '<p>Generated from the finalized '+esc(title)+' audit. Physical counts are those documented at the audit, not a live stock verification. This summary is not a substitute for the signed audit packet.</p><ul>'+
  '<li><b>Physical inventory at audit:</b> '+display(currentActive)+' active, '+display(expiredTotal)+' Expired, '+display(physicalTotal)+' across all locations.</li>'+
@@ -2095,7 +2135,7 @@ async function renderReports(){
  selectableYears.map(y=>'<option value="'+y+'" '+(y===selectedYear?'selected':'')+'>'+y+'</option>').join('')+'</select></label>'+
  '<button type="button" id="generateMonthlyReport" class="primary">Generate monthly report</button></div></div>';
  const testCard='<div class="list-item test-report-card"><div><span class="test-badge">TEST</span><strong>Test audit report</strong><div class="meta">Synthetic data · safe report-layout preview</div></div><div class="button-row"><button data-test-report="1">View test report</button></div></div>';
- const real=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month||monthValueToText(reportMonthKey(r))||'Monthly audit')+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+'</div><div class="button-row"><button data-report="'+esc(r.id)+'">View / print original audit</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>';
+ const real=rows.length?rows.map(r=>'<div class="list-item"><strong>'+esc(r.month||monthValueToText(reportMonthKey(r))||'Monthly audit')+'</strong><div class="meta">Finalized '+fmtDate(r.finalizedAt)+' · '+esc(r.attestationName||'')+(r.reportingMonthCorrection?' · Reporting-month correction recorded':'')+'</div><div class="button-row"><button data-report="'+esc(r.id)+'">View / print original audit</button></div></div>').join(''):'<div class="card empty">No finalized audits yet.</div>';
  document.getElementById('reportsList').innerHTML=monthly+annual+testCard+real;
  const annualBtn=document.getElementById('generateAnnualReport');
  if(annualBtn)annualBtn.onclick=()=>showAnnualReport(document.getElementById('annualReportYear')?.value);
@@ -2957,6 +2997,7 @@ function reportHtml(r){
  '<header class="report-top"><img src="'+logo+'" alt="Gladstone Fire Department patch"><div><div class="report-kicker">FINALIZED MONTHLY RECORD</div><h1>Gladstone Fire Department Narcotic<br>Inventory / Audit Form</h1></div></header>'+
  '<div class="report-meta-grid"><div><b>Audit month:</b> '+esc(r.month||'')+'</div><div><b>Created:</b> '+esc(formatDisplayDate(r.createdDisplay||r.createdAt)||'')+'</div><div><b>Email:</b> '+esc(r.email||'travisw@gladstone.mo.us')+'</div><div></div><div><b>Date of audit:</b> '+esc(formatDisplayDate(r.auditDate)||'')+'</div><div></div><div class="wide"><b>Audit period:</b> '+esc(formatDisplayDate(r.dateRangeStart)||'—')+' through '+esc(formatDisplayDate(r.dateRangeEnd)||'—')+' (both dates included)</div></div>'+
  '<hr class="report-blue-rule">'+
+ reportingMonthCorrectionHtml(r)+
  ((r.isTest||!r.legacyRecordNumber)?newReportSummaryHtml(r):'')+
  (amendment?'<section class="report-amendment"><h2>Amended inventory record — correction history</h2><p>The table below includes these corrections. Signatures were recorded before these amendments and certify the original record, not the corrected entries.</p>'+amendment+'</section>':'')+
  '<section><h2>Inventory comparison</h2><table class="report-table report-inventory"><thead><tr><th>Medication</th>'+LOCS.map(l=>'<th>'+esc(l)+'<small>Last / Current</small></th>').join('')+'<th>Active total</th></tr></thead><tbody>'+MEDS.map(m=>'<tr><td>'+medicationDisplayHtml(m)+'</td>'+LOCS.map(l=>{const p=r.priorCounts?.[l]?.[m];return '<td>'+(p==null?'—':Number(p))+' / <b>'+Number(r.counts?.[l]?.[m]||0)+'</b></td>'}).join('')+'<td><b>'+activeTotal(m)+'</b></td></tr>').join('')+'</tbody></table></section>'+
@@ -3412,7 +3453,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}
  if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-238',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-239',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
