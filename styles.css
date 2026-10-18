@@ -7310,15 +7310,17 @@ body.report-open{overflow:hidden}
     scroll-margin-top:62px!important;
   }
   #audit .mobile-card-nav{display:none!important}
-  /* The large signing dialog remains interactive; embedded previews no longer
-     swallow vertical swipes on iOS. Use Open larger for a new signature. */
+  /* Finger and Pencil signatures must remain interactive. A swipe beginning
+     outside the signing rectangle still scrolls the audit normally. */
   #audit .signature-box [data-canvas],
   #audit .signature-box [data-witness-canvas],
   #audit #finalSignatureCanvas,
   #txDialog #txRecordedSignature,
   #txDialog #txWitnessSignature{
-    pointer-events:none!important;
-    touch-action:pan-y!important;
+    pointer-events:auto!important;
+    touch-action:none!important;
+    -webkit-user-select:none!important;
+    user-select:none!important;
   }
 }
 
@@ -7951,4 +7953,47 @@ body.report-open{overflow:hidden}
 }
 .pdf-clean-stage .report-summary-condensed .report-table th{
   background:#eef5f9!important;
+}
+
+/* v233: finger, Apple Pencil and mouse signature capture on every viewport. */
+#signatureCaptureCanvas{
+  pointer-events:auto!important;
+  touch-action:none!important;
+  -webkit-user-select:none!important;
+  user-select:none!important;
+  cursor:crosshair;
+}
+#signatureCaptureDialog .signature-capture-shell{
+  min-height:0!important;
+}
+#signatureCaptureDialog.signature-landscape-mode .signature-capture-shell{
+  grid-template-columns:minmax(0,1fr)!important;
+  grid-template-rows:auto auto minmax(0,1fr) auto!important;
+}
+#signatureCaptureDialog.signature-landscape-mode #signatureCaptureCanvas{
+  display:block!important;
+  min-width:0!important;
+  min-height:120px!important;
+  max-width:100%!important;
+  height:100%!important;
+  touch-action:none!important;
+}
+@media(max-width:700px){
+  #signatureCaptureDialog.signature-landscape-mode .signature-capture-shell{
+    padding:
+      max(8px,env(safe-area-inset-top))
+      max(10px,env(safe-area-inset-right))
+      max(8px,env(safe-area-inset-bottom))
+      max(10px,env(safe-area-inset-left))!important;
+  }
+  #signatureCaptureDialog.signature-landscape-mode .signature-capture-hint{
+    margin:0!important;
+    font-size:12px!important;
+  }
+  #signatureCaptureDialog.signature-landscape-mode.is-landscape .signature-capture-hint{
+    display:none!important;
+  }
+  #signatureCaptureDialog.signature-landscape-mode.is-landscape .signature-capture-shell{
+    grid-template-rows:auto minmax(0,1fr) auto!important;
+  }
 }

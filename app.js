@@ -1198,59 +1198,94 @@ function exitSignatureLandscape(dialog){
  if(window.visualViewport)window.visualViewport.removeEventListener('resize',handler);
  delete dialog._signatureOrientationHandler;
 }
+// Direct signing uses Pointer Events for finger, pencil and mouse input.
+// No global mouse listeners and no scroll-blocking overlay over the canvas.
+function bindSignatureInk(canvas,lineWidth,onDraw){
+ if(!canvas)return;
+ const ctx=canvas.getContext('2d');if(!ctx)return;
+ ctx.lineWidth=lineWidth;ctx.lineCap='round';ctx.lineJoin='round';
+ let active=false,pointerId=null,last=null,stroked=false;
+ const point=e=>{
+   const rect=canvas.getBoundingClientRect();
+   if(!rect.width||!rect.height)return null;
+   return {x:(e.clientX-rect.left)*canvas.width/rect.width,
+           y:(e.clientY-rect.top)*canvas.height/rect.height};
+ };
+ const down=e=>{
+   if(active||e.isPrimary===false||e.button>0)return;
+   const p=point(e);if(!p)return;
+   active=true;stroked=false;last=p;pointerId=e.pointerId??null;
+   canvas.dataset.signatureEdited='true';
+   if(e.cancelable)e.preventDefault();
+   if(pointerId!==null&&canvas.setPointerCapture){
+     try{canvas.setPointerCapture(pointerId)}catch(_){}
+   }
+ };
+ const move=e=>{
+   if(!active||(pointerId!==null&&e.pointerId!==pointerId))return;
+   const p=point(e);if(!p||!last)return;
+   if(Math.abs(p.x-last.x)+Math.abs(p.y-last.y)<.5)return;
+   ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();
+   last=p;stroked=true;
+   if(e.cancelable)e.preventDefault();
+ };
+ const up=e=>{
+   if(!active||(pointerId!==null&&e.pointerId!==pointerId))return;
+   if(stroked){canvas.dataset.hasSignature='true';if(onDraw)onDraw()}
+   const id=pointerId;
+   active=false;last=null;pointerId=null;stroked=false;
+   if(id!==null&&canvas.hasPointerCapture?.(id)){
+     try{canvas.releasePointerCapture(id)}catch(_){}
+   }
+ };
+ if(window.PointerEvent){
+   canvas.addEventListener('pointerdown',down);
+   canvas.addEventListener('pointermove',move);
+   canvas.addEventListener('pointerup',up);
+   canvas.addEventListener('pointercancel',up);
+   canvas.addEventListener('lostpointercapture',up);
+ }else{
+   const eventForTouch=e=>{
+     const touch=e.touches?.[0]||e.changedTouches?.[0];
+     return touch?{clientX:touch.clientX,clientY:touch.clientY,pointerId:1,
+       button:0,cancelable:e.cancelable,preventDefault:()=>e.preventDefault()}:e;
+   };
+   canvas.addEventListener('touchstart',e=>down(eventForTouch(e)),{passive:false});
+   canvas.addEventListener('touchmove',e=>move(eventForTouch(e)),{passive:false});
+   canvas.addEventListener('touchend',e=>up(eventForTouch(e)),{passive:false});
+   canvas.addEventListener('touchcancel',e=>up(eventForTouch(e)),{passive:false});
+   canvas.addEventListener('mousedown',down);
+   canvas.addEventListener('mousemove',move);
+   canvas.addEventListener('mouseup',up);
+   canvas.addEventListener('mouseleave',up);
+ }
+}
 function finishSignatureCapture(dialog,apply){
  if(!dialog?.open)return;
+ const live=dialog.querySelector('#signatureCaptureCanvas');
+ // Preserve any existing source signature if the enlarged signing area is blank.
+ if(!live||live.dataset.hasSignature!=='true'){
+   alert('Please sign in the white area before selecting Use signature. No signature was changed.');
+   return;
+ }
  try{
-   apply(); // Update the source canvas and queue the audit autosave first.
-   dialog.close(); // Close synchronously so iPhone buttons cannot hang on orientation changes.
+   apply();
+   dialog.close();
    exitSignatureLandscape(dialog);
  }catch(err){
    console.error('Unable to use signature',err);
-   alert('The signature could not be applied. Please try again; the signing window is still open.');
+   alert('Unable to apply signature. The signing window remains open.');
  }
 }
-
 function openSignatureCapture(box,kind,onChange){
- const source=kind==='witness'?box.querySelector('[data-witness-canvas]'):box.querySelector('[data-canvas]');
+ const source=kind==='witness'
+   ?box?.querySelector('[data-witness-canvas]')
+   :box?.querySelector('[data-canvas]');
  if(!source)return;
- let dialog=document.getElementById('signatureCaptureDialog');
- if(!dialog){
-   dialog=document.createElement('dialog');
-   dialog.id='signatureCaptureDialog';
-   dialog.className='signature-capture-dialog';
-   dialog.innerHTML='<div class="signature-capture-shell"><div class="signature-capture-head"><div><span class="kicker">SIGNATURE CAPTURE</span><h2 id="signatureCaptureTitle">Signature</h2></div><button type="button" id="signatureCaptureClose">Done</button></div><div class="signature-capture-hint">Opening landscape signing mode…</div><canvas id="signatureCaptureCanvas" width="1200" height="500"></canvas><div class="signature-capture-actions"><button type="button" id="signatureCaptureClear">Clear</button><button type="button" class="primary" id="signatureCaptureSave">Use signature</button></div></div>';
-   document.body.appendChild(dialog);
- }
- const title=dialog.querySelector('#signatureCaptureTitle');
- title.textContent=(kind==='witness'?'Witness':'Auditor')+' signature';
- const old=dialog.querySelector('#signatureCaptureCanvas');
- const live=old.cloneNode(true);
- old.replaceWith(live);
- live.width=1200;live.height=500;
- const lctx=live.getContext('2d');lctx.lineWidth=5;lctx.lineCap='round';
- if(source.dataset.hasSignature==='true'){
-   const img=new Image();img.onload=()=>lctx.drawImage(img,0,0,live.width,live.height);img.src=source.toDataURL();
- }
- live.dataset.hasSignature=source.dataset.hasSignature||'false';
- let down=false,last=null,moved=false;
- const pos=e=>{const r=live.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*live.width/r.width,y:(p.clientY-r.top)*live.height/r.height}};
- const start=e=>{down=true;moved=false;last=pos(e);e.preventDefault()};
- const move=e=>{if(!down)return;const p=pos(e);lctx.beginPath();lctx.moveTo(last.x,last.y);lctx.lineTo(p.x,p.y);lctx.stroke();last=p;moved=true;e.preventDefault()};
- const end=()=>{if(down&&moved)live.dataset.hasSignature='true';down=false;last=null;moved=false};
- live.addEventListener('mousedown',start);live.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
- live.addEventListener('touchstart',start,{passive:false});live.addEventListener('touchmove',move,{passive:false});live.addEventListener('touchend',end);
- const apply=()=>{
-   const sctx=source.getContext('2d');sctx.clearRect(0,0,source.width,source.height);
-   sctx.drawImage(live,0,0,source.width,source.height);
-   source.dataset.hasSignature=live.dataset.hasSignature||'false';
-   updateAuditRouteProgress();if(onChange)onChange();
- };
- dialog.querySelector('#signatureCaptureClear').onclick=()=>{lctx.clearRect(0,0,live.width,live.height);live.dataset.hasSignature='false'};
- dialog.querySelector('#signatureCaptureSave').onclick=()=>finishSignatureCapture(dialog,apply);
- dialog.querySelector('#signatureCaptureClose').onclick=()=>finishSignatureCapture(dialog,apply);
- dialog.showModal();
- enterSignatureLandscape(dialog);
- setTimeout(()=>dialog.scrollTop=0,0);
+ openStandaloneSignatureCapture(source,kind==='witness'?'Witness signature':'Auditor signature',()=>{
+   updateAuditRouteProgress();
+   if(onChange)onChange();
+ });
 }
 function openStandaloneSignatureCapture(source,titleText,onChange){
  if(!source)return;
@@ -1259,50 +1294,59 @@ function openStandaloneSignatureCapture(source,titleText,onChange){
    dialog=document.createElement('dialog');
    dialog.id='signatureCaptureDialog';
    dialog.className='signature-capture-dialog';
-   dialog.innerHTML='<div class="signature-capture-shell"><div class="signature-capture-head"><div><span class="kicker">SIGNATURE CAPTURE</span><h2 id="signatureCaptureTitle">Signature</h2></div><button type="button" id="signatureCaptureClose">Done</button></div><div class="signature-capture-hint">Opening landscape signing mode…</div><canvas id="signatureCaptureCanvas" width="1200" height="500"></canvas><div class="signature-capture-actions"><button type="button" id="signatureCaptureClear">Clear</button><button type="button" class="primary" id="signatureCaptureSave">Use signature</button></div></div>';
+   dialog.innerHTML='<div class="signature-capture-shell"><div class="signature-capture-head"><div><span class="kicker">SIGNATURE CAPTURE</span><h2 id="signatureCaptureTitle">Signature</h2></div><button type="button" id="signatureCaptureClose">Cancel</button></div><div class="signature-capture-hint">Sign in the white area. Turn sideways for more room.</div><canvas id="signatureCaptureCanvas" width="1200" height="500"></canvas><div class="signature-capture-actions"><button type="button" id="signatureCaptureClear">Clear</button><button type="button" class="primary" id="signatureCaptureSave">Use signature</button></div></div>';
    document.body.appendChild(dialog);
  }
  dialog.querySelector('#signatureCaptureTitle').textContent=titleText||'Signature';
- const old=dialog.querySelector('#signatureCaptureCanvas');
- const live=old.cloneNode(true);old.replaceWith(live);live.width=1200;live.height=500;
- const lctx=live.getContext('2d');lctx.lineWidth=5;lctx.lineCap='round';
- if(source.dataset.hasSignature==='true'){
-   const img=new Image();img.onload=()=>lctx.drawImage(img,0,0,live.width,live.height);img.src=source.toDataURL();
+ dialog.querySelector('#signatureCaptureClose').textContent='Cancel';
+ const original=dialog.querySelector('#signatureCaptureCanvas');
+ const live=original.cloneNode(true);
+ original.replaceWith(live);
+ live.width=1200;live.height=500;
+ const ctx=live.getContext('2d');
+ if(!ctx)return alert('Signature canvas is unavailable on this device.');
+ const exists=source.dataset.hasSignature==='true';
+ live.dataset.hasSignature=exists?'true':'false';
+ if(exists){
+   const img=new Image();
+   img.onload=()=>{if(live.dataset.signatureEdited!=='true')ctx.drawImage(img,0,0,live.width,live.height)};
+   img.src=source.toDataURL('image/png');
  }
- live.dataset.hasSignature=source.dataset.hasSignature||'false';
- let down=false,last=null,moved=false;
- const pos=e=>{const r=live.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*live.width/r.width,y:(p.clientY-r.top)*live.height/r.height}};
- const start=e=>{down=true;moved=false;last=pos(e);e.preventDefault()};
- const move=e=>{if(!down)return;const p=pos(e);lctx.beginPath();lctx.moveTo(last.x,last.y);lctx.lineTo(p.x,p.y);lctx.stroke();last=p;moved=true;e.preventDefault()};
- const end=()=>{if(down&&moved)live.dataset.hasSignature='true';down=false;last=null;moved=false};
- live.addEventListener('mousedown',start);live.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
- live.addEventListener('touchstart',start,{passive:false});live.addEventListener('touchmove',move,{passive:false});live.addEventListener('touchend',end);
- const apply=()=>{const sctx=source.getContext('2d');sctx.clearRect(0,0,source.width,source.height);sctx.drawImage(live,0,0,source.width,source.height);source.dataset.hasSignature=live.dataset.hasSignature||'false';if(onChange)onChange()};
- dialog.querySelector('#signatureCaptureClear').onclick=()=>{lctx.clearRect(0,0,live.width,live.height);live.dataset.hasSignature='false'};
+ bindSignatureInk(live,5);
+ const apply=()=>{
+   const dst=source.getContext('2d');
+   if(!dst)throw new Error('Unable to update the original signature');
+   dst.clearRect(0,0,source.width,source.height);
+   dst.drawImage(live,0,0,source.width,source.height);
+   source.dataset.hasSignature='true';
+   if(onChange)onChange();
+ };
+ dialog.querySelector('#signatureCaptureClear').onclick=()=>{
+   ctx.clearRect(0,0,live.width,live.height);
+   live.dataset.hasSignature='false';
+   live.dataset.signatureEdited='true';
+ };
  dialog.querySelector('#signatureCaptureSave').onclick=()=>finishSignatureCapture(dialog,apply);
- dialog.querySelector('#signatureCaptureClose').onclick=()=>finishSignatureCapture(dialog,apply);
+ dialog.querySelector('#signatureCaptureClose').onclick=()=>{dialog.close();exitSignatureLandscape(dialog)};
  dialog.showModal();
  enterSignatureLandscape(dialog);
 }
 document.addEventListener('cancel',e=>{
- const d=e.target;
- if(d?.id==='signatureCaptureDialog')exitSignatureLandscape(d);
+ if(e.target?.id==='signatureCaptureDialog')exitSignatureLandscape(e.target);
 },true);
 document.addEventListener('close',e=>{
- const d=e.target;
- if(d?.id==='signatureCaptureDialog')exitSignatureLandscape(d);
+ if(e.target?.id==='signatureCaptureDialog')exitSignatureLandscape(e.target);
 },true);
-
 function setupCanvas(canvas,data,onChange){
- const ctx=canvas.getContext('2d');ctx.lineWidth=2;ctx.lineCap='round';canvas.dataset.hasSignature=data?'true':'false';
- if(data){const img=new Image();img.onload=()=>ctx.drawImage(img,0,0,canvas.width,canvas.height);img.src=data}
- let down=false,last=null,changed=false;
- const pos=e=>{const r=canvas.getBoundingClientRect(),p=e.touches?e.touches[0]:e;return{x:(p.clientX-r.left)*canvas.width/r.width,y:(p.clientY-r.top)*canvas.height/r.height}};
- const start=e=>{down=true;changed=false;last=pos(e);e.preventDefault()};
- const move=e=>{if(!down)return;const p=pos(e);ctx.beginPath();ctx.moveTo(last.x,last.y);ctx.lineTo(p.x,p.y);ctx.stroke();last=p;changed=true;e.preventDefault()};
- const end=()=>{if(down&&changed){canvas.dataset.hasSignature='true';if(onChange)onChange()}down=false;last=null;changed=false};
- canvas.addEventListener('mousedown',start);canvas.addEventListener('mousemove',move);window.addEventListener('mouseup',end);
- canvas.addEventListener('touchstart',start,{passive:false});canvas.addEventListener('touchmove',move,{passive:false});canvas.addEventListener('touchend',end);
+ if(!canvas)return;
+ const ctx=canvas.getContext('2d');if(!ctx)return;
+ canvas.dataset.hasSignature=data?'true':'false';
+ if(data){
+   const img=new Image();
+   img.onload=()=>{if(canvas.dataset.signatureEdited!=='true')ctx.drawImage(img,0,0,canvas.width,canvas.height)};
+   img.src=data;
+ }
+ bindSignatureInk(canvas,2,onChange);
 }
 function setupSignature(box,s,onChange){
  const c=box.querySelector('[data-canvas]'),w=box.querySelector('[data-witness-canvas]');
@@ -3104,7 +3148,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}
  if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-232',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-233',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
