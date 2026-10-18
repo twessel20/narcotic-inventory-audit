@@ -1,6 +1,6 @@
 /* Gladstone FD audit packet PDF renderer.
- * Uses PDFLib vector text and atomic page layout instead of a tall
- * html2canvas capture. Never modifies saved/finalized audit records.
+ * September 2026-style audit layout, with PDFLib vector text, compact
+ * page flow and atomic evidence blocks. Never edits finalized records.
  */
 async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Audit Report'){
   const sheet=preview?.querySelector('.report-sheet.report-finalized');
@@ -193,13 +193,15 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     if(fullH<fullCap&&y-fullH<BOTTOM)newPage(label+' (continued)');
     const drawRow=(cells,height,isHeader,index)=>{
       page.drawRectangle({x:L,y:y-height,width:W,height,borderColor:colors.rule,borderWidth:.55,
-        color:isHeader?colors.navy:index%2===0?colors.white:colors.pale});
+        color:isHeader?rgb(.91,.95,.97):index%2===0?colors.white:rgb(.985,.992,.997)});
       let x=L;
+      const highlightNewSeal=/breakaway tag/i.test(label);
       rowLines(cells,isHeader).forEach((lines,i)=>{
         if(i)page.drawLine({start:{x,y:y-height},end:{x,y},thickness:.45,color:colors.rule});
         let yy=y-pad-fontSize;
-        lines.forEach(line=>{if(line)page.drawText(line,{x:x+pad,y:yy,size:fontSize,font:isHeader?bold:regular,
-          color:isHeader?colors.white:colors.ink});yy-=lead;});
+        lines.forEach(line=>{if(line)page.drawText(line,{x:x+pad,y:yy,size:fontSize,
+          font:isHeader||(highlightNewSeal&&i===2)?bold:regular,
+          color:isHeader?colors.navy:colors.ink});yy-=lead;});
         x+=widths[i];
       });
       y-=height;
@@ -297,54 +299,50 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
       if(child.matches('div')&&txt(child))paragraph(txt(child),{continuation:name+' (continued)'});
     }
   }
-  // Formal August 2026-style cover, but with fixed, single-page geometry.
-  const front=doc.addPage([PW,PH]);
-  pageInfo.push({page:front,label:'Cover'});
-  front.drawRectangle({x:0,y:PH-12,width:PW,height:12,color:colors.navy});
-  front.drawRectangle({x:L,y:54,width:W,height:PH-116,borderColor:colors.rule,borderWidth:1});
-  imageFit(front,patch,255,620,102,102);
-  const centered=(text,yPos,size,font=bold,color=colors.ink)=>{
-    const lines=wrap(text,font,size,W-40);
-    let yy=yPos;
-    lines.forEach(line=>{front.drawText(line,{x:(PW-font.widthOfTextAtSize(line,size))/2,y:yy,
-      size,font,color});yy-=size+5;});
-    return yy;
-  };
-  centered('GLADSTONE FIRE DEPARTMENT',603,12.4,bold,colors.navy);
-  centered('FINALIZED MONTHLY CONTROLLED-SUBSTANCE AUDIT',569,9,regular,colors.muted);
-  centered('NARCOTIC INVENTORY',506,24,bold,colors.ink);
-  centered('AUDIT REPORT',470,24,bold,colors.ink);
-  centered(auditMonth,420,17,bold,colors.blue);
-  if(isTest)centered('TEST REPORT - SYNTHETIC DATA',395,10,bold,colors.blue);
-  front.drawLine({start:{x:93,y:373},end:{x:519,y:373},thickness:1.2,color:colors.rule});
-  const details=[
-    ['REPORTING PERIOD',auditPeriod||'Not recorded'],
+
+  // September 2026 report style: no oversized patch and no separate,
+  // largely empty cover or executive-summary page.
+  newPage('Monthly Audit Overview');
+  const introH=95;
+  page.drawRectangle({x:L,y:y-introH,width:W,height:introH,borderColor:colors.rule,
+    borderWidth:.9,color:colors.pale});
+  page.drawRectangle({x:L,y:y-introH,width:3.5,height:introH,color:colors.blue});
+  imageFit(page,patch,L+14,y-introH+17,66,61);
+  page.drawText('CONTROLLED-SUBSTANCE AUDIT',{x:L+92,y:y-20,size:8.3,font:bold,color:colors.blue});
+  page.drawText('Narcotic Inventory / Audit Report',{x:L+92,y:y-44,size:16.4,font:bold,color:colors.ink});
+  page.drawText(safeText(auditMonth),{x:L+92,y:y-67,size:12,font:bold,color:colors.blue});
+  if(isTest)page.drawText('TEST - SYNTHETIC DATA',{x:L+92,y:y-82,size:8,font:bold,color:colors.blue});
+  y-=introH+14;
+  const metaEntries=[
+    ['AUDIT PERIOD',auditPeriod||'Not recorded'],
     ['AUDIT DATE',auditDate||'Not recorded'],
-    ['FINALIZED',finalizedDate||'Finalized audit record'],
+    ['FINALIZED',finalizedDate||'Finalized record'],
     ['CERTIFYING AUDITOR',auditor||'Not recorded'],
-    ['EMPLOYEE NUMBER',employee||'Not recorded']
+    ['EMPLOYEE NUMBER',employee||'Not recorded'],
+    ['RECORD NUMBER',recordNumber||'Finalized snapshot']
   ];
-  let fy=349;
-  for(const [label,value] of details){
-    front.drawText(label,{x:106,y:fy,size:8.4,font:bold,color:colors.muted});
-    const lines=wrap(value,regular,10.2,268);
-    lines.forEach((line,i)=>front.drawText(line,{x:261,y:fy-i*13,size:10.2,font:regular,color:colors.ink}));
-    fy-=Math.max(33,lines.length*13+13);
+  // Match the September report's compact two-column metadata arrangement.
+  const metaRowH=36,metaH=metaRowH*3+10;
+  ensure(metaH+9,'Monthly Audit Overview (continued)');
+  page.drawRectangle({x:L,y:y-metaH,width:W,height:metaH,borderColor:colors.rule,borderWidth:.7,color:colors.white});
+  for(let i=0;i<metaEntries.length;i++){
+    const [label,value]=metaEntries[i],col=i%2,row=Math.floor(i/2);
+    const x=L+13+col*(W/2),yy=y-18-row*metaRowH;
+    page.drawText(label,{x,y:yy,size:7.2,font:bold,color:colors.muted});
+    const lines=wrap(value,regular,9.3,W/2-29);
+    lines.slice(0,2).forEach((line,j)=>{if(line)page.drawText(line,{x,y:yy-14-j*10,size:9.3,font:regular,color:colors.ink});});
   }
+  y-=metaH+16;
   const finalSign=await signatureFor(coverEl?.querySelector('.cover-auditor-signature img')||
     attestation?.querySelector('.report-final-signature img'));
   if(finalSign){
-    imageFit(front,finalSign,212,130,188,55);
-    front.drawLine({start:{x:211,y:125},end:{x:401,y:125},thickness:.8,color:colors.rule});
-  }else{
-    front.drawLine({start:{x:211,y:136},end:{x:401,y:136},thickness:.8,color:colors.rule});
+    ensure(56,'Monthly Audit Overview (continued)');
+    page.drawText('CERTIFYING AUDITOR SIGNATURE',{x:L,y:y-13,size:7.6,font:bold,color:colors.muted});
+    imageFit(page,finalSign,L+202,y-39,160,39);
+    y-=52;
   }
-  centered('FINAL CERTIFYING AUDITOR SIGNATURE',107,8,regular,colors.muted);
-  if(recordNumber)centered('FINALIZED AUDIT RECORD #'+recordNumber,90,8,bold,colors.muted);
-  centered('Finalized audit snapshot - supporting records follow',76,8,regular,colors.muted);
-
-  newPage('Executive Summary');
-  paragraph('Gladstone Fire Department - '+auditMonth+' controlled-substance physical inventory audit. The quantities below are the finalized, recorded counts and are not a live verification of current stock.',{size:9.2});
+  heading('Audit Summary');
+  paragraph('Finalized physical inventory snapshot for '+auditMonth+'. Supporting administration records and signed site certifications follow.',{size:9.1,gap:8});
   const executive=sheet.querySelector('.report-executive-summary');
   if(executive){
     for(const child of [...executive.children]){
@@ -355,25 +353,33 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
   }else paragraph('No calculated executive summary was included in the historical audit record.');
   for(const section of [...sheet.children]){
     if(section===executive||section.matches('.report-cover-page'))continue;
+    // Only audit report sections contain printable evidence. Rendering the
+    // header, toolbar, metadata grid and footer as extra "Audit Details"
+    // sections duplicated content and made the previous export cluttered.
+    if(!section.matches('section,.report-month-administrative-correction'))continue;
     if(section.matches('.report-signature-section,.report-attestation,.report-notes'))continue;
     await renderSection(section);
   }
   const certCards=[...sheet.querySelectorAll('.report-signature-section .report-cert')];
   if(certCards.length){
-    newPage('Location Certifications');
+    ensure(210,'Location Certifications');
+    heading('Audit Site Certifications');
     for(const card of certCards)await certification(card);
   }
   const notes=sheet.querySelector('.report-notes');
   if(notes){
-    newPage('Audit Notes / Discrepancies');
     const typed=multiline(notes.querySelector('.audit-notes-text'));
-    notePanel('Auditor Notes',typed||'No audit notes recorded.');
     const summary=notes.querySelector('.report-usage-summary');
-    if(summary)notePanel('Imported Administration / Usage Notes',multiline(summary));
+    if(typed||summary){
+      heading('Audit Notes / Discrepancies');
+      if(typed)notePanel('Auditor Notes',typed);
+      if(summary)notePanel('Imported Administration / Usage Notes',multiline(summary));
+    }
   }
   if(attestation){
-    newPage('Final Audit Attestation');
-    for(const p of attestation.querySelectorAll(':scope > p'))notePanel('Final Certification Statement',txt(p));
+    ensure(230,'Final Audit Attestation');
+    heading('Final Audit Attestation');
+    for(const p of attestation.querySelectorAll(':scope > p'))notePanel('Certification Statement',txt(p));
     const sign=await signatureFor(attestation.querySelector('.report-final-signature img'));
     ensure(150,'Final Audit Attestation (continued)');
     page.drawRectangle({x:L,y:y-135,width:W,height:135,borderColor:colors.rule,borderWidth:.8,color:colors.pale});
@@ -384,9 +390,9 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     y-=155;
   }
   if(docs.length){
-    newPage('Supporting Documents / Appendix');
-    paragraph('The supporting PDFs listed here are appended in their original form and page orientation. Attached source documents are retained as evidence; the finalized physical count and signed audit record remain the primary audit record.',{size:9.2});
-    docs.forEach((entry,index)=>paragraph('Appendix '+String.fromCharCode(65+index%26)+': '+String(entry.name||'Supporting PDF'),{size:10,bold:true}));
+    heading('Supporting Documents / Appendix');
+    paragraph('Original supporting PDFs are appended without alteration. The certified physical inventory remains the primary audit record.',{size:9.1});
+    docs.forEach((entry,index)=>paragraph('Appendix '+String.fromCharCode(65+index%26)+': '+String(entry.name||'Supporting PDF'),{size:9.2,bold:true,gap:5}));
   }
   for(let i=0;i<pageInfo.length;i++){
     const {page:p,label}=pageInfo[i];
