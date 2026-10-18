@@ -1,5 +1,5 @@
-const CACHE='narcotic-audit-v231';
-const ASSETS=['./','./index.html','./styles.css?v=20261017-231','./app.js?v=20261017-231','./manifest.webmanifest','./gfd-patch.jpg','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png','./icons/apple-touch-icon-v226.png','./apple-touch-icon.png','./apple-touch-icon-v226.png','./apple-touch-icon-precomposed.png','./icons/favicon-48.png'];
+const CACHE='narcotic-audit-v232';
+const ASSETS=['./','./index.html','./styles.css?v=20261018-232','./app.js?v=20261018-232','./manifest.webmanifest','./gfd-patch.jpg','./icons/icon-192.png','./icons/icon-512.png','./icons/icon-maskable-512.png','./icons/apple-touch-icon.png','./icons/apple-touch-icon-v226.png','./apple-touch-icon.png','./apple-touch-icon-v226.png','./apple-touch-icon-precomposed.png','./icons/favicon-48.png'];
 self.addEventListener('install',e=>{self.skipWaiting();e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)))});
 self.addEventListener('activate',e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(keys=>Promise.all(keys.filter(k=>k!==CACHE).map(k=>caches.delete(k))))])));
 // Cache-first for versioned app assets; iPhone should not download large

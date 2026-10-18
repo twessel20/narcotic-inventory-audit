@@ -7546,3 +7546,409 @@ body.report-open{overflow:hidden}
     grid-column:1 / -1;
   }
 }
+
+
+/* v232 — compact, print-first audit reports.
+   The official patch is a small identification mark, not a cover-page image.
+   These rules do not affect the dashboard branding or signed audit data. */
+.report-finalized .report-cover-brand{
+  display:flex;
+  flex-wrap:nowrap;
+  align-items:center;
+  gap:10px;
+}
+.report-finalized .report-cover-brand img{
+  display:block;
+  width:42px!important;
+  height:42px!important;
+  min-width:42px!important;
+  max-width:42px!important;
+  object-fit:contain!important;
+  flex:0 0 42px!important;
+}
+.report-finalized .report-cover-dept{
+  font-size:.85rem;
+  letter-spacing:.08em;
+  line-height:1.15;
+}
+.report-finalized .report-top img{
+  width:42px!important;
+  height:42px!important;
+  flex:0 0 42px!important;
+  object-fit:contain!important;
+}
+.report-finalized .report-top{
+  gap:12px;
+  align-items:center;
+}
+.report-finalized .report-top h1{
+  font-size:clamp(1.12rem,2.4vw,1.45rem);
+}
+.report-finalized .report-cover-page{
+  min-height:0;
+  height:auto;
+  display:block;
+  padding:22px 26px;
+  border:1px solid #cddbe5;
+  border-top:4px solid #123a5a;
+  border-radius:7px;
+  background:#fff;
+}
+.report-finalized .report-cover-main{
+  margin:24px 0 20px;
+  text-align:left;
+  padding-left:16px;
+  border-left:4px solid #1f608e;
+}
+.report-finalized .report-cover-main h1{
+  font-size:clamp(1.4rem,3.5vw,1.95rem);
+  line-height:1.17;
+  margin:5px 0 8px;
+}
+.report-finalized .report-cover-kicker{
+  font-size:.66rem;
+  letter-spacing:.10em;
+}
+.report-finalized .report-cover-month{
+  font-size:1.13rem;
+  line-height:1.2;
+}
+.report-finalized .report-cover-meta{
+  gap:8px 14px;
+  padding:11px 0;
+}
+.report-finalized .report-cover-meta span{
+  font-size:.63rem;
+  letter-spacing:.035em;
+}
+.report-finalized .report-cover-meta strong{
+  font-size:.81rem;
+  line-height:1.28;
+  overflow-wrap:anywhere;
+}
+.report-finalized .report-cover-footer{
+  margin-top:12px;
+  text-align:left;
+  font-size:.68rem;
+}
+.report-finalized .report-table{
+  border-radius:6px;
+  border-color:#c8d7e2;
+  font-size:.80rem;
+}
+.report-finalized .report-table th,
+.report-finalized .report-table td{
+  border-color:#d9e4eb;
+  padding:8px 9px;
+}
+.report-finalized .report-table th{
+  background:#edf4f8;
+  color:#123a5a;
+}
+@media(max-width:700px){
+  .report-finalized .report-cover-page{
+    padding:15px 12px;
+  }
+  .report-finalized .report-cover-brand img{
+    width:38px!important;
+    height:38px!important;
+    min-width:38px!important;
+    max-width:38px!important;
+    flex-basis:38px!important;
+  }
+  .report-finalized .report-cover-main{margin:18px 0 14px;padding-left:12px}
+  .report-finalized .report-cover-main h1{font-size:1.35rem}
+}
+
+/* Generated PDF — one compact front page, not an almost-empty cover. */
+.pdf-clean-stage .pdf-front-page{
+  padding:12px 17px!important;
+  min-height:0!important;
+}
+.pdf-clean-stage .pdf-front-page > .pdf-packet-header,
+.pdf-clean-stage .pdf-front-page > .pdf-packet-title{
+  display:none!important;
+}
+.pdf-clean-stage .pdf-front-page > .pdf-packet-cover{
+  display:block!important;
+  box-sizing:border-box!important;
+  width:100%!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  margin:0 0 12px!important;
+  padding:13px 12px 12px!important;
+  overflow:visible!important;
+  border:1px solid #d8e4ed!important;
+  border-top:3px solid #123a5a!important;
+  border-radius:5px!important;
+  background:#fff!important;
+  break-before:auto!important;
+  page-break-before:auto!important;
+  break-after:auto!important;
+  page-break-after:auto!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-brand{
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-brand img{
+  width:30px!important;
+  height:30px!important;
+  min-width:30px!important;
+  max-width:30px!important;
+  flex:0 0 30px!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-dept{
+  font-size:.72rem!important;
+  letter-spacing:.065em!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-main{
+  margin:15px 0 12px!important;
+  text-align:left!important;
+  padding-left:12px!important;
+  border-left:3px solid #1f608e!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-main h1{
+  font-size:1.38rem!important;
+  line-height:1.14!important;
+  margin:4px 0 5px!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-month{
+  font-size:1rem!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-kicker{
+  font-size:.61rem!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-meta{
+  display:grid!important;
+  grid-template-columns:repeat(3,minmax(0,1fr))!important;
+  gap:5px 13px!important;
+  border:0!important;
+  border-top:1px solid #dae5ec!important;
+  border-radius:0!important;
+  padding:8px 0 0!important;
+  margin:0!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-meta .cover-meta-cell{
+  display:flex!important;
+  min-width:0!important;
+  min-height:0!important;
+  padding:3px 0!important;
+  border:0!important;
+  background:#fff!important;
+  flex-direction:column!important;
+  align-items:flex-start!important;
+  text-align:left!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-meta span{
+  font-size:.59rem!important;
+  line-height:1.1!important;
+  text-align:left!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-meta strong{
+  font-size:.72rem!important;
+  text-align:left!important;
+  line-height:1.18!important;
+  overflow-wrap:anywhere!important;
+}
+.pdf-clean-stage .pdf-front-page .cover-auditor-row{
+  grid-column:1/-1!important;
+  display:grid!important;
+  grid-template-columns:1fr minmax(110px,140px) 1fr!important;
+  align-items:center!important;
+  gap:12px!important;
+  margin-top:5px!important;
+  border-top:1px solid #e4ecf1!important;
+  padding-top:7px!important;
+}
+.pdf-clean-stage .pdf-front-page .cover-auditor-row > div{
+  min-width:0!important;
+}
+.pdf-clean-stage .pdf-front-page .cover-auditor-signature img,
+.pdf-clean-stage .pdf-front-page .cover-auditor-signature .report-signature-placeholder{
+  width:100%!important;
+  height:32px!important;
+  max-height:32px!important;
+  object-fit:contain!important;
+}
+.pdf-clean-stage .pdf-front-page .report-cover-footer{
+  display:none!important;
+}
+.pdf-clean-stage .pdf-front-page > .report-meta-grid{
+  margin:4px 0 9px!important;
+  gap:3px 12px!important;
+  font-size:.73rem!important;
+}
+.pdf-clean-stage .pdf-front-page > .report-blue-rule{
+  display:none!important;
+}
+.pdf-clean-stage .pdf-front-page > .report-executive-summary{
+  margin:6px 0 0!important;
+  padding:12px 14px!important;
+  border:1px solid #cbdce7!important;
+  border-left:3px solid #1f608e!important;
+  border-radius:5px!important;
+  background:#f8fbfd!important;
+}
+.pdf-clean-stage .pdf-front-page .report-executive-summary p{
+  line-height:1.4!important;
+  font-size:.82rem!important;
+}
+
+/* Smaller patch and leaner headers on all interior audit pages. */
+.pdf-clean-stage .pdf-packet-header{
+  margin:-12px -14px 8px!important;
+  padding:5px 10px!important;
+  min-height:32px!important;
+}
+.pdf-clean-stage .pdf-packet-header-brand{gap:7px!important}
+.pdf-clean-stage .pdf-packet-header-brand img{
+  width:19px!important;
+  height:19px!important;
+  flex:0 0 19px!important;
+}
+.pdf-clean-stage .pdf-packet-header-brand strong{
+  font-size:.66rem!important;
+}
+.pdf-clean-stage .pdf-packet-header-brand span{
+  font-size:.55rem!important;
+}
+.pdf-clean-stage .pdf-packet-header-meta strong{
+  font-size:.63rem!important;
+}
+.pdf-clean-stage .pdf-packet-header-meta span{
+  font-size:.53rem!important;
+}
+.pdf-clean-stage .pdf-packet-page{
+  box-shadow:none!important;
+  border:1px solid #dce5eb!important;
+  border-radius:5px!important;
+  padding:12px 14px!important;
+}
+.pdf-clean-stage .pdf-packet-page > .pdf-packet-title{
+  margin:0 0 9px!important;
+  padding:0 0 6px!important;
+  border:0!important;
+  border-bottom:2px solid #1f608e!important;
+  border-radius:0!important;
+  background:transparent!important;
+  color:#123a5a!important;
+  font-size:.98rem!important;
+}
+.pdf-clean-stage .pdf-packet-page > section{
+  margin:8px 0 12px!important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-signature-box img,
+.pdf-clean-stage .pdf-certifications-page .report-signature-placeholder{
+  height:48px!important;
+  max-height:48px!important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-signature-label{
+  font-size:.63rem!important;
+}
+.pdf-clean-stage .pdf-certifications-page .report-signature-name{
+  font-size:.67rem!important;
+  line-height:1.25!important;
+}
+.pdf-clean-stage .pdf-medic1-medic2-wrap,
+.pdf-clean-stage .pdf-medic3-safe-wrap{
+  display:grid!important;
+  width:100%!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:12px!important;
+  align-items:start!important;
+}
+.pdf-clean-stage .pdf-medic1-medic2-wrap > .report-cert,
+.pdf-clean-stage .pdf-medic3-safe-wrap > .report-cert{
+  width:100%!important;
+  min-width:0!important;
+  max-width:100%!important;
+  padding:11px 10px!important;
+  margin:0!important;
+  overflow:visible!important;
+  border:1px solid #ccdce7!important;
+  border-radius:6px!important;
+  box-sizing:border-box!important;
+}
+.pdf-clean-stage .pdf-medic3-safe-page .pdf-medic3-explainer{
+  margin:0 0 12px!important;
+  font-size:.76rem!important;
+}
+
+/* Monthly/annual generated summaries: section flow without full-page blanks. */
+.pdf-clean-stage .report-summary-condensed > .report-cover-page{
+  display:block!important;
+  height:auto!important;
+  min-height:0!important;
+  max-height:none!important;
+  margin:0 0 12px!important;
+  padding:14px 17px!important;
+  border:1px solid #d7e3eb!important;
+  border-top:3px solid #123a5a!important;
+  background:#fff!important;
+  break-before:auto!important;
+  page-break-before:auto!important;
+  break-after:auto!important;
+  page-break-after:auto!important;
+}
+.pdf-clean-stage .report-summary-condensed > .report-cover-page .report-cover-brand img{
+  width:30px!important;
+  height:30px!important;
+  flex:0 0 30px!important;
+}
+.pdf-clean-stage .report-summary-condensed > .report-cover-page .report-cover-main{
+  margin:12px 0 10px!important;
+  text-align:left!important;
+}
+.pdf-clean-stage .report-summary-condensed > .report-cover-page .report-cover-main h1{
+  font-size:1.42rem!important;
+  line-height:1.13!important;
+  margin:4px 0!important;
+}
+.pdf-clean-stage .report-summary-condensed > .report-cover-page .report-cover-month{
+  font-size:1rem!important;
+}
+.pdf-clean-stage .report-summary-condensed > .report-cover-page .report-cover-meta{
+  padding:8px 0!important;
+  gap:6px 12px!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+}
+.pdf-clean-stage .report-summary-condensed > .report-cover-page .report-cover-footer{
+  display:none!important;
+}
+.pdf-clean-stage .report-summary-condensed > .pdf-generic-section{
+  margin:8px 0 13px!important;
+  padding:10px 12px!important;
+  border:1px solid #d8e3eb!important;
+  border-radius:5px!important;
+  box-shadow:none!important;
+  background:#fff!important;
+  break-before:auto!important;
+  page-break-before:auto!important;
+  break-after:auto!important;
+  page-break-after:auto!important;
+}
+.pdf-clean-stage .report-summary-condensed > .pdf-generic-section > h2{
+  font-size:1rem!important;
+  color:#123a5a!important;
+  margin:0 0 7px!important;
+}
+.pdf-clean-stage .report-summary-condensed .report-table{
+  width:100%!important;
+  min-width:0!important;
+  table-layout:auto!important;
+  border-color:#d5e1e9!important;
+  font-size:.74rem!important;
+}
+.pdf-clean-stage .report-summary-condensed .report-table th,
+.pdf-clean-stage .report-summary-condensed .report-table td{
+  padding:5px 7px!important;
+  border-color:#dbe6ed!important;
+  line-height:1.25!important;
+  overflow-wrap:anywhere!important;
+}
+.pdf-clean-stage .report-summary-condensed .report-table th{
+  background:#eef5f9!important;
+}

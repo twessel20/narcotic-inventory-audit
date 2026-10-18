@@ -1605,7 +1605,7 @@ function annualSummaryHtml(year,reports){
  return '<div class="report-sheet report-finalized annual-report">'+
  '<div class="report-toolbar"><button id="closeReport">Close</button><button id="previewPdfReport">Generate PDF Preview</button><button id="shareReport">Share PDF</button><button id="printReport" class="primary">Print / Save PDF</button></div>'+
  '<section class="report-cover-page annual-cover">'+
- '<div class="report-cover-brand"><img src="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg" alt="Gladstone Fire Department patch"><div class="report-cover-dept">GLADSTONE FIRE DEPARTMENT</div></div>'+
+ '<div class="report-cover-brand"><img src="gfd-patch.jpg" alt="Gladstone Fire Department patch"><div class="report-cover-dept">GLADSTONE FIRE DEPARTMENT</div></div>'+
  '<div class="report-cover-main"><div class="report-cover-kicker">YEAR-END CONTROLLED-SUBSTANCE REVIEW</div><h1>Narcotic Inventory / Audit<br>Annual Summary</h1><div class="report-cover-month">'+year+'</div></div>'+
  '<div class="report-cover-meta"><div><span>Monthly reports included</span><strong>'+reports.length+'</strong></div><div><span>First audit</span><strong>'+esc(reportShareDate(first?.auditDate||first?.finalizedAt)||'—')+'</strong></div><div><span>Last audit</span><strong>'+esc(reportShareDate(last?.auditDate||last?.finalizedAt)||'—')+'</strong></div><div><span>Generated</span><strong>'+esc(formatDisplayDate(new Date()))+'</strong></div></div>'+
  '<div class="report-cover-footer">Gladstone Fire Department · Year-End Narcotic Inventory / Audit Summary</div></section>'+
@@ -2060,15 +2060,13 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      executive.style.minHeight='0';
    }
 
-   const pages=[cover];
+   // Compact front matter: the cover and summary share the first PDF page.
+   const pages=[];
+   pages.push(makePage('Monthly Audit Overview',
+     'pdf-monthly-summary-page pdf-front-page',
+     [cover,metaGrid,blueRule,executive]));
 
-   pages.push(makePage(
-     'Executive Summary',
-     'pdf-monthly-summary-page',
-     [metaGrid,blueRule,executive]
-   ));
-
-   if(amendment){
+      if(amendment){
      removeOwnHeading(amendment);
      pages.push(makePage(
        'Amended Inventory Record / Correction History',
@@ -2137,11 +2135,19 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
      const medic3Intro=document.createElement('p');
      medic3Intro.className='pdf-medic3-explainer';
      medic3Intro.textContent='Medic 3 is a reserve, semi-dynamic unit. Its narcotics are normally secured in the Safe and moved to Medic 3 when placed in service.';
+     const medic3=byTitle('Medic 3 Certification');
+     const safe=byTitle('Safe Certification');
+     if(medic3||safe){
+       const wrap=document.createElement('div');
+       wrap.className='pdf-medic3-safe-wrap';
+       [medic3,safe].filter(Boolean).forEach(card=>{
+         clearPdfBreaks(card);card.classList.add('pdf-single-cert-card');wrap.appendChild(card);
+       });
+       pages.push(makePage('Medic 3 / Safe Site Certifications',
+         'pdf-certifications-page pdf-medic3-safe-page',[medic3Intro,wrap]));
+     }
 
-     addCertPage('Medic 3',[medic3Intro]);
-     addCertPage('Safe');
-
-     const expiredIntro=document.createElement('p');
+          const expiredIntro=document.createElement('p');
      expiredIntro.className='pdf-expired-explainer';
      expiredIntro.textContent='This page documents the physical count, seal verification, auditor certification, and witness certification for controlled substances placed in the Expired inventory location during this audit.';
      addCertPage('Expired',[expiredIntro]);
@@ -2168,16 +2174,18 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
    clone.replaceChildren(...pages.filter(Boolean));
  }else{
-   // Annual/legacy output: keep report content intact, but use one clean break system.
+   // Use natural pagination for annual/monthly executive summaries.
+   const condensed=/\b(annual|monthly) summary\b/i.test(title);
+   if(condensed)clone.classList.add('report-summary-condensed');
    const sections=[...clone.querySelectorAll(':scope > section')];
    sections.forEach((section,index)=>{
      clearPdfBreaks(section);
      section.classList.add('pdf-generic-section');
-     if(index>0)section.classList.add('pdf-page-start');
+     if(!condensed&&index>0)section.classList.add('pdf-page-start');
    });
  }
 
- const stage=document.createElement('div');
+  const stage=document.createElement('div');
  stage.className='pdf-render-stage pdf-clean-stage';
  stage.style.position='fixed';
  stage.style.left='-10000px';
@@ -2262,7 +2270,7 @@ async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit
 
      if(isMonthlyPacket&&page>1){
        if(runningHeaderLogoData){
-         try{pdf.addImage(runningHeaderLogoData,'JPEG',0.35,0.055,0.20,0.20);}catch(err){}
+         try{pdf.addImage(runningHeaderLogoData,'JPEG',0.35,0.09,0.11,0.11);}catch(err){}
        }
        pdf.setFont('helvetica','bold');
        pdf.setTextColor(18,58,90);
@@ -2445,7 +2453,7 @@ function reportCoverPageHtml(r){
  const finalized=reportShareDate(r.finalizedAt||r.auditDate);
  const auditor=r.attestationName||r.auditorName||'';
  return '<section class="report-cover-page">'+
-   '<div class="report-cover-brand"><img src="https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg" alt="Gladstone Fire Department patch">'+
+   '<div class="report-cover-brand"><img src="gfd-patch.jpg" alt="Gladstone Fire Department patch">'+
    '<div class="report-cover-dept">GLADSTONE FIRE DEPARTMENT</div></div>'+
    '<div class="report-cover-main"><div class="report-cover-kicker">CONTROLLED-SUBSTANCE AUDIT</div>'+
    '<h1>Narcotic Inventory / Audit Report</h1>'+
@@ -2621,7 +2629,7 @@ function newReportSummaryHtml(r){
 }
 
 function reportHtml(r){
- const logo='https://raw.githubusercontent.com/twessel20/Gladstone-AED-Inventory/main/gfd-patch.jpg';
+ const logo='gfd-patch.jpg';
  const recordNo=r.legacyRecordNumber||String(r.auditId||r.id||'').match(/\d+/)?.[0]||'';
  const activeTotal=m=>['Medic 1','Medic 2','Medic 3','Safe'].reduce((n,l)=>n+Number(r.counts?.[l]?.[m]||0),0);
  const amendment=(r.amendments||[]).map(a=>'<div class="report-amendment-row"><b>'+esc(a.location)+' · '+esc(a.medication)+':</b> '+esc(a.from)+' → '+esc(a.to)+' '+esc(a.unit||'')+'. '+esc(a.reason||'')+(a.recordedAt?' Recorded '+esc(formatDisplayDate(a.recordedAt)):'')+(a.recordedBy?' by '+esc(a.recordedBy):'')+'.</div>').join('');
@@ -3096,7 +3104,7 @@ document.addEventListener('visibilitychange',()=>{if(document.visibilityState===
  if(active?.auditId){await put('meta',{id:'activeAudit',auditId:'',updatedAt:nowISO()});activeAuditId=null;await renderAudits()}
  if('serviceWorker'in navigator){
   try{
-    const reg=await navigator.serviceWorker.register('./sw.js?v=20261017-231',{updateViaCache:'none'});
+    const reg=await navigator.serviceWorker.register('./sw.js?v=20261018-232',{updateViaCache:'none'});
     await reg.update();
     let reloading=false;
     navigator.serviceWorker.addEventListener('controllerchange',()=>{
