@@ -2179,11 +2179,12 @@ async function appendSupportingPdfs(baseBlob,docs=[]){
 }
 
 async function generateRenderedReportPdf(preview,title='Narcotic Inventory Audit Report'){
-  // Finalized signed monthly records use vector text, atomic table rows and
-  // indivisible certification panels. This bypasses the blank html2canvas
-  // capture that affected the September 2026 packet on iOS/desktop.
+  // All finalized report families use the same searchable August 2026
+  // PDF layout engine. Monthly and annual summaries retain their own figures,
+  // terminology, and summary-only certification status. Do not route them to
+  // the legacy screenshot/html2canvas PDF exporter.
   const finalizedSheet=preview?.querySelector('.report-sheet.report-finalized');
-  if(finalizedSheet && !finalizedSheet.classList.contains('annual-report')){
+  if(finalizedSheet){
     if(typeof generateVectorAuditPacketPdf!=='function')
       throw new Error('Audit packet PDF renderer was not loaded. Reload the app and try again.');
     return generateVectorAuditPacketPdf(preview,title);
