@@ -294,10 +294,30 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
       const required=tableHeight+56;
       if(required>TOP-BOTTOM-48)
         throw new Error('The breakaway tag record cannot fit on one report page.');
-      if(y-required<BOTTOM)newPage('Breakaway Tag Record');
-      else heading('Breakaway Tag Record');
+      if(y-required<BOTTOM)
+        newPage('Audit data and supporting records (continued)');
+      heading('Breakaway tag record');
       renderTable(tagTable,'Breakaway Tag Record');
       return;
+    }
+    // August packet puts the inventory title immediately above its complete
+    // five-medication grid. Measure before printing either block so the title
+    // cannot be abandoned on the previous page.
+    if(/^inventory comparison$/i.test(name)){
+      const inv=section.querySelector('table');
+      const data=tableData(inv);
+      if(data){
+        const cols=7,weights=[1.55,1.08,1.08,1.08,1.08,1.08,.90];
+        const totalWeight=weights.reduce((a,b)=>a+b,0);
+        const widths=weights.map(v=>W*v/totalWeight);
+        const hRow=cells=>Math.max(20,...widths.map((width,i)=>
+          wrap(cells[i]||'',regular,7.05,width-10).length*7.05*1.3+10));
+        const hHead=Math.max(25,...widths.map((width,i)=>
+          wrap(data.headers[i]||'',bold,7.05,width-10).length*7.05*1.3+10));
+        const required=48+hHead+data.rows.reduce((sum,row)=>sum+hRow(row),0)+15;
+        if(required<TOP-BOTTOM-35&&y-required<BOTTOM)
+          newPage('Audit data and supporting records (continued)');
+      }
     }
     heading(name);
     for(const child of [...section.children]){
@@ -422,11 +442,9 @@ async function generateVectorAuditPacketPdf(preview,title='Narcotic Inventory Au
     newPage('Audit notes / discrepancies');
     const typed=multiline(notes.querySelector('.audit-notes-text'));
     const summary=notes.querySelector('.report-usage-summary');
-    if(typed||summary){
-      heading('Audit Notes / Discrepancies');
-      if(typed)notePanel('Auditor Notes',typed);
-      if(summary)notePanel('Imported Administration / Usage Notes',multiline(summary));
-    }
+    heading('Audit notes / discrepancies');
+    notePanel('Auditor Notes',typed||'No audit notes recorded.');
+    if(summary)notePanel('Imported Administration / Usage Notes',multiline(summary));
   }
   if(attestation){
     newPage('Final audit attestation');
